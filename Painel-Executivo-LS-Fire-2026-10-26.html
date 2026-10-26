@@ -3460,13 +3460,13 @@ function secConfVend(ab){
   const vS=a=>somar(a,n=>n.vNum||0), cnt=(a,p)=>a.filter(n=>temPend(n,p)).length;
   const alerta=(q,cor)=>q?`<b style="color:var(--${cor})">${fmtN(q)}</b>`:'<span style="color:var(--txt3)">0</span>';
   let h=sec('Confirmação por vendedor',`Todos os negócios abertos de cada vendedor, para ele <b>confirmar status, data de fechamento e valor</b>. Baixe o Excel (um por vendedor, ou um arquivo com uma aba para cada) e envie: as colunas de resposta vão em branco. Pendências: <b>vencida</b> = data de fechamento já passou · <b>sem data</b> = fora de qualquer previsão · <b>sem status</b> = negócio sem marcador nem status da obra.`);
-  h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar baixa a planilha e abre o e-mail endereçado ao vendedor; anexe o arquivo e envie',
+  h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar baixa o e-mail pronto (.eml) com a planilha anexada: abra no Outlook e clique em Enviar',
     tab([{t:'Vendedor',f:1},{t:'Negócios',n:1},{t:'Valor',n:1},{t:'Na previsão',n:1},{t:'Vencida',n:1},{t:'Sem data',n:1},{t:'Sem status',n:1},{t:'E-mail do vendedor',f:1},{t:'Enviar',n:1}],
       PREV_GR.map((g,i)=>[`<a href="javascript:void 0" onclick="verVendPrev(${i})" style="color:var(--lar);font-weight:700">${esc(g.nome)}</a>`,
         fmtN(g.itens.length),fmtBRL(vS(g.itens)),fmtBRL(somar(g.itens,prevNeg)),
         alerta(cnt(g.itens,'Vencida'),'ale'),alerta(cnt(g.itens,'Sem data'),'err'),alerta(cnt(g.itens,'Sem status'),'ale'),
         `<input class="campo" type="email" id="pv-mail-${i}" value="${esc(emailVend(g.nome))}" placeholder="nome@lsfire.com.br" onchange="setEmailVend(${i},this.value)" style="width:100%;min-width:170px;font-size:11px;padding:4px 7px">`,
-        `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="Baixa a planilha e abre o e-mail para ${esc(g.nome)}">✉ Enviar</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
+        `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="Baixa o e-mail pronto para ${esc(g.nome)}, com a planilha anexada">✉ Enviar</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
     +`<div class="drill-cab" style="border:0;background:none;padding:10px 0 0"><span>${fmtN(PREV_GR.length)} vendedores · ${fmtN(ab.length)} negócios · ${fmtCompacto(vS(ab))}</span>
       <button onclick="xlsVendPrev(-1)">↓ Excel de todos (uma aba por vendedor)</button></div>`);
   h+=`<div id="pv-vend">${htmlVendPrev()}</div>`;
@@ -3493,30 +3493,33 @@ const XLS_RESP=['Status confirmado','Nova data de fechamento','Valor confirmado'
 const XLS_STATUS='Aprovado / aguardando PO · Em negociação · Obra em compra · Em disputa · Estudo / projeto · Ganho · Perdido';
 function abaVendPrev(g){
   const H=hoje(), tot=somar(g.itens,n=>n.vNum||0);
-  const cols=['Referência','ID Ploomes','Cód. proposta','Cliente','Título','Divisão','Etapa','Estágio','Status da obra','Status atual','Camada','Previsão de fechamento','Valor (R$)','Dias no estágio','Última atualização','Pendência',...XLS_RESP];
+  const cols=['Referência','ID Ploomes','Cód. proposta','Cliente','Título','Divisão','Etapa','Estágio','Status da obra','Status atual','Camada','Previsão de fechamento','Valor (R$)','Dias no estágio','Última atualização','Pendência','O que ajustar no Ploomes',...XLS_RESP];
   const aoa=[[`Confirmação de oportunidades — ${g.nome}`],
     [`LS Fire · gerado em ${fmtData(H)} · ${g.itens.length} negócios abertos no Ploomes · ${fmtBRL(tot)}`],
     [`Confira cada linha e preencha as colunas "${XLS_RESP.join('", "')}". Status possíveis: ${XLS_STATUS}.`],
     [],cols,
     ...g.itens.map(n=>[refNeg(n),n.id!=null?String(n.id):'',n.codProposta!=null?String(n.codProposta):'',n.cli,String(n.titulo||''),n.div||'',
       String(n.etapa||''),String(n.est||''),String(n.statusObra||''),n.certeza,camadaNeg(n),n.dtPrev||null,n.vNum||0,
-      n.diasEst!=null&&!isNaN(n.diasEst)?n.diasEst:null,n.dtAtu||null,pendNeg(n),'','','',''])];
+      n.diasEst!=null&&!isNaN(n.diasEst)?n.diasEst:null,n.dtAtu||null,pendNeg(n),ajustesNeg(n).join('; '),'','','',''])];
   const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
   const ini=5, fim=ini+g.itens.length-1, ci=k=>cols.indexOf(k);
   for(let r=ini;r<=fim;r++){
     [ci('Previsão de fechamento'),ci('Última atualização')].forEach(c=>{const x=ws[XLSX.utils.encode_cell({r,c})];if(x&&x.t==='d')x.z='dd/mm/yyyy';});
     const v=ws[XLSX.utils.encode_cell({r,c:ci('Valor (R$)')})]; if(v)v.z='#,##0';
   }
-  ws['!cols']=cols.map(k=>({wch:{Referência:22,Cliente:30,Título:40,Etapa:22,'Status atual':22,'Observação do vendedor':40,'Status confirmado':24}[k]||Math.max(12,k.length+2)}));
+  ws['!cols']=cols.map(k=>({wch:{Referência:22,Cliente:30,Título:40,Etapa:22,'Status atual':22,'Observação do vendedor':40,'Status confirmado':24,'O que ajustar no Ploomes':48}[k]||Math.max(12,k.length+2)}));
   ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:4,c:0},e:{r:Math.max(4,fim),c:cols.length-1}})};
   return ws; }
 function nomeAba(s,usados){
   let b=String(s).replace(/[\[\]:*?\/\\]/g,' ').trim().slice(0,31)||'Vendedor', n=b, i=2;
   while(usados.has(n.toLowerCase())){const suf=' ('+(i++)+')';n=b.slice(0,31-suf.length)+suf;}
   usados.add(n.toLowerCase()); return n; }
-function xlsVendPrev(i){
-  if(typeof XLSX==='undefined'){aviso('Biblioteca do Excel indisponível.');return;}
-  const gs=i<0?PREV_GR:[PREV_GR[i]].filter(Boolean); if(!gs.length)return;
+function xlsVendPrev(i){ const x=montarXlsVend(i); if(!x)return;
+  baixarBlob(new Blob([x.buf],{type:XLSX_MIME}),x.arq); return x.arq; }
+const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+function montarXlsVend(i){
+  if(typeof XLSX==='undefined'){aviso('Biblioteca do Excel indisponível.');return null;}
+  const gs=i<0?PREV_GR:[PREV_GR[i]].filter(Boolean); if(!gs.length)return null;
   const wb=XLSX.utils.book_new(), usados=new Set(), dia=new Date().toISOString().slice(0,10);
   if(i<0){
     const res=[['Confirmação de oportunidades — resumo por vendedor'],[`LS Fire · gerado em ${fmtData(hoje())}`],[],
@@ -3531,43 +3534,88 @@ function xlsVendPrev(i){
   gs.forEach(g=>XLSX.utils.book_append_sheet(wb,abaVendPrev(g),nomeAba(g.nome,usados)));
   const arq=i<0?`Confirmacao-oportunidades-todos-${dia}.xlsx`
     :`Confirmacao-oportunidades-${norm(gs[0].nome).replace(/\s+/g,'-')||'vendedor'}-${dia}.xlsx`;
-  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true});
-  baixarBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),arq);
-  return arq; }
+  return {buf:XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true}),arq}; }
 /* e-mail de cada vendedor: fica em CFG (vai junto no ↓ Salvar e no Salvar no
-   Claude) e, por garantia, no navegador. O envio é pelo programa de e-mail de
-   quem clica: a planilha é baixada e o e-mail abre endereçado, com assunto e
-   texto — falta só anexar o arquivo e enviar. (O conector do Microsoft 365 não
-   tem permissão de envio nem aceita anexo, por isso não dá para mandar daqui.) */
+   Claude) e, por garantia, no navegador. (O conector do Microsoft 365 não tem
+   permissão de envio nem aceita anexo, por isso o envio é pelo Outlook de quem
+   clica — ver emlVend.) */
 const RX_MAIL=/^[^\s@;,]+@[^\s@;,]+\.[^\s@;,]+$/;
 function emailVend(nome){ return (CFG.emailVend||{})[nome]||''; }
-try{ const m=JSON.parse(localStorage.getItem('lsfire-email-vend')||'{}');
-  CFG.emailVend=Object.assign({},m,CFG.emailVend||{}); }catch(e){}
+/* cadastro inicial, tirado dos e-mails da LS Fire; o que for digitado no painel
+   (e gravado no ↓ Salvar) tem prioridade. Anderson Alencar é parceiro externo
+   (Grupo Andy SA Eng) — sem e-mail conhecido, fica para preencher. */
+const EMAIL_VEND_PADRAO={'Fábio Dalagnolo':'fabio@lsfire.com.br','Lucas Jacobsen':'lucas.jacobsen@lsfire.com.br',
+  'Lucas Marcius':'lucas@lsfire.com.br','Guilherme Binatto':'guilherme@lsfire.com.br',
+  'Bruno Viebranz':'bruno@lsfire.com.br','Amanda Rohte':'amanda@lsfire.com.br'};
+{ let m={}; try{ m=JSON.parse(localStorage.getItem('lsfire-email-vend')||'{}'); }catch(e){}
+  CFG.emailVend=Object.assign({},EMAIL_VEND_PADRAO,m,CFG.emailVend||{}); }
 function setEmailVend(i,v){ const g=PREV_GR[i]; if(!g)return; v=String(v||'').trim();
   if(v&&!RX_MAIL.test(v)){aviso('E-mail inválido: '+v);return;}
   CFG.emailVend=Object.assign({},CFG.emailVend||{}); if(v)CFG.emailVend[g.nome]=v; else delete CFG.emailVend[g.nome];
   try{localStorage.setItem('lsfire-email-vend',JSON.stringify(CFG.emailVend));}catch(e){}
   aviso(v?`E-mail de ${g.nome} guardado. Use ↓ Salvar para gravar no arquivo.`:`E-mail de ${g.nome} removido.`); }
+/* o que o vendedor tem de mexer no Ploomes, negócio a negócio */
+function ajustesNeg(n){ const a=[], par=num(CFG.parParado)||30;
+  if(!n.dtPrev)a.push('preencher a previsão de fechamento');
+  else if(n.dtPrev<hoje())a.push(n.certeza==='Aprovado / aguardando PO'?'cobrar a PO e atualizar a data':'atualizar a data ou dar baixa como perdido');
+  if(n.certeza==='Não classificado')a.push('marcar a etapa ou o status da obra');
+  if(n.diasEst!=null&&n.diasEst>=par)a.push(`parado há ${fmtN(n.diasEst)} dias: registrar FUP / mudar o estágio`);
+  if(!n.vNum)a.push('preencher o valor');
+  return a; }
+/* diagnóstico do vendedor para o corpo do e-mail: cada ponto com quantidade,
+   valor e os maiores casos, do que mais pesa na previsão para o que menos pesa */
+function insightsVend(g,nTop){
+  const it=g.itens, tot=somar(it,n=>n.vNum||0), par=num(CFG.parParado)||30, H=hoje();
+  const vS=a=>somar(a,n=>n.vNum||0), pct=a=>tot?fmtPct(vS(a)/tot,0):'0%';
+  const tops=a=>nTop?' Maiores: '+[...a].sort((x,y)=>(y.vNum||0)-(x.vNum||0)).slice(0,nTop)
+    .map(n=>`${String(n.cli).slice(0,28)} (${fmtCompacto(n.vNum||0)}${n.dtPrev?', '+fmtData(n.dtPrev):''})`).join('; ')+'.':'';
+  const sem=it.filter(n=>!n.dtPrev), venc=it.filter(n=>n.dtPrev&&n.dtPrev<H),
+    vencPO=venc.filter(n=>n.certeza==='Aprovado / aguardando PO'), vencOut=venc.filter(n=>n.certeza!=='Aprovado / aguardando PO'),
+    nc=it.filter(n=>n.certeza==='Não classificado'), parad=it.filter(n=>n.diasEst!=null&&n.diasEst>=par), sv=it.filter(n=>!n.vNum);
+  const L=[];
+  if(vencPO.length)L.push(`${vencPO.length} aprovado(s) aguardando PO com data vencida (${fmtCompacto(vS(vencPO))}): cobrar a PO do cliente e atualizar a data no Ploomes — é o que já contamos como garantido.${tops(vencPO)}`);
+  if(sem.length)L.push(`${sem.length} negócio(s) sem previsão de fechamento (${fmtCompacto(vS(sem))}, ${pct(sem)} da sua carteira): sem data eles não entram em nenhum mês da previsão. Preencher o campo "Previsão de fechamento".${tops(sem)}`);
+  if(vencOut.length)L.push(`${vencOut.length} com data de fechamento vencida (${fmtCompacto(vS(vencOut))}): atualizar a data ou, se o cliente desistiu/fechou com outro, dar baixa como perdido com o motivo.${tops(vencOut)}`);
+  if(nc.length)L.push(`${nc.length} sem status (${fmtCompacto(vS(nc))}): sem marcador de etapa nem "Status da obra" o negócio fica fora da previsão. Marcar a etapa (proposta enviada, negociação, aprovado) e o status da obra.${tops(nc)}`);
+  if(parad.length)L.push(`${parad.length} parado(s) há ${par}+ dias no mesmo estágio (${fmtCompacto(vS(parad))}): registrar o follow-up no negócio e avançar ou baixar.${tops(parad)}`);
+  if(sv.length)L.push(`${sv.length} sem valor: preencher o valor da proposta.`);
+  return L; }
+/* corpo em HTML para o .eml: mesmos pontos do texto, em lista */
+function corpoEmailHTML(g){
+  const it=g.itens, tot=somar(it,n=>n.vNum||0), prev=somar(it,prevNeg), nome1=g.nome.split(' ')[0];
+  const ok=it.filter(n=>!ajustesNeg(n).length).length, L=insightsVend(g,3);
+  return `<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">
+<p>Olá, ${esc(nome1)},</p>
+<p>Segue em anexo a planilha com os seus <b>${it.length} negócios abertos</b> no Ploomes (${esc(fmtCompacto(tot))}). Hoje só <b>${esc(fmtCompacto(prev))} (${tot?esc(fmtPct(prev/tot,0)):'0%'})</b> entram na previsão de vendas — o resto está sem data, vencido ou sem status. ${ok} de ${it.length} negócios estão em dia.</p>
+${L.length?`<p><b>O que ajustar no Ploomes:</b></p><ol>${L.map(x=>`<li style="margin-bottom:6px">${esc(x)}</li>`).join('')}</ol>`:'<p>Sua carteira está em dia no Ploomes.</p>'}
+<p>Na planilha, a coluna <b>"O que ajustar no Ploomes"</b> mostra a ação de cada negócio. Por favor, faça os ajustes no Ploomes, preencha as colunas <b>"Status confirmado"</b>, <b>"Nova data de fechamento"</b>, <b>"Valor confirmado"</b> e <b>"Observação"</b> e me devolva respondendo este e-mail.</p>
+<p>Obrigado!</p></div>`; }
+/* E-mail com a planilha ANEXADA: o navegador não anexa arquivo num link
+   mailto, então o painel monta um arquivo .eml (mensagem pronta, marcada como
+   não enviada). Aberto no Outlook (ou Apple Mail, Thunderbird), vira um e-mail
+   novo com destinatário, assunto, texto e a planilha — é só clicar em Enviar. */
+const b64Bytes=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);};
+const b64Txt=t=>b64Bytes(new TextEncoder().encode(t));
+const quebra76=s=>s.replace(/.{1,76}/g,'$&\r\n');
+function emlVend(g,para,xls){
+  const bnd='----=_LSFire_'+Date.now().toString(36);
+  const assunto=`Previsão de vendas — ajustes no Ploomes e confirmação das oportunidades — ${g.nome.split(' ')[0]}`;
+  return ['X-Unsent: 1',`To: ${para}`,`Subject: =?UTF-8?B?${b64Txt(assunto)}?=`,'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${bnd}"`,'',
+    `--${bnd}`,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',
+    quebra76(b64Txt('<html><body>'+corpoEmailHTML(g)+'</body></html>')),
+    `--${bnd}`,`Content-Type: ${XLSX_MIME}; name="${xls.arq}"`,`Content-Disposition: attachment; filename="${xls.arq}"`,
+    'Content-Transfer-Encoding: base64','',quebra76(b64Bytes(new Uint8Array(xls.buf))),
+    `--${bnd}--`,''].join('\r\n'); }
 function enviarVendPrev(i){
   const g=PREV_GR[i]; if(!g)return;
   const para=emailVend(g.nome);
   if(!para){ aviso(`Cadastre o e-mail de ${g.nome} no resumo por vendedor.`);
     const el=document.getElementById('pv-mail-'+i); if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();} return; }
-  const arq=xlsVendPrev(i); if(!arq)return;
-  const q=p=>g.itens.filter(n=>temPend(n,p)).length, nome1=g.nome.split(' ')[0];
-  const pend=[['Vencida','com data de fechamento já vencida'],['Sem data','sem data de fechamento'],['Sem status','sem status definido']]
-    .filter(([p])=>q(p)).map(([p,t])=>`- ${q(p)} ${t}`);
-  const corpo=[`Olá, ${nome1},`,'',
-    `Segue em anexo a planilha com os seus ${g.itens.length} negócios abertos no Ploomes (${fmtBRL(somar(g.itens,n=>n.vNum||0))}), para a previsão de vendas.`,'',
-    ...(pend.length?['Pontos de atenção:',...pend,'']:[]),
-    'Por favor, confira linha a linha e preencha as colunas "Status confirmado", "Nova data de fechamento", "Valor confirmado" e "Observação", e me devolva a planilha respondendo este e-mail.',
-    `Status possíveis: ${XLS_STATUS}.`,'','Obrigado!'].join('\n');
-  const assunto=`Confirmação das oportunidades — ${g.nome} — ${fmtData(hoje())}`;
-  const a=document.createElement('a');
-  a.href=`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  a.target='_top'; a.rel='noopener'; document.body.appendChild(a);
-  setTimeout(()=>{ try{a.click();}catch(e){} a.remove();
-    aviso(`E-mail para ${para} aberto. Anexe o arquivo ${arq} (na pasta de downloads) e envie.`); },600); }
+  const xls=montarXlsVend(i); if(!xls)return;
+  const arq=`Email-${xls.arq.replace(/\.xlsx$/,'')}.eml`;
+  baixarBlob(new Blob([emlVend(g,para,xls)],{type:'message/rfc822'}),arq);
+  aviso(`E-mail para ${para} baixado (${arq}). Abra o arquivo: o Outlook mostra a mensagem pronta, com a planilha anexada — é só clicar em Enviar.`); }
 /* ================= 2. PROPOSTAS ================= */
 /* ---------- velocidade das propostas ----------
    Só Ploomes (CRM, desde jul/2026): é o único sistema que registra quando a
