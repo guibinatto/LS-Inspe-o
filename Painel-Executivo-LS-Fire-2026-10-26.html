@@ -314,6 +314,7 @@ td.f{color:var(--txt);font-weight:700}
 .btn:hover{background:var(--lar2)}
 .btn.sec{background:var(--card);color:var(--txt2);border:1px solid var(--linha)}
 .btn.sec:hover{color:var(--txt);background:var(--card2)}
+#bt-mail[data-pend]:not([data-pend=""])::after{content:attr(data-pend);display:inline-block;margin-left:6px;background:var(--err);color:#fff;border-radius:99px;font-size:9.5px;padding:0 6px}
 .linhas-cfg table input{width:100%;background:transparent;border:0;color:var(--txt);font:inherit;
   font-size:11px;padding:2px 0}
 .linhas-cfg table input:focus{outline:1px solid var(--lar);border-radius:3px}
@@ -813,6 +814,7 @@ body.rel-doc{background:#E3DDD8;margin:0}
         <button id="bt-rot" onclick="setRotulos()" title="Mostra ou esconde os valores escritos em cima das barras">Rótulos</button>
         <button onclick="baixarCSV()">↓ CSV</button>
         <button onclick="abrirRelatorio()" title="Monta um relatório em páginas A4 para a equipe ou para a diretoria — PDF ou HTML" style="border-color:var(--lar);color:var(--lar);font-weight:700">▤ Relatório</button>
+        <button id="bt-mail" onclick="abrirEmailTela()" title="Enviar esta aba por e-mail" style="border-color:var(--lar);color:var(--lar);font-weight:700">✉ E-mail</button>
         <button onclick="salvarHTML(true)" title="Cópia para enviar: só as bases que as telas usam, sem CNPJ, contato, e-mail, telefone e observações">↓ Para diretoria</button>
         <button id="bt-nuvem" class="so-art" onclick="salvarNoClaude(this)" title="Grava as planilhas e metas carregadas neste próprio link — quem abrir o painel no Claude já vê os dados novos">☁ Salvar no Claude</button>
         <button onclick="salvarHTML()" title="Cópia completa, com todas as bases carregadas — para arquivar" style="background:var(--lar);color:#fff;border-color:var(--lar);font-weight:700">↓ Salvar</button>
@@ -3547,7 +3549,8 @@ function emailVend(nome){ return (CFG.emailVend||{})[nome]||''; }
    (Grupo Andy SA Eng) — sem e-mail conhecido, fica para preencher. */
 const EMAIL_VEND_PADRAO={'Fábio Dalagnolo':'fabio@lsfire.com.br','Lucas Jacobsen':'lucas.jacobsen@lsfire.com.br',
   'Lucas Marcius':'lucas@lsfire.com.br','Guilherme Binatto':'guilherme@lsfire.com.br',
-  'Bruno Viebranz':'bruno@lsfire.com.br','Amanda Rohte':'amanda@lsfire.com.br'};
+  'Bruno Viebranz':'bruno@lsfire.com.br','Amanda Rohte':'amanda@lsfire.com.br',
+  'Letícia Lima':'leticia@lsfire.com.br','Leomar Boing':'leomar@lsfire.com.br'};
 { let m={}; try{ m=JSON.parse(localStorage.getItem('lsfire-email-vend')||'{}'); }catch(e){}
   CFG.emailVend=Object.assign({},EMAIL_VEND_PADRAO,m,CFG.emailVend||{}); }
 function setEmailVend(i,v){ const g=PREV_GR[i]; if(!g)return; v=String(v||'').trim();
@@ -3662,6 +3665,7 @@ function enviarVendPrev(i){
   while(u.length>MAX_MAILTO&&n>0){ n=Math.max(0,n-10); u=url(corpoEmailTxt(g,n)); }
   const a=document.createElement('a'); a.href=u; a.target='_top'; a.rel='noopener'; document.body.appendChild(a);
   try{a.click();}catch(e){} a.remove();
+  marcarEnvio('conf:'+g.nome);
   aviso(`E-mail para ${para} aberto com o diagnóstico e a lista dos negócios a ajustar.`); }
 const assuntoVendPrev=g=>`LS Fire · ${rotSemana()} · Previsão: ajustes no Ploomes e confirmação das oportunidades — ${g.nome.split(' ')[0]}`;
 function emlVendPrev(i){
@@ -3672,7 +3676,175 @@ function emlVendPrev(i){
   const html=corpoEmailHTML(g).replace('<p>Obrigado!</p>','<p>A mesma lista segue em anexo em Excel, se preferir responder por ela.</p><p>Obrigado!</p>');
   const arq=`Email-${xls.arq.replace(/\.xlsx$/,'')}.eml`;
   baixarBlob(new Blob([montarEml({para:[para],assunto:assuntoVendPrev(g),html,anexos:[{nome:xls.arq,tipo:XLSX_MIME,buf:xls.buf}]})],{type:'message/rfc822'}),arq);
+  marcarEnvio('conf:'+g.nome);
   aviso(`E-mail com tabela e planilha anexada pronto (${arq}): abra o arquivo e o Outlook mostra a mensagem — é só clicar em Enviar.`); }
+/* ================= E-MAIL DAS TELAS =================
+   ✉ E-mail (barra do topo): abre a janela do e-mail já com destinatários do
+   grupo da tela, assunto da semana e os insights da tela em texto — o mesmo
+   jeito que funcionou na confirmação dos vendedores (mailto, só texto, nada a
+   colar). Grupos e contatos ficam em CFG (↓ Salvar) e no navegador. Às sextas
+   o painel lembra os envios da semana. */
+const GRUPOS_PADRAO={'Diretoria':['Lucas Marcius'],'Previsão':['Lucas Marcius','Letícia Lima'],
+  'Analistas':['Bruno Viebranz','Leomar Boing','Amanda Rohte'],
+  'Vendedores':['Fábio Dalagnolo','Lucas Jacobsen','Lucas Marcius','Guilherme Binatto','Anderson Alencar','Bruno Viebranz','Amanda Rohte']};
+const GRUPO_TELA_PADRAO={resumo:'Diretoria',previsao:'Previsão',propostas:'Analistas',analistas:'Analistas',equipe:'Vendedores',pipeline:'Vendedores'};
+{ let g=null,t=null; try{ g=JSON.parse(localStorage.getItem('lsfire-grupos')||'null'); t=JSON.parse(localStorage.getItem('lsfire-grupo-tela')||'null'); }catch(e){}
+  CFG.grupos=CFG.grupos||g||JSON.parse(JSON.stringify(GRUPOS_PADRAO));
+  CFG.grupoTela=Object.assign({},GRUPO_TELA_PADRAO,t||{},CFG.grupoTela||{}); }
+function guardarEmail(){ try{ localStorage.setItem('lsfire-grupos',JSON.stringify(CFG.grupos));
+  localStorage.setItem('lsfire-grupo-tela',JSON.stringify(CFG.grupoTela));
+  localStorage.setItem('lsfire-email-vend',JSON.stringify(CFG.emailVend||{})); }catch(e){} }
+/* membro de grupo é um nome do cadastro ou um e-mail digitado direto */
+const mailDe=m=>RX_MAIL.test(m)?m:emailVend(m);
+const contatos=()=>[...new Set([...Object.keys(CFG.emailVend||{}),...Object.values(CFG.grupos).flat().filter(m=>!RX_MAIL.test(m))])]
+  .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+function saudacao(nomes){ const p=[...new Set(nomes.map(n=>RX_MAIL.test(n)?'':String(n).split(' ')[0]).filter(Boolean))];
+  return p.length&&p.length<=3?`Olá, ${p.length>1?p.slice(0,-1).join(', ')+' e '+p[p.length-1]:p[0]},`:'Olá, pessoal,'; }
+const txtDe=h=>{const d=document.createElement('div');d.innerHTML=String(h||'');return d.textContent.replace(/\s+/g,' ').trim();};
+/* indicadores do topo da tela (os cartões kpi), como estão desenhados agora */
+function kpisTela(){ return [...document.querySelectorAll('#tela .kpi')].map(k=>{
+  const r=txtDe(k.querySelector('.rot')&&k.querySelector('.rot').innerHTML), v=txtDe(k.querySelector('.val')&&k.querySelector('.val').innerHTML),
+    p=k.querySelector('.pe')?txtDe(k.querySelector('.pe').innerHTML.replace(/<span class="l2">/g,' · ')):'';
+  return `- ${r}: ${v}${p?' — '+p:''}`; }); }
+const porVend=(a,lim)=>[...agrupa(a,n=>n.resp||'(sem dono)').entries()].map(([k,v])=>({k,n:v.length,t:somar(v,x=>x.vNum||0)}))
+  .sort((x,y)=>y.t-x.t).slice(0,lim||8).map(x=>`${nomeCurto(x.k)} ${fmtN(x.n)} (${fmtCompacto(x.t)})`).join(' · ');
+const maiores=(a,k)=>[...a].sort((x,y)=>(y.vNum||0)-(x.vNum||0)).slice(0,k||3).map(n=>`${String(n.cli).slice(0,28)} ${fmtCompacto(n.vNum||0)}${n.resp?' ('+nomeCurto(n.resp)+')':''}`).join('; ');
+function insightsPrevisaoTxt(){
+  const ab=F.ab, vS=a=>somar(a,n=>n.vNum||0), cam=(a,c)=>a.filter(n=>camadaNeg(n)===c);
+  const B=baldesMes(ab,n=>n.dtPrev,6), V3=B.slice(1,4).flatMap(x=>x.itens), venc=B[0].itens, sem=B[B.length-1].itens, tAb=vS(ab);
+  const g3=cam(V3,'Garantido'), p3=cam(V3,'Provável'), x3=cam(V3,'Possível'), gar=cam(ab,'Garantido'), nc=ab.filter(n=>n.certeza==='Não classificado');
+  const ped=(F.ped||[]).filter(p=>!p.faturado), BP=baldesMes(ped,p=>p.dtEnt,6), atr=BP[0].itens, vP=a=>somar(a,p=>p.vNum||0);
+  const L=['PREVISÃO DE VENDAS',
+    `- ${B[1].rot} a ${B[3].rot}: ${fmtCompacto(somar(V3,prevNeg))} — garantido ${fmtCompacto(vS(g3))} + provável ${fmtCompacto(somar(p3,prevNeg))} (ponderado de ${fmtCompacto(vS(p3))}). Fora da previsão: ${fmtCompacto(vS(x3))} possíveis.`,
+    `- Mês a mês: ${B.slice(1,4).map(b=>`${b.rot} ${fmtCompacto(somar(b.itens,prevNeg))} (garantido ${fmtCompacto(vS(cam(b.itens,'Garantido')))})`).join(' · ')}.`];
+  if(gar.length)L.push(`- Garantido (aprovado, aguardando PO): ${fmtN(gar.length)} negócios, ${fmtCompacto(vS(gar))}. Maiores: ${maiores(gar)}.`);
+  if(venc.length)L.push(`- Previsão vencida: ${fmtN(venc.length)} negócios, ${fmtCompacto(vS(venc))} — precisam de data nova ou baixa. Por vendedor: ${porVend(venc)}.`);
+  if(sem.length)L.push(`- Sem data de fechamento: ${fmtN(sem.length)} de ${fmtN(ab.length)} negócios, ${fmtCompacto(vS(sem))} (${fmtPct(tAb?vS(sem)/tAb:0,0)} do pipeline) — fora de qualquer mês. Por vendedor: ${porVend(sem)}.`);
+  if(nc.length)L.push(`- Não classificado (sem marcador nem status da obra): ${fmtN(nc.length)} negócios, ${fmtCompacto(vS(nc))}. Por vendedor: ${porVend(nc)}.`);
+  L.push('','CARTEIRA A FATURAR',
+    `- ${fmtCompacto(vP(ped))} em ${fmtN(ped.length)} pedidos não faturados; ${fmtCompacto(vP(atr))} (${fmtN(atr.length)}) com entrega atrasada.`,
+    `- Por mês de entrega: ${BP.slice(1,4).map(b=>`${b.rot} ${fmtCompacto(vP(b.itens))}`).join(' · ')}.`);
+  const env=enviosSemana(), conf=Object.keys(env).filter(k=>k.startsWith('conf:'));
+  if(conf.length)L.push('',`Nesta semana pedi a confirmação de status, data e valor a ${conf.length} vendedor(es): ${conf.map(k=>nomeCurto(k.slice(5))).join(', ')}.`);
+  return L; }
+function insightsAnalistasTxt(comVel){
+  const VL=velocidade(), inat=(CFG.orcInativos||[]).map(norm), props=propostasRecorte();
+  const nomes=[...new Set(F.neg.map(n=>analista(n.orc)))].filter(k=>k!=='(sem analista)'&&!inat.includes(norm(k))).sort();
+  const L=[], fila=F.neg.filter(naFilaOrc);
+  /* na aba Propostas os cartões do topo já trazem a velocidade e a fila */
+  if(comVel){ L.push('VELOCIDADE DAS PROPOSTAS');
+  if(VL.ops.length)L.push(`- 1ª proposta sai em média ${fD(VL.media)} dias após o negócio criado (mediana ${fD(VL.mediana,0)}); ${fmtPct(VL.noPrazo,0)} dentro do prazo de ${VL.sla} dias.`);
+  if(VL.pedMedia!=null)L.push(`- Da proposta ao pedido: ${fD(VL.pedMedia)} dias em média.`);
+  L.push(`- Fila da orçamentação: ${fmtN(fila.length)} negócios (${fmtCompacto(somar(fila,n=>n.vNum||0))}); ${fmtN(VL.esp.filter(e=>e.dias>VL.sla).length)} aguardando a 1ª proposta há mais de ${VL.sla} dias.`,''); }
+  L.push('POR ANALISTA');
+  nomes.forEach(k=>{ const f=fila.filter(n=>analista(n.orc)===k), at=VL.esp.filter(e=>analista(e.x.orc)===k&&e.dias>VL.sla),
+      pm=props.filter(p=>p.dt&&mesKey(p.dt)===MES_ATUAL&&p.neg&&analista(p.neg.orc)===k);
+    L.push(`- ${k}: ${fmtN(f.length)} na fila (${fmtCompacto(somar(f,n=>n.vNum||0))}); ${fmtN(pm.length)} propostas em ${MES_ATUAL_ROT}`
+      +(at.length?`; ${fmtN(at.length)} aguardando proposta há mais de ${VL.sla} dias — mais antigos: ${at.slice(0,3).map(e=>`${String(e.x.cli).slice(0,26)} (${fmtN(e.dias)} d)`).join('; ')}`:'; nada atrasado')+'.'); });
+  const sa=VL.esp.filter(e=>analista(e.x.orc)==='(sem analista)'&&e.dias>VL.sla);
+  if(sa.length)L.push(`- Sem analista definido: ${fmtN(sa.length)} negócios aguardando proposta há mais de ${VL.sla} dias — definir o responsável.`);
+  return L; }
+function corpoTela(tela,membros){
+  const t=TELAS.find(x=>x.id===tela)||{nome:tela,tit:tela};
+  const k=kpisTela(), L=[saudacao(membros),'',`Segue o resumo da aba ${t.nome} do Painel Executivo — ${rotSemana()} · recorte: ${txtDe(recorteTexto())}.`,''];
+  /* na Previsão os insights já cobrem os cartões do topo */
+  if(k.length&&tela!=='previsao')L.push('INDICADORES',...k,'');
+  if(tela==='resumo'){ const D=relDestaques('diretoria');
+    /* o bloco da meta traz tabela e legenda: só as frases antes da tabela */
+    const m=D.M?txtDe(D.M).split('Divisão')[0].replace(/\.(?=[A-ZÀ-Ú])/g,'. ').trim():'';
+    L.push('DESTAQUES',...(m?['- '+m]:[]),...D.L.map(x=>'- '+txtDe(x)),''); }
+  else if(tela==='previsao')L.push(...insightsPrevisaoTxt(),'');
+  else if(tela==='propostas'||tela==='analistas')L.push(...insightsAnalistasTxt(tela==='analistas'),'');
+  else { const D=relDestaques('equipe'); if(D.A.length)L.push('PARA AGIR',...D.A.map(x=>'- '+txtDe(x)),''); }
+  L.push('Qualquer dúvida, o detalhe está no painel.');
+  return L.join('\n'); }
+const assuntoTela=tela=>{const t=TELAS.find(x=>x.id===tela)||{tit:tela};return `LS Fire · ${rotSemana()} · ${t.tit}`;};
+/* registro do que foi aberto para envio nesta semana (no navegador) */
+const chaveSemana=()=>{const d=hoje();return d.getFullYear()+'-S'+semanaISO(d);};
+function enviosSemana(){ try{ return (JSON.parse(localStorage.getItem('lsfire-envios')||'{}'))[chaveSemana()]||{}; }catch(e){ return {}; } }
+function marcarEnvio(k){ try{ const a=JSON.parse(localStorage.getItem('lsfire-envios')||'{}'), s=chaveSemana();
+  a[s]=Object.assign(a[s]||{},{[k]:new Date().toISOString()}); localStorage.setItem('lsfire-envios',JSON.stringify(a)); }catch(e){} }
+const ENVIOS_SEXTA=[['resumo','Resumo'],['previsao','Previsão'],['propostas','Propostas']];
+/* ---------- modal ---------- */
+let MAIL_TELA=null;
+function abrirEmailTela(tela){
+  MAIL_TELA=tela||EST.tela;
+  if(EST.tela!==MAIL_TELA){ irTela(MAIL_TELA); setTimeout(()=>abrirEmailTela(MAIL_TELA),400); return; }
+  let m=document.getElementById('m-mail');
+  if(!m){ m=document.createElement('div'); m.className='modal'; m.id='m-mail'; document.body.appendChild(m); }
+  const t=TELAS.find(x=>x.id===MAIL_TELA)||{nome:MAIL_TELA}, gr=CFG.grupoTela[MAIL_TELA]||'';
+  const membros=gr&&CFG.grupos[gr]?CFG.grupos[gr]:[];
+  m.innerHTML=`<div class="cx-modal" style="max-width:860px"><header><h3>✉ Enviar a aba ${esc(t.nome)} por e-mail</h3><button onclick="fecharModal('m-mail')">✕</button></header>
+  <div class="conteudo">
+    <p>Abre a janela do seu e-mail já com destinatários, assunto da semana e o texto abaixo — confira, ajuste se quiser e envie.</p>
+    <div style="display:grid;grid-template-columns:180px 1fr;gap:10px">
+      <div class="mcampo"><label>Grupo</label><select class="campo" id="ml-grupo" onchange="mlTrocaGrupo(this.value)">
+        <option value="">(digitar e-mails)</option>${Object.keys(CFG.grupos).map(g=>`<option${g===gr?' selected':''}>${esc(g)}</option>`).join('')}</select></div>
+      <div class="mcampo"><label>Para</label><input class="campo" id="ml-para" style="width:100%" value="${esc(membros.map(mailDe).filter(Boolean).join('; '))}"></div>
+    </div>
+    ${membros.some(x=>!mailDe(x))?`<p style="color:var(--ale)">Sem e-mail cadastrado: ${esc(membros.filter(x=>!mailDe(x)).join(', '))} — preencha em "Grupos e contatos".</p>`:''}
+    <div class="mcampo"><label>Assunto</label><input class="campo" id="ml-assunto" style="width:100%" value="${esc(assuntoTela(MAIL_TELA))}"></div>
+    <div class="mcampo"><label>Texto</label><textarea class="campo" id="ml-corpo" rows="14" style="width:100%;resize:vertical;font-family:inherit;font-size:12px">${esc(corpoTela(MAIL_TELA,membros))}</textarea></div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn" onclick="mlAbrir()">✉ Abrir e-mail</button>
+      <button class="btn sec" onclick="mlPadrao()" title="Este grupo passa a ser o sugerido para a aba ${esc(t.nome)}">Usar este grupo sempre nesta aba</button>
+      <button class="btn sec" onclick="fecharModal('m-mail')">Cancelar</button></div>
+    <details style="margin-top:18px" ${MAIL_ABERTO.env?'open':''} ontoggle="MAIL_ABERTO.env=this.open"><summary style="cursor:pointer;font-weight:700">Envios da semana (${esc(rotSemana())})</summary>${htmlEnvios()}</details>
+    <details style="margin-top:12px" ${MAIL_ABERTO.gr?'open':''} ontoggle="MAIL_ABERTO.gr=this.open"><summary style="cursor:pointer;font-weight:700">Grupos e contatos</summary>${htmlGrupos()}</details>
+  </div></div>`;
+  abrirModal('m-mail'); }
+const MAIL_ABERTO={env:false,gr:false};
+function mlTrocaGrupo(g){ const ms=CFG.grupos[g]||[];
+  document.getElementById('ml-para').value=ms.map(mailDe).filter(Boolean).join('; ');
+  const c=document.getElementById('ml-corpo'); c.value=c.value.replace(/^[^\n]*,\n/,saudacao(ms)+'\n'); }
+function mlPadrao(){ const g=document.getElementById('ml-grupo').value; CFG.grupoTela[MAIL_TELA]=g; guardarEmail();
+  aviso(g?`O grupo ${g} passa a ser o sugerido para esta aba.`:'Esta aba fica sem grupo sugerido.'); }
+function mlAbrir(){
+  const para=document.getElementById('ml-para').value.split(/[;,\s]+/).map(x=>x.trim()).filter(Boolean);
+  const ruins=para.filter(x=>!RX_MAIL.test(x)); if(ruins.length){aviso('E-mail inválido: '+ruins.join(', '));return;}
+  if(!para.length){aviso('Informe ao menos um destinatário.');return;}
+  const ass=document.getElementById('ml-assunto').value, corpo=document.getElementById('ml-corpo').value;
+  const a=document.createElement('a'); a.href=`mailto:${para.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(ass)}&body=${encodeURIComponent(corpo)}`;
+  a.target='_top'; a.rel='noopener'; document.body.appendChild(a); try{a.click();}catch(e){} a.remove();
+  marcarEnvio(MAIL_TELA); fecharModal('m-mail'); marcarSexta();
+  aviso(`E-mail aberto para ${para.join(', ')}.`); }
+function htmlEnvios(){
+  const env=enviosSemana(), d=k=>env[k]?`<b style="color:var(--ok)">✓ ${fmtData(new Date(env[k]))}</b>`:'<span style="color:var(--ale)">pendente</span>';
+  const vs=PREV_GR.length?PREV_GR:gruposVendPrev(F.ab), nc=vs.filter(g=>env['conf:'+g.nome]).length;
+  return tab([{t:'Envio',f:1},{t:'Para',f:1},{t:'Esta semana',f:1},{t:'',f:1}],
+    [...ENVIOS_SEXTA.map(([id,n])=>[esc(n),esc(CFG.grupoTela[id]||'—'),d(id),`<a href="javascript:void 0" onclick="abrirEmailTela('${id}')">abrir</a>`]),
+     ['Confirmação dos vendedores','cada vendedor',nc===vs.length&&nc?`<b style="color:var(--ok)">✓ ${nc} de ${vs.length}</b>`:`<span style="color:var(--ale)">${nc} de ${vs.length}</span>`,
+      `<a href="javascript:void 0" onclick="fecharModal('m-mail');irTela('previsao');setTimeout(()=>{const x=[...document.querySelectorAll('.sec h3')].find(h=>h.textContent.includes('Confirmação'));x&&x.scrollIntoView({behavior:'smooth'});},500)">abrir</a>`]])
+    +`<div class="nota">O ✓ marca que o e-mail foi aberto por este painel, neste navegador — confira o envio no Outlook.</div>`; }
+function htmlGrupos(){
+  const gs=Object.keys(CFG.grupos), cs=contatos();
+  return `<div class="tw" style="max-height:320px;margin-top:8px"><table><thead><tr><th>Contato</th><th>E-mail</th>${gs.map(g=>`<th style="text-align:center">${esc(g)}</th>`).join('')}<th></th></tr></thead><tbody>
+    ${cs.map((c,i)=>`<tr><td>${esc(c)}</td><td><input class="campo" type="email" value="${esc(emailVend(c))}" onchange="mlEmail(${i},this.value)" style="width:100%;min-width:190px;font-size:11px;padding:3px 6px"></td>
+      ${gs.map((g,j)=>`<td style="text-align:center"><input type="checkbox" ${CFG.grupos[g].includes(c)?'checked':''} onchange="mlMembro(${j},${i},this.checked)"></td>`).join('')}
+      <td><a href="javascript:void 0" title="Remover do cadastro e dos grupos" onclick="mlTiraContato(${i})">✕</a></td></tr>`).join('')}
+    </tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <input class="campo" id="ml-novo-nome" placeholder="Nome do contato"><input class="campo" id="ml-novo-mail" type="email" placeholder="e-mail">
+      <button class="btn sec" onclick="mlNovoContato()">＋ contato</button>
+      <input class="campo" id="ml-novo-grupo" placeholder="Nome do grupo"><button class="btn sec" onclick="mlNovoGrupo()">＋ grupo</button></div>
+    <div class="nota">Fica guardado neste navegador; use ↓ Salvar para gravar no arquivo do painel.</div>`; }
+const mlRefaz=()=>{ MAIL_ABERTO.gr=true; abrirEmailTela(MAIL_TELA); };
+function mlEmail(i,v){ const c=contatos()[i]; v=String(v||'').trim(); if(v&&!RX_MAIL.test(v)){aviso('E-mail inválido: '+v);return;}
+  CFG.emailVend=Object.assign({},CFG.emailVend||{}); if(v)CFG.emailVend[c]=v; else delete CFG.emailVend[c]; guardarEmail(); mlRefaz(); }
+function mlMembro(j,i,on){ const g=Object.keys(CFG.grupos)[j], c=contatos()[i], a=CFG.grupos[g];
+  CFG.grupos[g]=on?[...new Set([...a,c])]:a.filter(x=>x!==c); guardarEmail(); mlRefaz(); }
+function mlTiraContato(i){ const c=contatos()[i]; if(CFG.emailVend)delete CFG.emailVend[c];
+  Object.keys(CFG.grupos).forEach(g=>CFG.grupos[g]=CFG.grupos[g].filter(x=>x!==c)); guardarEmail(); mlRefaz(); }
+function mlNovoContato(){ const n=document.getElementById('ml-novo-nome').value.trim(), e=document.getElementById('ml-novo-mail').value.trim();
+  if(!n||!RX_MAIL.test(e)){aviso('Informe nome e um e-mail válido.');return;}
+  CFG.emailVend=Object.assign({},CFG.emailVend||{},{[n]:e}); guardarEmail(); mlRefaz(); }
+function mlNovoGrupo(){ const n=document.getElementById('ml-novo-grupo').value.trim(); if(!n)return;
+  if(!CFG.grupos[n])CFG.grupos[n]=[]; guardarEmail(); mlRefaz(); }
+/* sexta: lembrete dos envios da semana e marca no botão */
+function pendentesSexta(){ const env=enviosSemana(); return ENVIOS_SEXTA.filter(([id])=>!env[id]).length; }
+function marcarSexta(){ const b=document.getElementById('bt-mail'); if(!b)return;
+  const n=hoje().getDay()===5?pendentesSexta():0; b.dataset.pend=n||''; b.title=n?`Hoje é sexta: ${n} envio(s) da semana pendente(s)`:'Enviar esta aba por e-mail'; }
+setTimeout(()=>{ marcarSexta(); const n=hoje().getDay()===5?pendentesSexta():0;
+  if(n)aviso(`Hoje é sexta: ${n} envio(s) da semana pendente(s) — clique em ✉ E-mail para ver.`); },3500);
 /* ================= 2. PROPOSTAS ================= */
 /* ---------- velocidade das propostas ----------
    Só Ploomes (CRM, desde jul/2026): é o único sistema que registra quando a
