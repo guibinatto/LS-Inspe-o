@@ -3438,13 +3438,13 @@ VISTA.previsao=function(){
    Lista de TODOS os negócios abertos de cada vendedor, para mandar a ele e
    receber de volta status, data de fechamento e valor confirmados. O Excel
    leva as colunas de resposta em branco; a tela mostra o que precisa de atenção
-   (data vencida, sem data, sem status). */
+   (data vencida, sem data, não classificado). */
 let PREV_VEND=null, PREV_GR=[];
-/* um negócio pode ter mais de uma pendência: sem data E sem status */
-const PEND_ORD={'Vencida':0,'Sem data':1,'Sem status':2};
+/* um negócio pode ter mais de uma pendência: sem data E não classificado */
+const PEND_ORD={'Vencida':0,'Sem data':1,'Não classificado':2};
 function pendsNeg(n){ const p=[];
   if(!n.dtPrev)p.push('Sem data'); else if(n.dtPrev<hoje())p.push('Vencida');
-  if(n.certeza==='Não classificado')p.push('Sem status'); return p; }
+  if(n.certeza==='Não classificado')p.push('Não classificado'); return p; }
 const pendNeg=n=>pendsNeg(n).join(' · ');
 const temPend=(n,p)=>pendsNeg(n).includes(p);
 const ordPend=n=>{const p=pendsNeg(n);return p.length?PEND_ORD[p[0]]:3;};
@@ -3459,12 +3459,12 @@ function secConfVend(ab){
   if(!PREV_GR.some(g=>g.nome===PREV_VEND))PREV_VEND=PREV_GR[0].nome;
   const vS=a=>somar(a,n=>n.vNum||0), cnt=(a,p)=>a.filter(n=>temPend(n,p)).length;
   const alerta=(q,cor)=>q?`<b style="color:var(--${cor})">${fmtN(q)}</b>`:'<span style="color:var(--txt3)">0</span>';
-  let h=sec('Confirmação por vendedor',`Todos os negócios abertos de cada vendedor, para ele <b>confirmar status, data de fechamento e valor</b>. Baixe o Excel (um por vendedor, ou um arquivo com uma aba para cada) e envie: as colunas de resposta vão em branco. Pendências: <b>vencida</b> = data de fechamento já passou · <b>sem data</b> = fora de qualquer previsão · <b>sem status</b> = negócio sem marcador nem status da obra.`);
+  let h=sec('Confirmação por vendedor',`Todos os negócios abertos de cada vendedor, para ele <b>confirmar status, data de fechamento e valor</b>. Baixe o Excel (um por vendedor, ou um arquivo com uma aba para cada) e envie: as colunas de resposta vão em branco. Pendências: <b>vencida</b> = data de fechamento já passou · <b>sem data</b> = fora de qualquer previsão · <b>não classificado</b> = negócio sem marcador nem status da obra: precisa ser classificado no Ploomes.`);
   h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar abre o e-mail endereçado e copia o resumo com a tabela dos negócios: no e-mail, Ctrl+V',
-    tab([{t:'Vendedor',f:1},{t:'Negócios',n:1},{t:'Valor',n:1},{t:'Na previsão',n:1},{t:'Vencida',n:1},{t:'Sem data',n:1},{t:'Sem status',n:1},{t:'E-mail do vendedor',f:1},{t:'Enviar',n:1}],
+    tab([{t:'Vendedor',f:1},{t:'Negócios',n:1},{t:'Valor',n:1},{t:'Na previsão',n:1},{t:'Vencida',n:1},{t:'Sem data',n:1},{t:'Não classificado',n:1},{t:'E-mail do vendedor',f:1},{t:'Enviar',n:1}],
       PREV_GR.map((g,i)=>[`<a href="javascript:void 0" onclick="verVendPrev(${i})" style="color:var(--lar);font-weight:700">${esc(g.nome)}</a>`,
         fmtN(g.itens.length),fmtBRL(vS(g.itens)),fmtBRL(somar(g.itens,prevNeg)),
-        alerta(cnt(g.itens,'Vencida'),'ale'),alerta(cnt(g.itens,'Sem data'),'err'),alerta(cnt(g.itens,'Sem status'),'ale'),
+        alerta(cnt(g.itens,'Vencida'),'ale'),alerta(cnt(g.itens,'Sem data'),'err'),alerta(cnt(g.itens,'Não classificado'),'ale'),
         `<input class="campo" type="email" id="pv-mail-${i}" value="${esc(emailVend(g.nome))}" placeholder="nome@lsfire.com.br" onchange="setEmailVend(${i},this.value)" style="width:100%;min-width:170px;font-size:11px;padding:4px 7px">`,
         `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="Abre o e-mail para ${esc(g.nome)} e copia o resumo com a tabela (Ctrl+V no corpo)">✉ Enviar</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
     +`<div class="drill-cab" style="border:0;background:none;padding:10px 0 0"><span>${fmtN(PREV_GR.length)} vendedores · ${fmtN(ab.length)} negócios · ${fmtCompacto(vS(ab))}</span>
@@ -3523,9 +3523,9 @@ function montarXlsVend(i){
   const wb=XLSX.utils.book_new(), usados=new Set(), dia=new Date().toISOString().slice(0,10);
   if(i<0){
     const res=[['Confirmação de oportunidades — resumo por vendedor'],[`LS Fire · gerado em ${fmtData(hoje())}`],[],
-      ['Vendedor','Negócios','Valor (R$)','Na previsão (R$)','Vencida','Sem data','Sem status'],
+      ['Vendedor','Negócios','Valor (R$)','Na previsão (R$)','Vencida','Sem data','Não classificado'],
       ...gs.map(g=>[g.nome,g.itens.length,somar(g.itens,n=>n.vNum||0),Math.round(somar(g.itens,prevNeg)),
-        ...['Vencida','Sem data','Sem status'].map(p=>g.itens.filter(n=>temPend(n,p)).length)])];
+        ...['Vencida','Sem data','Não classificado'].map(p=>g.itens.filter(n=>temPend(n,p)).length)])];
     const ws=XLSX.utils.aoa_to_sheet(res);
     for(let r=4;r<res.length;r++)[2,3].forEach(c=>{const x=ws[XLSX.utils.encode_cell({r,c})];if(x)x.z='#,##0';});
     ws['!cols']=[{wch:28},{wch:10},{wch:16},{wch:16},{wch:10},{wch:10},{wch:11}];
@@ -3558,7 +3558,7 @@ function setEmailVend(i,v){ const g=PREV_GR[i]; if(!g)return; v=String(v||'').tr
 function ajustesNeg(n){ const a=[], par=num(CFG.parParado)||30;
   if(!n.dtPrev)a.push('preencher a previsão de fechamento');
   else if(n.dtPrev<hoje())a.push(n.certeza==='Aprovado / aguardando PO'?'cobrar a PO e atualizar a data':'atualizar a data ou dar baixa como perdido');
-  if(n.certeza==='Não classificado')a.push('marcar a etapa ou o status da obra');
+  if(n.certeza==='Não classificado')a.push('classificar: preencher o "Status da obra" (compra, concorrência/licitação, projeto/budget) ou o marcador (negociação, aprovado)');
   if(n.diasEst!=null&&n.diasEst>=par)a.push(`parado há ${fmtN(n.diasEst)} dias: registrar FUP / mudar o estágio`);
   if(!n.vNum)a.push('preencher o valor');
   return a; }
@@ -3576,18 +3576,10 @@ function insightsVend(g,nTop){
   if(vencPO.length)L.push(`${vencPO.length} aprovado(s) aguardando PO com data vencida (${fmtCompacto(vS(vencPO))}): cobrar a PO do cliente e atualizar a data no Ploomes — é o que já contamos como garantido.${tops(vencPO)}`);
   if(sem.length)L.push(`${sem.length} negócio(s) sem previsão de fechamento (${fmtCompacto(vS(sem))}, ${pct(sem)} da sua carteira): sem data eles não entram em nenhum mês da previsão. Preencher o campo "Previsão de fechamento".${tops(sem)}`);
   if(vencOut.length)L.push(`${vencOut.length} com data de fechamento vencida (${fmtCompacto(vS(vencOut))}): atualizar a data ou, se o cliente desistiu/fechou com outro, dar baixa como perdido com o motivo.${tops(vencOut)}`);
-  if(nc.length)L.push(`${nc.length} sem status (${fmtCompacto(vS(nc))}): sem marcador de etapa nem "Status da obra" o negócio fica fora da previsão. Marcar a etapa (proposta enviada, negociação, aprovado) e o status da obra.${tops(nc)}`);
+  if(nc.length)L.push(`${nc.length} "Não classificado" (${fmtCompacto(vS(nc))}): o negócio não tem marcador de etapa nem "Status da obra", então fica fora da previsão. Classificar no Ploomes: preencher o "Status da obra" (compra, concorrência/licitação, projeto/budget) e, se já estiver em negociação ou aprovado, marcar o marcador.${tops(nc)}`);
   if(parad.length)L.push(`${parad.length} parado(s) há ${par}+ dias no mesmo estágio (${fmtCompacto(vS(parad))}): registrar o follow-up no negócio e avançar ou baixar.${tops(parad)}`);
   if(sv.length)L.push(`${sv.length} sem valor: preencher o valor da proposta.`);
   return L; }
-function corpoEmailVend(g,nTop){
-  const it=g.itens, tot=somar(it,n=>n.vNum||0), prev=somar(it,prevNeg), nome1=g.nome.split(' ')[0];
-  const ok=it.filter(n=>!ajustesNeg(n).length).length, L=insightsVend(g,nTop);
-  return [`Olá, ${nome1},`,'',
-    `Segue em anexo a planilha com os seus ${it.length} negócios abertos no Ploomes (${fmtCompacto(tot)}). Hoje só ${fmtCompacto(prev)} (${tot?fmtPct(prev/tot,0):'0%'}) entram na previsão de vendas — o resto está sem data, vencido ou sem status. ${ok} de ${it.length} negócios estão em dia.`,'',
-    ...(L.length?['O QUE AJUSTAR NO PLOOMES:',...L.map((x,k)=>`${k+1}) ${x}`),'']:['Sua carteira está em dia no Ploomes.','']),
-    'Na planilha, a coluna "O que ajustar no Ploomes" mostra a ação de cada negócio. Por favor, faça os ajustes no Ploomes, preencha as colunas "Status confirmado", "Nova data de fechamento", "Valor confirmado" e "Observação" e me devolva respondendo este e-mail.',
-    '','Obrigado!'].join('\n'); }
 /* semana de referência dos envios (seg–sex), para o assunto: os e-mails saem
    toda sexta e o assunto diz de que semana é o retrato */
 function rotSemana(d){ d=d||hoje(); const dw=d.getDay()||7, seg=new Date(d); seg.setDate(d.getDate()-dw+1);
@@ -3609,7 +3601,7 @@ function corpoEmailHTML(g){
       ${td(esc(aj.join('; ')||'—'),'font-size:11px')}${td('&nbsp;','min-width:160px')}</tr>`;}).join('');
   return `<div style="font-family:Arial,sans-serif;font-size:13px;color:#222">
 <p>Olá, ${esc(nome1)},</p>
-<p>Segue abaixo a lista dos seus <b>${it.length} negócios abertos</b> no Ploomes (${esc(fmtCompacto(tot))}) — retrato da ${esc(rotSemana())}. Hoje só <b>${esc(fmtCompacto(prev))} (${tot?esc(fmtPct(prev/tot,0)):'0%'})</b> entram na previsão de vendas; o resto está sem data, vencido ou sem status. ${ok} de ${it.length} negócios estão em dia.</p>
+<p>Segue abaixo a lista dos seus <b>${it.length} negócios abertos</b> no Ploomes (${esc(fmtCompacto(tot))}) — retrato da ${esc(rotSemana())}. Hoje só <b>${esc(fmtCompacto(prev))} (${tot?esc(fmtPct(prev/tot,0)):'0%'})</b> entram na previsão de vendas; o resto está sem data, vencido ou não classificado. ${ok} de ${it.length} negócios estão em dia.</p>
 ${L.length?`<p style="margin-bottom:4px"><b>O que ajustar no Ploomes:</b></p><ol style="margin-top:0">${L.map(x=>`<li style="margin-bottom:5px">${esc(x)}</li>`).join('')}</ol>`:'<p>Sua carteira está em dia no Ploomes.</p>'}
 <p>Por favor, faça os ajustes no Ploomes e <b>responda este e-mail preenchendo a última coluna</b> (status, nova data, valor ou observação) de cada negócio.</p>
 <table cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:12px">
@@ -3633,7 +3625,7 @@ function corpoEmailVend(g,nTop){
   const it=g.itens, tot=somar(it,n=>n.vNum||0), prev=somar(it,prevNeg), nome1=g.nome.split(' ')[0];
   const ok=it.filter(n=>!ajustesNeg(n).length).length, L=insightsVend(g,nTop);
   return [`Olá, ${nome1},`,'',
-    `Seus ${it.length} negócios abertos no Ploomes somam ${fmtCompacto(tot)} (${rotSemana()}). Hoje só ${fmtCompacto(prev)} (${tot?fmtPct(prev/tot,0):'0%'}) entram na previsão de vendas — o resto está sem data, vencido ou sem status. ${ok} de ${it.length} negócios estão em dia.`,'',
+    `Seus ${it.length} negócios abertos no Ploomes somam ${fmtCompacto(tot)} (${rotSemana()}). Hoje só ${fmtCompacto(prev)} (${tot?fmtPct(prev/tot,0):'0%'}) entram na previsão de vendas — o resto está sem data, vencido ou não classificado. ${ok} de ${it.length} negócios estão em dia.`,'',
     ...(L.length?['O QUE AJUSTAR NO PLOOMES:',...L.map((x,k)=>`${k+1}) ${x}`),'']:['Sua carteira está em dia no Ploomes.','']),
     'Por favor, faça os ajustes no Ploomes e me responda confirmando status, data e valor de cada negócio.','','Obrigado!'].join('\n'); }
 /* Enviar: copia o corpo formatado (diagnóstico + tabela) e abre a janela do
