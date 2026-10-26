@@ -3460,13 +3460,13 @@ function secConfVend(ab){
   const vS=a=>somar(a,n=>n.vNum||0), cnt=(a,p)=>a.filter(n=>temPend(n,p)).length;
   const alerta=(q,cor)=>q?`<b style="color:var(--${cor})">${fmtN(q)}</b>`:'<span style="color:var(--txt3)">0</span>';
   let h=sec('Confirmação por vendedor',`Todos os negócios abertos de cada vendedor, para ele <b>confirmar status, data de fechamento e valor</b>. Baixe o Excel (um por vendedor, ou um arquivo com uma aba para cada) e envie: as colunas de resposta vão em branco. Pendências: <b>vencida</b> = data de fechamento já passou · <b>sem data</b> = fora de qualquer previsão · <b>não classificado</b> = negócio sem marcador nem status da obra: precisa ser classificado no Ploomes.`);
-  h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar abre o e-mail endereçado e copia o resumo com a tabela dos negócios: no e-mail, Ctrl+V',
+  h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar gera o e-mail pronto (resumo, tabela e planilha anexada): abra o arquivo e o Outlook mostra a mensagem — clique em Enviar',
     tab([{t:'Vendedor',f:1},{t:'Negócios',n:1},{t:'Valor',n:1},{t:'Na previsão',n:1},{t:'Vencida',n:1},{t:'Sem data',n:1},{t:'Não classificado',n:1},{t:'E-mail do vendedor',f:1},{t:'Enviar',n:1}],
       PREV_GR.map((g,i)=>[`<a href="javascript:void 0" onclick="verVendPrev(${i})" style="color:var(--lar);font-weight:700">${esc(g.nome)}</a>`,
         fmtN(g.itens.length),fmtBRL(vS(g.itens)),fmtBRL(somar(g.itens,prevNeg)),
         alerta(cnt(g.itens,'Vencida'),'ale'),alerta(cnt(g.itens,'Sem data'),'err'),alerta(cnt(g.itens,'Não classificado'),'ale'),
         `<input class="campo" type="email" id="pv-mail-${i}" value="${esc(emailVend(g.nome))}" placeholder="nome@lsfire.com.br" onchange="setEmailVend(${i},this.value)" style="width:100%;min-width:170px;font-size:11px;padding:4px 7px">`,
-        `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="Abre o e-mail para ${esc(g.nome)} e copia o resumo com a tabela (Ctrl+V no corpo)">✉ Enviar</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
+        `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="E-mail pronto para ${esc(g.nome)}: resumo, tabela e planilha anexada">✉ Enviar</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
     +`<div class="drill-cab" style="border:0;background:none;padding:10px 0 0"><span>${fmtN(PREV_GR.length)} vendedores · ${fmtN(ab.length)} negócios · ${fmtCompacto(vS(ab))}</span>
       <button onclick="xlsVendPrev(-1)">↓ Excel de todos (uma aba por vendedor)</button></div>`);
   h+=`<div id="pv-vend">${htmlVendPrev()}</div>`;
@@ -3608,46 +3608,35 @@ ${L.length?`<p style="margin-bottom:4px"><b>O que ajustar no Ploomes:</b></p><ol
 <tr><th ${th}>Referência</th><th ${th}>Cliente</th><th ${th}>Título</th><th ${th}>Status atual</th><th ${th}>Previsão</th><th ${th}>Valor</th><th ${th}>Pendência</th><th ${th}>O que ajustar no Ploomes</th><th ${th}>Sua confirmação</th></tr>
 ${linhas}</table>
 <p>Obrigado!</p></div>`; }
-/* copia HTML formatado (com texto puro de reserva) para a área de
-   transferência. execCommand roda dentro do clique e funciona também com o
-   painel aberto como arquivo local; o navigator.clipboard fica de reserva. */
-function copiarHTML(html,txt){
-  let ok=false;
-  try{ const d=document.createElement('div'); d.contentEditable='true'; d.innerHTML=html;
-    d.style.cssText='position:fixed;left:-99999px;top:0;opacity:0;white-space:normal';
-    document.body.appendChild(d);
-    const sel=getSelection(), r=document.createRange(); r.selectNodeContents(d); sel.removeAllRanges(); sel.addRange(r);
-    ok=document.execCommand('copy'); sel.removeAllRanges(); d.remove(); }catch(e){}
-  if(!ok){ try{ if(navigator.clipboard&&window.ClipboardItem){
-      navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([txt],{type:'text/plain'})})]); ok=true; } }catch(e){} }
-  return ok; }
-function corpoEmailVend(g,nTop){
-  const it=g.itens, tot=somar(it,n=>n.vNum||0), prev=somar(it,prevNeg), nome1=g.nome.split(' ')[0];
-  const ok=it.filter(n=>!ajustesNeg(n).length).length, L=insightsVend(g,nTop);
-  return [`Olá, ${nome1},`,'',
-    `Seus ${it.length} negócios abertos no Ploomes somam ${fmtCompacto(tot)} (${rotSemana()}). Hoje só ${fmtCompacto(prev)} (${tot?fmtPct(prev/tot,0):'0%'}) entram na previsão de vendas — o resto está sem data, vencido ou não classificado. ${ok} de ${it.length} negócios estão em dia.`,'',
-    ...(L.length?['O QUE AJUSTAR NO PLOOMES:',...L.map((x,k)=>`${k+1}) ${x}`),'']:['Sua carteira está em dia no Ploomes.','']),
-    'Por favor, faça os ajustes no Ploomes e me responda confirmando status, data e valor de cada negócio.','','Obrigado!'].join('\n'); }
-/* Enviar: copia o corpo formatado (diagnóstico + tabela) e abre a janela do
-   e-mail endereçada, com assunto da semana — basta Ctrl+V no corpo. Nenhum
-   navegador anexa arquivo num mailto, por isso a tabela vai colada. Se a cópia
-   falhar, o e-mail abre com o diagnóstico em texto. */
-const MAX_MAILTO=8000;
+/* Enviar: monta um e-mail pronto (.eml, marcado como não enviado) com o
+   corpo formatado (diagnóstico + tabela) e a planilha anexada. Aberto, o
+   Outlook mostra a mensagem nova com tudo dentro — é só clicar em Enviar.
+   Uma página não consegue colar dentro do Outlook nem anexar num mailto; o .eml
+   é o jeito de o e-mail chegar completo. Para não ter de abrir o arquivo à mão:
+   no Chrome/Edge, no 1º download, "Sempre abrir arquivos deste tipo". */
+const b64Bytes=u8=>{let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);};
+const b64Txt=t=>b64Bytes(new TextEncoder().encode(t));
+const quebra76=s=>s.replace(/.{1,76}/g,'$&\r\n');
+function montarEml({para,assunto,html,anexos}){
+  const bnd='----=_LSFire_'+Date.now().toString(36);
+  return ['X-Unsent: 1',`To: ${para.join(', ')}`,`Subject: =?UTF-8?B?${b64Txt(assunto)}?=`,'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${bnd}"`,'',
+    `--${bnd}`,'Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: base64','',
+    quebra76(b64Txt('<html><head><meta charset="utf-8"></head><body>'+html+'</body></html>')),
+    ...(anexos||[]).flatMap(a=>[`--${bnd}`,`Content-Type: ${a.tipo}; name="${a.nome}"`,`Content-Disposition: attachment; filename="${a.nome}"`,
+      'Content-Transfer-Encoding: base64','',quebra76(b64Bytes(new Uint8Array(a.buf)))]),
+    `--${bnd}--`,''].join('\r\n'); }
 function enviarVendPrev(i){
   const g=PREV_GR[i]; if(!g)return;
   const para=emailVend(g.nome);
   if(!para){ aviso(`Cadastre o e-mail de ${g.nome} no resumo por vendedor.`);
     const el=document.getElementById('pv-mail-'+i); if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();} return; }
+  const xls=montarXlsVend(i); if(!xls)return;
   const assunto=`LS Fire · ${rotSemana()} · Previsão: ajustes no Ploomes e confirmação das oportunidades — ${g.nome.split(' ')[0]}`;
-  const url=c=>`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assunto)}`+(c?`&body=${encodeURIComponent(c)}`:'');
-  const txt=corpoEmailVend(g,3), copiou=copiarHTML(corpoEmailHTML(g),txt);
-  let u;
-  if(copiou)u=url('');
-  else{ let k=3; u=url(txt); while(u.length>MAX_MAILTO&&k>0){k--;u=url(corpoEmailVend(g,k));} }
-  const a=document.createElement('a'); a.href=u; a.target='_top'; a.rel='noopener'; document.body.appendChild(a);
-  try{a.click();}catch(e){} a.remove();
-  aviso(copiou?`E-mail para ${para} aberto. Clique no corpo do e-mail e aperte Ctrl+V: o resumo e a tabela dos ${g.itens.length} negócios entram formatados.`
-    :`E-mail para ${para} aberto com o resumo em texto (não consegui copiar a tabela). Use ↓ Excel se quiser mandar a lista.`); }
+  const html=corpoEmailHTML(g).replace('<p>Obrigado!</p>','<p>A mesma lista segue em anexo em Excel, se preferir responder por ela.</p><p>Obrigado!</p>');
+  const arq=`Email-${xls.arq.replace(/\.xlsx$/,'')}.eml`;
+  baixarBlob(new Blob([montarEml({para:[para],assunto,html,anexos:[{nome:xls.arq,tipo:XLSX_MIME,buf:xls.buf}]})],{type:'message/rfc822'}),arq);
+  aviso(`E-mail para ${para} pronto (${arq}): abra o arquivo e o Outlook mostra a mensagem com a tabela e a planilha anexada — é só clicar em Enviar.`); }
 /* ================= 2. PROPOSTAS ================= */
 /* ---------- velocidade das propostas ----------
    Só Ploomes (CRM, desde jul/2026): é o único sistema que registra quando a
