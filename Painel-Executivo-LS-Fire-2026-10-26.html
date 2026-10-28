@@ -315,6 +315,52 @@ td.f{color:var(--txt);font-weight:700}
 .btn.sec{background:var(--card);color:var(--txt2);border:1px solid var(--linha)}
 .btn.sec:hover{color:var(--txt);background:var(--card2)}
 #bt-mail[data-pend]:not([data-pend=""])::after{content:attr(data-pend);display:inline-block;margin-left:6px;background:var(--err);color:#fff;border-radius:99px;font-size:9.5px;padding:0 6px}
+/* ---------- pesquisa ---------- */
+.pq-hero{padding:18px 18px 12px;position:relative;margin-bottom:12px;background:linear-gradient(135deg,var(--card),var(--card2))}
+.pq-caixa{display:flex;align-items:center;gap:10px;border:2px solid var(--lar);border-radius:12px;padding:4px 12px;background:var(--bg2)}
+.pq-lupa{font-size:22px;color:var(--lar)}
+.pq-caixa input{all:unset;flex:1;font-size:16px;padding:10px 0;color:var(--txt);min-width:0}
+.pq-caixa input::placeholder{color:var(--txt3);font-size:13px}
+.pq-caixa kbd{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:5px;padding:1px 6px}
+.pq-sug{position:absolute;left:18px;right:18px;top:66px;z-index:30;background:var(--bg2);border:1px solid var(--linha);border-radius:10px;box-shadow:0 14px 40px rgba(0,0,0,.25);overflow:hidden}
+.pq-sug:empty{display:none}
+.pq-s{display:grid;grid-template-columns:26px 1fr auto;gap:2px 10px;padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--linha);align-items:center}
+.pq-s:last-child{border-bottom:0}.pq-s:hover,.pq-s.on{background:var(--card2)}
+.pq-s .pq-ic{grid-row:span 2;font-size:16px;text-align:center}.pq-s b{font-size:13px}.pq-s em{font-style:normal;font-size:10px;color:var(--lar);text-transform:uppercase;letter-spacing:.06em}
+.pq-s small{grid-column:2/4;font-size:10.5px;color:var(--txt3)}
+.pq-ex{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:11px;color:var(--txt3)}
+.pq-ex button{all:unset;cursor:pointer;border:1px dashed var(--linha);border-radius:99px;padding:3px 10px;color:var(--txt2)}
+.pq-ex button:hover{border-color:var(--lar);color:var(--lar)}
+mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px}
+.pq-tipos{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.pq-tipo{all:unset;cursor:pointer;background:var(--card);border:1px solid var(--linha);border-top:3px solid var(--c);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;transition:.12s}
+.pq-tipo span{font-size:10.5px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pq-tipo b{font-size:18px}.pq-tipo small{font-size:10px;color:var(--txt3)}
+.pq-tipo:hover{border-color:var(--c)}.pq-tipo.on{background:var(--c);color:#fff;border-color:var(--c)}.pq-tipo.on span,.pq-tipo.on small{color:#fff}
+.pq-tipo.vazio{opacity:.45}
+.pq-linhas{display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:10px}
+.pq-linhas>div,.pq-barra{display:flex;align-items:center;gap:8px}.pq-linhas label,.pq-barra label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3)}
+.seg button.on{background:var(--lar);color:#fff}
+.pq-entendi{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 12px;font-size:11.5px;color:var(--txt2)}
+.pq-ent-txt b{color:var(--lar)}.pq-limpa{all:unset;cursor:pointer;font-size:11px;color:var(--txt3);text-decoration:underline}
+.pq-barra{margin:14px 0 8px;flex-wrap:wrap}.pq-barra span{margin-left:auto;font-size:11px;color:var(--txt3)}
+.pq-sub{font-size:10.5px;color:var(--txt3);margin-top:1px}
+.pq-vazio{display:flex;flex-direction:column;gap:4px;align-items:center;padding:40px;color:var(--txt3)}.pq-vazio b{color:var(--txt);font-size:14px}
+.pq-ficha{margin-bottom:12px;border-color:var(--lar)}
+.pq-ficha-cab{display:flex;gap:12px;align-items:center;margin-bottom:12px}.pq-ficha-cab>div{flex:1}
+.pq-ficha-ic{font-size:26px;width:48px;height:48px;border-radius:12px;background:rgba(242,92,5,.12);display:grid;place-items:center}
+.pq-ficha-cab small{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lar)}.pq-ficha-cab h2{font-size:19px;margin:0}
+.pq-ficha-corpo{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
+.pq-frases{margin:0 0 12px;padding-left:18px;font-size:12.5px;line-height:1.6}
+.pq-tops{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pq-top h5,.pq-tl h5{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);margin:0 0 6px}
+.pq-top div{display:flex;justify-content:space-between;gap:6px;font-size:11.5px;padding:2px 0;border-bottom:1px dashed var(--linha)}
+.pq-top small{color:var(--txt3);white-space:nowrap}
+.pq-tl{max-height:420px;overflow:auto;padding-right:6px}
+.pq-ev{display:grid;grid-template-columns:14px 1fr;gap:8px;position:relative;padding-bottom:10px}
+.pq-ev i{width:10px;height:10px;border-radius:50%;background:var(--c);margin-top:3px;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.pq-ev:not(:last-child)::before{content:'';position:absolute;left:4.5px;top:14px;bottom:0;width:1px;background:var(--linha)}
+.pq-ev small{display:block;font-size:10px;color:var(--txt3)}.pq-ev b{display:block;font-size:12px}.pq-ev span{font-size:10.5px;color:var(--txt2)}
+@media(max-width:900px){.pq-tipos{grid-template-columns:repeat(4,minmax(0,1fr))}.pq-ficha-corpo{grid-template-columns:1fr}}
 .linhas-cfg table input{width:100%;background:transparent;border:0;color:var(--txt);font:inherit;
   font-size:11px;padding:2px 0}
 .linhas-cfg table input:focus{outline:1px solid var(--lar);border-radius:3px}
@@ -2352,7 +2398,8 @@ const TELAS=[
  {id:'perdas',ic:'◔',nome:'Win rate & Perdas',tit:'Win rate e perdas',sub:'Quanto se ganha do que se decide, e por que se perde',fase:''},
  {id:'equipe',ic:'⚑',nome:'Equipe',tit:'Equipe',sub:'Vendedores e analistas de aplicação: carteira, produção e resultado',fase:''},
  {id:'analistas',ic:'✦',nome:'Analistas',tit:'Analistas de aplicação',sub:'Propostas, negócios e vendas de cada analista — em quantidade e em valor',fase:''},
- {id:'clientes',ic:'◍',nome:'Clientes',tit:'Clientes',sub:'Quem compra, quem volta, onde estão',fase:''}];
+ {id:'clientes',ic:'◍',nome:'Clientes',tit:'Clientes',sub:'Quem compra, quem volta, onde estão',fase:''},
+ {id:'busca',ic:'⌕',nome:'Pesquisa',tit:'Pesquisa',sub:'Qualquer cliente, vendedor, analista, cidade, estado ou região — em todas as bases, com ficha e linha do tempo',fase:''}];
 /* onde cada tela fica na linha do tempo comercial — é o que separa Pipeline
    (antes do pedido) de Produção & Entrega (depois dele) */
 const FASES=[['antes','Antes do pedido','propostas'],['venda','O pedido','vendas'],['depois','Depois do pedido','entrega']];
@@ -2721,6 +2768,8 @@ function render(){
   const t=TELAS.find(x=>x.id===EST.tela)||{};
   document.getElementById('tela').innerHTML=trilha(t.fase)+fn();
   requestAnimationFrame(desenharPendentes);
+  /* a Pesquisa monta filtros e resultado depois, sem redesenhar a caixa de busca */
+  if(EST.tela==='busca'&&typeof pqFiltros==='function')requestAnimationFrame(()=>{pqFiltros();pqResultado();});
 }
 const VISTA={};
 
@@ -3845,6 +3894,326 @@ function marcarSexta(){ const b=document.getElementById('bt-mail'); if(!b)return
   const n=hoje().getDay()===5?pendentesSexta():0; b.dataset.pend=n||''; b.title=n?`Hoje é sexta: ${n} envio(s) da semana pendente(s)`:'Enviar esta aba por e-mail'; }
 setTimeout(()=>{ marcarSexta(); const n=hoje().getDay()===5?pendentesSexta():0;
   if(n)aviso(`Hoje é sexta: ${n} envio(s) da semana pendente(s) — clique em ✉ E-mail para ver.`); },3500);
+/* ================= PESQUISA =================
+   Uma busca para todas as bases: vendas, negócios (Ploomes e histórico OMIE),
+   pedidos, propostas, cadastro de clientes e interações. Ignora os filtros do
+   topo — tem os próprios botões — porque procurar um cliente é olhar a vida
+   inteira dele. O texto entende frases ("SC acima de 500 mil sem data"): o que
+   reconhece vira filtro e aparece em "Entendi"; o resto é procurado como texto.
+   Escolher uma sugestão abre a FICHA (cliente, vendedor, analista, cidade,
+   estado ou região) com números, linha do tempo e quem atende. */
+const UF_NOME={AC:'Acre',AL:'Alagoas',AP:'Amapá',AM:'Amazonas',BA:'Bahia',CE:'Ceará',DF:'Distrito Federal',ES:'Espírito Santo',GO:'Goiás',
+  MA:'Maranhão',MT:'Mato Grosso',MS:'Mato Grosso do Sul',MG:'Minas Gerais',PA:'Pará',PB:'Paraíba',PR:'Paraná',PE:'Pernambuco',PI:'Piauí',
+  RJ:'Rio de Janeiro',RN:'Rio Grande do Norte',RS:'Rio Grande do Sul',RO:'Rondônia',RR:'Roraima',SC:'Santa Catarina',SP:'São Paulo',SE:'Sergipe',TO:'Tocantins'};
+const REGIAO_UF={Norte:['AC','AP','AM','PA','RO','RR','TO'],Nordeste:['AL','BA','CE','MA','PB','PE','PI','RN','SE'],
+  'Centro-Oeste':['DF','GO','MT','MS'],Sudeste:['ES','MG','RJ','SP'],Sul:['PR','RS','SC']};
+const regiaoDeUF=uf=>Object.keys(REGIAO_UF).find(r=>REGIAO_UF[r].includes(uf))||null;
+const ufDeNome=s=>{const k=norm(s);return Object.keys(UF_NOME).find(u=>norm(UF_NOME[u])===k)||uf2(s);};
+const PQ_TIPOS=[['venda','Vendas','▤'],['pedido','Pedidos','▣'],['proposta','Propostas','✎'],['aberto','Negócios abertos','⟐'],
+  ['ganho','Ganhos','✓'],['perdido','Perdidos','✕'],['interacao','Interações','☏'],['cliente','Cadastro','◍']];
+const PQ_TIPO=Object.fromEntries(PQ_TIPOS.map(([k,n,i])=>[k,{n,i}]));
+const PQ_COR={venda:'#12A06B',pedido:'#2E7D9A',proposta:'#F25C05',aberto:'#F2A505',ganho:'#5FBF8F',perdido:'#C62828',interacao:'#8C593B',cliente:'#8A817C'};
+const PQ_PER=[['30d','30 dias'],['90d','90 dias'],['12m','12 meses'],['ano','Este ano'],['tudo','Tudo']];
+const PQ_FAIXA=[['f1','até 100 mil',0,1e5],['f2','100–500 mil',1e5,5e5],['f3','500 mil–1 mi',5e5,1e6],['f4','acima de 1 mi',1e6,Infinity]];
+const PQ_SIT=[['venc','Data vencida'],['semdata','Sem data'],['nc','Não classificado'],['parado','Parado 30+ dias'],['po','Aguardando PO']];
+const PQ_GRUPOS=[['','Lista'],['cli','Cliente'],['resp','Vendedor'],['anal','Analista'],['uf','Estado'],['reg','Região'],['cid','Cidade'],['mes','Mês']];
+const PQ_ENT={cli:['Cliente','◍'],resp:['Vendedor','👤'],anal:['Analista','✦'],cid:['Cidade','📍'],uf:['Estado','🗺'],reg:['Região','🧭']};
+let PQ={q:'',tipos:[],per:'tudo',div:'',regs:[],faixa:'',sits:[],grupo:'',ent:null,ord:'dt',desc:true,vMin:null,vMax:null};
+
+/* ---------- base unificada ---------- */
+let _PQB=null;
+function basePesq(){
+  if(_PQB&&_PQB.src===F.todas)return _PQB.R;
+  const geo=new Map();   /* cliente → UF e cidade, para quem não traz (interações) */
+  const pos=(nc,uf,cid)=>{ if(!nc)return; const g=geo.get(nc)||{}; if(uf&&!g.uf)g.uf=uf; if(cid&&!g.cid)g.cid=cid; geo.set(nc,g); };
+  M.negocios.forEach(n=>pos(n.nCli,n.ufCliente||n.ufDaObra,n.cidadeCliente));
+  M.empresas.forEach(e=>pos(e.nNome,uf2(e.uf),e.cidade));
+  const R=[], cap=s=>s?String(s).trim():null;
+  const add=o=>{ o.cli=cap(o.cli)||'(sem cliente)'; o.nCli=norm(o.cli);
+    const g=geo.get(o.nCli)||{}; o.uf=o.uf||g.uf||null; o.cid=cap(o.cid||g.cid);
+    if(o.cid)o.cid=o.cid.replace(/[-\/]\s*[A-Za-z]{2}\s*$/,'').trim().toUpperCase();
+    o.reg=o.uf?regiaoDeUF(o.uf):null; o.resp=o.resp&&!/^\(/.test(o.resp)?o.resp:null;
+    o.anal=o.anal&&!/^\(/.test(o.anal)?o.anal:null; o.val=Number(o.val)||0;
+    o.q=norm([o.cli,o.resp,o.anal,o.cid,o.uf,o.uf&&UF_NOME[o.uf],o.reg,o.ref,o.tit,o.sit,o.div].join(' ')); R.push(o); };
+  F.todas.forEach(v=>add({t:'venda',x:v,cli:v.cli,resp:v.resp,anal:analistaVenda(v),uf:v.ufCliente||v.uf,dt:v.dt,val:v.valor,div:v.div,
+    ref:refVenda(v),tit:[v.solucao,v.natureza].filter(Boolean).join(' · '),sit:v.fonte}));
+  (M.pedidos||[]).forEach(p=>add({t:'pedido',x:p,cli:p.cli,resp:p.resp,anal:p.orcNome,uf:p.ufCliente||p.uf,dt:p.dt,val:p.vNum,div:p.div,
+    ref:refPed(p),tit:p.catRot||p.cat,sit:p.etapa}));
+  propostasRecorte().forEach(p=>add({t:'proposta',x:p,cli:p.cli,resp:p.resp,anal:p.neg?analista(p.neg.orc):null,uf:p.ufCliente||p.ufDaObra,
+    dt:p.dt,val:p.val,div:p.div,ref:'Prop '+p.cod,tit:p.neg?p.neg.titulo:p.fase,sit:p.fase}));
+  M.negocios.forEach(n=>add({t:n.aberto?'aberto':n.ganho?'ganho':'perdido',x:n,cli:n.cli,resp:n.resp,anal:analista(n.orc),
+    uf:n.ufCliente||n.ufDaObra,cid:n.cidadeCliente||n.cidade,dt:n.dtCri,val:n.vNum,div:n.div,ref:refNeg(n),tit:n.titulo,
+    sit:n.aberto?n.certeza:n.perdido?(n.motivoPerda||'Perdido'):'Ganho'}));
+  histSemEspelho().filter(o=>o.ganho||o.perdido).forEach(o=>add({t:o.ganho?'ganho':'perdido',x:o,cli:o.cli,resp:o.resp,anal:analista(o.orc),
+    uf:ufDeNome(o.uf),dt:o.dtFim||o.dtCri,val:o.vNum,div:o.div,ref:o.numero,tit:o.oportunidade,sit:o.perdido?(o.motivoTxt||'Perdido'):'Ganho (OMIE)'}));
+  M.interacoes.filter(i=>!i.futura).forEach(i=>add({t:'interacao',x:i,cli:i.cli,resp:i.resp,dt:i.dt,val:0,tit:i.negocio||'',sit:i.tipo}));
+  M.empresas.forEach(e=>add({t:'cliente',x:e,cli:e.nome,resp:e.resp,uf:uf2(e.uf),cid:e.cidade,dt:e.dtContato,val:0,
+    tit:e.razao||'',sit:e.ativa?'Ativo':'Inativo'}));
+  _PQB={src:F.todas,R}; return R; }
+
+/* ---------- entender o texto ---------- */
+const PQ_NUM=(n,u)=>{ let v=Number(String(n).replace(/\./g,'').replace(',','.')); u=norm(u||'');
+  if(/^(mil|k)$/.test(u))v*=1e3; else if(/^(mi|m|milhao|milhoes|mm)$/.test(u))v*=1e6; return v; };
+function entenderPesq(q){
+  const f={tipos:[],regs:[],ufs:[],sits:[],div:'',per:null,vMin:null,vMax:null,txt:[]}; let s=' '+q+' ';
+  const tira=re=>{const m=s.match(re); if(m)s=s.replace(m[0],' '); return m;};
+  let m;
+  while((m=tira(/(acima de|maior que|mais de|a partir de|>=?)\s*(r\$\s*)?([\d.,]+)\s*(mil|k|mi|milh[oõ]es|mm|m)?\b/i)))f.vMin=PQ_NUM(m[3],m[4]);
+  while((m=tira(/(abaixo de|menor que|menos de|at[eé]|<=?)\s*(r\$\s*)?([\d.,]+)\s*(mil|k|mi|milh[oõ]es|mm|m)?\b/i)))f.vMax=PQ_NUM(m[3],m[4]);
+  if((m=tira(/[uú]ltimos?\s*(30|90)\s*dias/i)))f.per=m[1]+'d';
+  if(tira(/[uú]ltimos?\s*12\s*meses/i))f.per='12m';
+  if(tira(/\beste ano\b/i))f.per='ano';
+  if((m=tira(/\b(20[12]\d)\b/)))f.per='a'+m[1];
+  [['sem data','semdata'],['sem previs[aã]o','semdata'],['vencid[ao]s?','venc'],['n[aã]o classificados?','nc'],['sem status','nc'],
+   ['parad[ao]s?','parado'],['aguardando po','po'],['garantidos?','po']].forEach(([re,k])=>{ if(tira(new RegExp('\\b'+re+'\\b','i')))f.sits.push(k); });
+  [['vendas?|vendid[ao]s?','venda'],['pedidos?','pedido'],['propostas?','proposta'],['abertos?|em aberto|pipeline','aberto'],
+   ['ganhos?|ganhas?','ganho'],['perdidos?|perdas?|perdidas?','perdido'],['intera[cç](ao|oes|ões)|visitas?|whatsapp|liga[cç](ao|oes|ões)','interacao']]
+    .forEach(([re,k])=>{ if(tira(new RegExp('\\b('+re+')\\b','i')))f.tipos.push(k); });
+  if(tira(/\bseq\b/i))f.div='SEQ'; else if(tira(/\bspv\b/i))f.div='SPV';
+  /* sigla em maiúsculas (SC, PR) antes de normalizar; nome do estado antes da
+     região, senão "Rio Grande do Sul" vira região Sul */
+  s=s.replace(/\b([A-Z]{2})\b/g,(x,u)=>{ if(UF_NOME[u]){f.ufs.push(u);return ' ';} return x; });
+  s=' '+norm(s)+' ';
+  Object.entries(UF_NOME).sort((a,b)=>b[1].length-a[1].length).forEach(([uf,nome])=>{
+    const re=new RegExp(' '+norm(nome).replace(/ /g,' +')+' ');
+    if(re.test(s)){ s=s.replace(re,'  '); f.ufs.push(uf); } });
+  [['centro oeste','Centro-Oeste'],['nordeste','Nordeste'],['sudeste','Sudeste'],['norte','Norte'],['sul','Sul']]
+    .forEach(([re,k])=>{ if(tira(new RegExp(' (regiao +)?'+re.replace(/ /g,' +')+' ')))f.regs.push(k); });
+  f.txt=norm(s).split(' ').filter(w=>w&&!['de','do','da','dos','das','em','no','na','nos','nas','com','e','o','a','os','as','por','para','acima','r'].includes(w));
+  return f; }
+
+/* ---------- filtrar ---------- */
+function entOK(o,e){ if(!e)return true;
+  if(e.k==='cli')return o.nCli===norm(e.v); if(e.k==='cid')return o.cid===e.v; return o[e.k]===e.v; }
+function sitOK(o,sits){ if(!sits.length)return true;
+  /* vale para o negócio aberto e para a proposta cujo negócio está aberto */
+  const n=o.t==='aberto'?o.x:o.t==='proposta'?o.x.neg:null, par=num(CFG.parParado)||30;
+  if(!n||!n.aberto||n.fonte!=='Ploomes')return false;
+  return sits.every(k=>k==='venc'?(n.dtPrev&&n.dtPrev<hoje()):k==='semdata'?!n.dtPrev:k==='nc'?n.certeza==='Não classificado'
+    :k==='parado'?(n.diasEst||0)>=par:k==='po'?n.certeza==='Aprovado / aguardando PO':true); }
+function perOK(o,per){ if(per==='tudo')return true; if(!o.dt)return false; const H=hoje();
+  if(per==='30d'||per==='90d')return (H-o.dt)/864e5<=+per.slice(0,-1);
+  if(per==='12m'){const d=new Date(H);d.setFullYear(d.getFullYear()-1);return o.dt>=d;}
+  if(per==='ano')return o.dt.getFullYear()===H.getFullYear();
+  if(per[0]==='a')return o.dt.getFullYear()===+per.slice(1); return true; }
+function filtrarPesq(semTipo){
+  const f=entenderPesq(PQ.q), tipos=[...new Set([...PQ.tipos,...f.tipos])], regs=[...new Set([...PQ.regs,...f.regs])],
+    sits=[...new Set([...PQ.sits,...f.sits])], div=PQ.div||f.div, per=f.per||PQ.per, fx=PQ_FAIXA.find(x=>x[0]===PQ.faixa);
+  const vMin=f.vMin!=null?f.vMin:fx?fx[2]:null, vMax=f.vMax!=null?f.vMax:fx?fx[3]:null;
+  const R=basePesq().filter(o=>(semTipo||!tipos.length||tipos.includes(o.t))&&entOK(o,PQ.ent)&&(!div||o.div===div)
+    &&(!regs.length||regs.includes(o.reg))&&(!f.ufs.length||f.ufs.includes(o.uf))&&perOK(o,per)&&sitOK(o,sits)
+    &&(vMin==null||o.val>=vMin)&&(vMax==null||(o.val&&o.val<=vMax))&&f.txt.every(w=>o.q.includes(w)));
+  return {R,f,tipos,regs,sits,div,per,vMin,vMax}; }
+
+/* ---------- sugestões (entidades) ---------- */
+let _PQI=null;
+function indicePesq(){
+  const B=basePesq(); if(_PQI&&_PQI.src===B)return _PQI.L;
+  const m=new Map(), put=(k,v,nome,o)=>{ if(!v)return; const id=k+'|'+v; let e=m.get(id);
+    if(!e){e={k,v,nome,n:0,vend:0,ab:0,q:norm(nome+' '+(k==='uf'?v:''))};m.set(id,e);}
+    e.n++; if(o.t==='venda')e.vend+=o.val; if(o.t==='aberto')e.ab+=o.val; };
+  B.forEach(o=>{ put('cli',o.nCli,o.cli,o); put('resp',o.resp,o.resp,o); put('anal',o.anal,o.anal,o);
+    if(o.cid)put('cid',o.cid,o.cid+(o.uf?' – '+o.uf:''),o); if(o.uf)put('uf',o.uf,UF_NOME[o.uf]||o.uf,o); if(o.reg)put('reg',o.reg,'Região '+o.reg,o); });
+  const L=[...m.values()]; _PQI={src:B,L}; return L; }
+function sugestoesPesq(q){
+  const w=norm(q).split(' ').filter(x=>x.length>1); if(!w.length)return [];
+  const ordK={resp:0,anal:1,reg:2,uf:3,cid:4,cli:5};
+  return indicePesq().filter(e=>w.every(x=>e.q.includes(x)))
+    .sort((a,b)=>(ordK[a.k]-ordK[b.k])||(b.vend+b.ab-a.vend-a.ab)||(b.n-a.n)).slice(0,9); }
+
+/* ---------- tela ---------- */
+let _PQ_T=null;
+VISTA.busca=function(){
+  if(REL_GERANDO)return '';
+  const ex=['SC acima de 500 mil','abertos sem data','perdidos SPV 2026','Nordeste vendas','abertos parados acima de 1 mi','aguardando PO','visitas últimos 30 dias'];
+  return `<div class="pq-hero card">
+    <div class="pq-caixa"><span class="pq-lupa">⌕</span>
+      <input id="pq-q" autocomplete="off" spellcheck="false" placeholder="Cliente, vendedor, analista, cidade, estado, região, nº de proposta, OV… ou uma frase: “SC acima de 500 mil sem data”"
+        value="${esc(PQ.q)}" oninput="pqDigita(this.value)" onkeydown="pqTecla(event)" onfocus="pqSug()">
+      <kbd>/</kbd></div>
+    <div id="pq-sug" class="pq-sug"></div>
+    <div class="pq-ex">Experimente: ${ex.map(x=>`<button onclick="pqExemplo('${x}')">${esc(x)}</button>`).join('')}</div>
+  </div>
+  <div id="pq-filtros"></div><div id="pq-res"></div>`; };
+const _pqPos=()=>requestAnimationFrame(()=>{ pqFiltros(); pqResultado(); });
+function pqDigita(v){ PQ.q=v; pqSug(); clearTimeout(_PQ_T); _PQ_T=setTimeout(()=>{pqFiltros();pqResultado();},140); }
+function pqExemplo(x){ PQ.q=x; PQ.ent=null; const i=document.getElementById('pq-q'); if(i)i.value=x; pqSug(true); pqFiltros(); pqResultado(); }
+let PQ_SEL=-1, PQ_SUGS=[];
+function pqSug(fechar){
+  const el=document.getElementById('pq-sug'); if(!el)return;
+  PQ_SUGS=fechar?[]:sugestoesPesq(PQ.q); PQ_SEL=-1;
+  el.innerHTML=PQ_SUGS.length?PQ_SUGS.map((e,i)=>`<div class="pq-s" data-i="${i}" onmousedown="event.preventDefault();pqAbrirEnt(${i})">
+    <span class="pq-ic">${PQ_ENT[e.k][1]}</span><b>${pqMarca(e.nome)}</b><em>${PQ_ENT[e.k][0]}</em>
+    <small>${fmtN(e.n)} registros${e.vend?' · vendido '+fmtCompacto(e.vend):''}${e.ab?' · aberto '+fmtCompacto(e.ab):''}</small></div>`).join(''):''; }
+function pqTecla(ev){
+  const n=PQ_SUGS.length;
+  if(ev.key==='ArrowDown'&&n){PQ_SEL=(PQ_SEL+1)%n;ev.preventDefault();}
+  else if(ev.key==='ArrowUp'&&n){PQ_SEL=(PQ_SEL-1+n)%n;ev.preventDefault();}
+  else if(ev.key==='Enter'){ if(PQ_SEL>=0)pqAbrirEnt(PQ_SEL); else {pqSug(true);pqFiltros();pqResultado();} ev.preventDefault(); return; }
+  else if(ev.key==='Escape'){pqSug(true);return;}
+  else return;
+  document.querySelectorAll('#pq-sug .pq-s').forEach((d,i)=>d.classList.toggle('on',i===PQ_SEL)); }
+function pqAbrirEnt(i){ const e=PQ_SUGS[i]; if(!e)return;
+  PQ.ent={k:e.k,v:e.v,nome:e.nome}; PQ.q=''; const inp=document.getElementById('pq-q'); if(inp)inp.value='';
+  pqSug(true); pqFiltros(); pqResultado(); window.scrollTo({top:0,behavior:'smooth'}); }
+function pqEnt(k,v,nome){ PQ.ent={k,v,nome:nome||v}; PQ.q=''; const inp=document.getElementById('pq-q'); if(inp)inp.value='';
+  pqSug(true); pqFiltros(); pqResultado(); window.scrollTo({top:0,behavior:'smooth'}); }
+let _PQM={q:null,w:[]};
+const pqMarca=t=>{ let h=esc(t); if(_PQM.q!==PQ.q)_PQM={q:PQ.q,w:entenderPesq(PQ.q).txt.filter(x=>x.length>1)};
+  const w=_PQM.w; if(!w.length)return h;
+  /* marca sem acento: compara a versão normalizada letra a letra */
+  const n=norm(t); if(n.length!==String(t).length)return h;
+  const marcas=[]; w.forEach(x=>{let i=n.indexOf(x);while(i>=0){marcas.push([i,i+x.length]);i=n.indexOf(x,i+1);}});
+  if(!marcas.length)return h; marcas.sort((a,b)=>a[0]-b[0]); let out='',p=0; const s=String(t);
+  marcas.forEach(([a,b])=>{ if(a<p)return; out+=esc(s.slice(p,a))+'<mark>'+esc(s.slice(a,b))+'</mark>'; p=b; }); return out+esc(s.slice(p)); };
+function pqTog(arr,k){ const i=PQ[arr].indexOf(k); if(i>=0)PQ[arr].splice(i,1); else PQ[arr].push(k); pqFiltros(); pqResultado(); }
+function pqSet(k,v){ PQ[k]=PQ[k]===v&&k!=='per'&&k!=='grupo'?'':v; pqFiltros(); pqResultado(); }
+function pqLimpar(){ PQ={q:'',tipos:[],per:'tudo',div:'',regs:[],faixa:'',sits:[],grupo:PQ.grupo,ent:null,ord:'dt',desc:true};
+  const i=document.getElementById('pq-q'); if(i)i.value=''; pqSug(true); pqFiltros(); pqResultado(); }
+function pqFiltros(){
+  const el=document.getElementById('pq-filtros'); if(!el)return;
+  const r=filtrarPesq(true), cont={}; r.R.forEach(o=>{const c=cont[o.t]=cont[o.t]||{n:0,v:0};c.n++;c.v+=o.val;});
+  const f=r.f, bt=(on,click,txt,tit)=>`<button class="${on?'on':''}" onclick="${click}"${tit?` title="${esc(tit)}"`:''}>${txt}</button>`;
+  const ent=[];
+  if(f.ufs.length)ent.push('Estado '+f.ufs.join(', ')); if(f.regs.length)ent.push('Região '+f.regs.join(', '));
+  if(f.tipos.length)ent.push(f.tipos.map(t=>PQ_TIPO[t].n).join(', ')); if(f.div)ent.push(f.div);
+  if(f.vMin!=null)ent.push('valor ≥ '+fmtCompacto(f.vMin)); if(f.vMax!=null)ent.push('valor ≤ '+fmtCompacto(f.vMax));
+  if(f.per)ent.push(f.per[0]==='a'?'ano '+f.per.slice(1):(PQ_PER.find(x=>x[0]===f.per)||[,f.per])[1]);
+  if(f.sits.length)ent.push(f.sits.map(k=>PQ_SIT.find(x=>x[0]===k)[1].toLowerCase()).join(', '));
+  if(f.txt.length)ent.push('texto “'+f.txt.join(' ')+'”');
+  el.innerHTML=`<div class="pq-tipos">${PQ_TIPOS.map(([k,n,i])=>{const c=cont[k]||{n:0,v:0};
+      return `<button class="pq-tipo ${r.tipos.includes(k)?'on':''} ${c.n?'':'vazio'}" style="--c:${PQ_COR[k]}" onclick="pqTog('tipos','${k}')">
+        <span>${i} ${n}</span><b>${fmtN(c.n)}</b><small>${c.v?fmtCompacto(c.v):'&nbsp;'}</small></button>`;}).join('')}</div>
+    <div class="pq-linhas">
+      <div><label>Período</label><div class="seg">${PQ_PER.map(([k,n])=>bt(r.per===k,`pqSet('per','${k}')`,n)).join('')}</div></div>
+      <div><label>Divisão</label><div class="seg">${['SEQ','SPV'].map(d=>bt(r.div===d,`pqSet('div','${d}')`,d)).join('')}</div></div>
+      <div><label>Região</label><div class="seg">${Object.keys(REGIAO_UF).map(g=>bt(r.regs.includes(g),`pqTog('regs','${g}')`,g)).join('')}</div></div>
+      <div><label>Valor</label><div class="seg">${PQ_FAIXA.map(([k,n])=>bt(PQ.faixa===k,`pqSet('faixa','${k}')`,n)).join('')}</div></div>
+      <div><label>Negócio aberto</label><div class="seg">${PQ_SIT.map(([k,n])=>bt(r.sits.includes(k),`pqTog('sits','${k}')`,n)).join('')}</div></div>
+    </div>
+    ${PQ.ent||ent.length||r.tipos.length||r.regs.length||r.div||r.per!=='tudo'||PQ.faixa||r.sits.length?`<div class="pq-entendi">
+      ${PQ.ent?`<span class="chip"><b>${PQ_ENT[PQ.ent.k][1]} ${esc(PQ.ent.nome)}</b><span onclick="PQ.ent=null;pqFiltros();pqResultado()">✕</span></span>`:''}
+      ${ent.length?`<span class="pq-ent-txt">Entendi: ${ent.map(x=>`<b>${esc(x)}</b>`).join(' · ')}</span>`:''}
+      <button class="pq-limpa" onclick="pqLimpar()">limpar tudo</button></div>`:''}`; }
+
+/* ---------- resultado ---------- */
+const pqDt=d=>d?fmtData(d):'—';
+function pqResultado(){
+  const el=document.getElementById('pq-res'); if(!el)return;
+  const r=filtrarPesq(), R=r.R; PQ_ULT=R;
+  if(!R.length){ el.innerHTML=`<div class="card pq-vazio"><b>Nada encontrado.</b><span>Tente menos palavras, outro período ou limpe os filtros.</span></div>`; return; }
+  const by=t=>R.filter(o=>o.t===t), vS=a=>somar(a,o=>o.val);
+  const vend=by('venda'), ab=by('aberto'), pr=by('proposta'), gan=by('ganho'), per=by('perdido'), it=by('interacao');
+  const clis=new Set(R.filter(o=>o.t!=='cliente').map(o=>o.nCli)), vds=new Set(R.map(o=>o.resp).filter(Boolean)), ufs=new Set(R.map(o=>o.uf).filter(Boolean));
+  let h='';
+  if(PQ.ent)h+=pqFicha(R);
+  h+=`<div class="g g4 kpis-2">
+    ${kpi('Encontrado',fmtN(R.length),`${fmtN(clis.size)} clientes · ${fmtN(vds.size)} vendedores · ${fmtN(ufs.size)} estados`,'lar')}
+    ${kpi('Vendido',fmtCompacto(vS(vend)),`${fmtN(vend.length)} vendas · ticket ${fmtCompacto(vend.length?vS(vend)/vend.length:0)}`,'ok')}
+    ${kpi('Em aberto',fmtCompacto(vS(ab)),`${fmtN(ab.length)} negócios · ${fmtN(pr.length)} propostas (${fmtCompacto(vS(pr))})`,'ale')}
+    ${kpi('Win rate',gan.length+per.length?fmtPct(gan.length/(gan.length+per.length),0):'—',`${fmtN(gan.length)} ganhos · ${fmtN(per.length)} perdidos (${fmtCompacto(vS(per))})${it.length?` · ${fmtN(it.length)} interações`:''}`,'az')}
+  </div>`;
+  /* por mês: vendido, propostas e negócios criados — só onde há data */
+  const ms=[...new Set(R.filter(o=>o.dt&&['venda','proposta','aberto','ganho','perdido'].includes(o.t)).map(o=>mesKey(o.dt)))].sort().slice(-18);
+  if(ms.length>1){
+    const serie=(tt,lab,cor,tipo)=>({label:lab,type:tipo||'bar',data:ms.map(k=>somar(R.filter(o=>tt.includes(o.t)&&o.dt&&mesKey(o.dt)===k),o=>o.val)),
+      itens:ms.map(k=>R.filter(o=>tt.includes(o.t)&&o.dt&&mesKey(o.dt)===k).map(o=>o.x)),backgroundColor:cor,borderColor:cor,borderRadius:2,maxBarThickness:28,
+      ...(tipo==='line'?{borderWidth:2,pointRadius:2,fill:false,tension:.25}:{})});
+    agendar('pq-mes',{type:'bar',data:{labels:ms.map(kMes),datasets:[serie(['venda'],'Vendido',PQ_COR.venda),serie(['proposta'],'Propostas',alfa(PQ_COR.proposta,.75)),
+      serie(['aberto','ganho','perdido'],'Negócios criados',PQ_COR.aberto,'line')]},
+      options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{callback:v=>fmtCompacto(v)}}},
+        plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
+  }
+  const temV=vend.length>0, baseM=temV?vend:R.filter(o=>o.t!=='cliente'), mp=new Map(baseM.map(o=>[o.x,o]));
+  h+=`<div class="dupla">${ms.length>1?card('Mês a mês','vendido, propostas e negócios criados no resultado · clique para ver os registros',graf('pq-mes')):''}
+    <div>${mapaUF('pq-mapa',temV?'Onde vendeu':'Onde estão',temV?'vendido do resultado por estado do cliente':'registros do resultado por estado',baseM.map(o=>o.x),
+      x=>(mp.get(x)||{}).uf,x=>(mp.get(x)||{}).val||0,temV?'vendas':'registros',temV?'t':'n')}</div></div>`;
+  h+=`<div class="pq-barra"><label>Agrupar por</label><div class="seg">${PQ_GRUPOS.map(([k,n])=>`<button class="${PQ.grupo===k?'on':''}" onclick="pqSet('grupo','${k}')">${n}</button>`).join('')}</div>
+    <span>${fmtN(R.length)} registros</span><button class="btn sec" onclick="pqExcel()">↓ Excel</button><button class="btn sec" onclick="abrirEmailTela('busca')">✉ E-mail</button></div>`;
+  h+=PQ.grupo?pqGrupos(R):pqLista(R);
+  el.innerHTML=h; desenharPendentes(); }
+let PQ_ULT=[];
+/* mapaUF guarda os registros originais (x); o mapa precisa achar o pqRegistro de volta */
+function pqLista(R){
+  const ords={dt:o=>+o.dt||0,val:o=>o.val,cli:o=>o.nCli,resp:o=>o.resp||'',t:o=>o.t,uf:o=>(o.uf||'')+(o.cid||'')};
+  const f=ords[PQ.ord]||ords.dt, L=[...R].sort((a,b)=>{const x=f(a),y=f(b);return (x<y?-1:x>y?1:0)*(PQ.desc?-1:1);});
+  const th=(k,t,n)=>`<th class="${n?'n':''}" style="cursor:pointer" onclick="pqOrd('${k}')">${t}${PQ.ord===k?(PQ.desc?' ↓':' ↑'):''}</th>`;
+  const lin=L.slice(0,300).map(o=>`<tr><td><span class="tag" style="background:${PQ_COR[o.t]}22;color:${PQ_COR[o.t]}">${PQ_TIPO[o.t].i} ${PQ_TIPO[o.t].n}</span></td>
+    <td class="n">${pqDt(o.dt)}</td><td>${pqMarca(o.ref||'—')}</td>
+    <td class="f"><a href="javascript:void 0" onclick="pqEnt('cli','${esc(o.nCli)}',${esc(JSON.stringify(o.cli))})">${pqMarca(o.cli)}</a><div class="pq-sub">${pqMarca(String(o.tit||'').slice(0,60))}</div></td>
+    <td>${o.resp?`<a href="javascript:void 0" onclick="pqEnt('resp',${esc(JSON.stringify(o.resp))})">${pqMarca(nomeCurto(o.resp))}</a>`:'—'}</td>
+    <td>${o.anal?`<a href="javascript:void 0" onclick="pqEnt('anal',${esc(JSON.stringify(o.anal))})">${pqMarca(nomeCurto(o.anal))}</a>`:'—'}</td>
+    <td>${o.uf?`<a href="javascript:void 0" onclick="pqEnt('uf','${o.uf}','${esc(UF_NOME[o.uf]||o.uf)}')">${o.uf}</a>`:'—'}${o.cid?` · <a href="javascript:void 0" onclick="pqEnt('cid',${esc(JSON.stringify(o.cid))},${esc(JSON.stringify(o.cid+(o.uf?' – '+o.uf:'')))})">${pqMarca(o.cid)}</a>`:''}</td>
+    <td>${esc(String(o.sit||'—').slice(0,30))}</td><td class="n">${o.val?fmtBRL(o.val):'—'}</td></tr>`).join('');
+  return `<div class="card"><div class="tw" style="max-height:620px"><table><thead><tr>${th('t','Tipo')}${th('dt','Data',1)}<th>Referência</th>${th('cli','Cliente')}${th('resp','Vendedor')}<th>Analista</th>${th('uf','Local')}<th>Situação</th>${th('val','Valor',1)}</tr></thead>
+    <tbody>${lin}</tbody></table></div>${L.length>300?`<div class="nota">Mostrando 300 de ${fmtN(L.length)} — o Excel traz todos.</div>`:''}</div>`; }
+function pqOrd(k){ if(PQ.ord===k)PQ.desc=!PQ.desc; else {PQ.ord=k;PQ.desc=k==='dt'||k==='val';} pqResultado(); }
+function pqGrupos(R){
+  const k=PQ.grupo, chave=o=>k==='mes'?(o.dt?mesKey(o.dt):null):k==='cli'?o.nCli:o[k];
+  const nome=(o,c)=>k==='mes'?kMes(c):k==='cli'?o.cli:k==='uf'?(UF_NOME[c]||c):k==='cid'?c+(o.uf?' – '+o.uf:''):c;
+  const g=new Map(); R.forEach(o=>{const c=chave(o); if(c==null)return; let x=g.get(c); if(!x){x={c,nome:nome(o,c),it:[]};g.set(c,x);} x.it.push(o);});
+  const L=[...g.values()].map(x=>{const s=t=>x.it.filter(o=>o.t===t), v=t=>somar(s(t),o=>o.val), gn=s('ganho').length, pe=s('perdido').length;
+    return {...x,vend:v('venda'),nv:s('venda').length,ab:v('aberto'),na:s('aberto').length,pr:v('proposta'),np:s('proposta').length,
+      wr:gn+pe?gn/(gn+pe):null,ni:s('interacao').length,ult:Math.max(0,...x.it.filter(o=>o.t!=='cliente').map(o=>+o.dt||0))};})
+    .sort((a,b)=>k==='mes'?(a.c<b.c?1:-1):(b.vend+b.ab)-(a.vend+a.ab)||b.it.length-a.it.length);
+  const mx=Math.max(1,...L.map(x=>x.vend));
+  return card(`Por ${PQ_GRUPOS.find(x=>x[0]===k)[1].toLowerCase()}`,`${fmtN(L.length)} grupos · clique no nome para abrir a ficha`,
+    tab([{t:PQ_GRUPOS.find(x=>x[0]===k)[1],f:1},{t:'Vendido',n:1},{t:'',f:1},{t:'Em aberto',n:1},{t:'Propostas',n:1},{t:'Win rate',n:1},{t:'Interações',n:1},{t:'Último registro',n:1}],
+      L.slice(0,400).map(x=>[k==='mes'?esc(x.nome):`<a href="javascript:void 0" onclick="pqEnt('${k}',${esc(JSON.stringify(x.c))},${esc(JSON.stringify(x.nome))})">${pqMarca(x.nome)}</a>`,
+        x.vend?`${fmtBRL(x.vend)} <small>(${x.nv})</small>`:'—',`<div style="width:110px">${barra(x.vend/mx,'ok')}</div>`,x.ab?`${fmtBRL(x.ab)} <small>(${x.na})</small>`:'—',
+        x.np?`${fmtCompacto(x.pr)} <small>(${x.np})</small>`:'—',x.wr==null?'—':fmtPct(x.wr,0),x.ni?fmtN(x.ni):'—',x.ult?fmtData(new Date(x.ult)):'—']),620)); }
+
+/* ---------- ficha ---------- */
+function pqFicha(R){
+  const e=PQ.ent, by=t=>R.filter(o=>o.t===t), vS=a=>somar(a,o=>o.val), H=hoje(), dias=d=>d?Math.round((H-d)/864e5):null;
+  const vend=by('venda'), ab=by('aberto'), pr=by('proposta'), gan=by('ganho'), per=by('perdido'), it=by('interacao'), cad=by('cliente');
+  const ultV=vend.reduce((m,o)=>o.dt&&(!m||o.dt>m)?o.dt:m,null), ultI=it.reduce((m,o)=>o.dt&&(!m||o.dt>m)?o.dt:m,null);
+  const top=(campo,lim)=>{const g=new Map(); R.filter(o=>o[campo]&&o.t!=='cliente').forEach(o=>{const c=o[campo]==null?null:(campo==='nCli'?o.cli:o[campo]); const x=g.get(c)||{n:0,v:0}; x.n++; if(o.t==='venda')x.v+=o.val; g.set(c,x);});
+    return [...g.entries()].sort((a,b)=>b[1].v-a[1].v||b[1].n-a[1].n).slice(0,lim||6); };
+  /* frases: o que um gerente quer saber em 5 segundos */
+  const F_=[];
+  if(vend.length)F_.push(`Comprou <b>${fmtN(vend.length)} vez(es)</b>, ${fmtCompacto(vS(vend))} no total; a última há <b>${fmtN(dias(ultV))} dias</b> (${fmtData(ultV)}).`);
+  else if(e.k==='cli')F_.push('<b>Ainda não comprou</b> — nenhuma venda registrada.');
+  if(ab.length){const mx=[...ab].sort((a,b)=>b.val-a.val)[0];F_.push(`Tem <b>${fmtCompacto(vS(ab))}</b> em ${fmtN(ab.length)} negócio(s) aberto(s); o maior: ${esc(mx.cli)} ${fmtCompacto(mx.val)}${mx.resp?' com '+esc(nomeCurto(mx.resp)):''}.`);
+    const sd=ab.filter(o=>o.x.fonte==='Ploomes'&&!o.x.dtPrev).length; if(sd)F_.push(`<b style="color:var(--err)">${fmtN(sd)} aberto(s) sem data de fechamento</b> — fora da previsão.`);}
+  if(gan.length+per.length)F_.push(`Win rate de <b>${fmtPct(gan.length/(gan.length+per.length),0)}</b> (${fmtN(gan.length)} ganhos, ${fmtN(per.length)} perdidos${per.length?', perdido '+fmtCompacto(vS(per)):''}).`);
+  if(it.length)F_.push(`${fmtN(it.length)} interações; a última há <b>${fmtN(dias(ultI))} dias</b>${dias(ultI)>60?' — <b style="color:var(--ale)">vale um contato</b>':''}.`);
+  else if(e.k==='cli'&&(ab.length||vend.length))F_.push('<b style="color:var(--ale)">Nenhuma interação registrada</b> no Ploomes.');
+  if(e.k==='cli'&&cad.length){const c=cad[0].x;F_.push(`Cadastro: ${esc(c.situacao||(c.ativa?'Ativo':'Inativo'))}${c.cidade?' · '+esc(c.cidade):''}${c.uf?'/'+esc(c.uf):''}${c.resp?' · carteira de '+esc(nomeCurto(c.resp)):''}.`);}
+  /* quem e onde: as dimensões que não são a da ficha */
+  const blocos=[['resp','Vendedores'],['anal','Analistas'],['nCli','Clientes'],['uf','Estados'],['cid','Cidades']].filter(([c])=>!(c===e.k||(c==='nCli'&&e.k==='cli')||(c==='uf'&&e.k==='cid')))
+    .map(([c,t])=>{const L=top(c,6); if(!L.length)return '';
+      const kk=c==='nCli'?'cli':c;
+      return `<div class="pq-top"><h5>${t}</h5>${L.map(([n,x])=>`<div><a href="javascript:void 0" onclick="pqEnt('${kk}',${esc(JSON.stringify(kk==='cli'?norm(n):n))},${esc(JSON.stringify(kk==='uf'?(UF_NOME[n]||n):n))})">${esc(kk==='uf'?(UF_NOME[n]||n):kk==='cli'?String(n).slice(0,30):nomeCurto(n))}</a><small>${x.v?fmtCompacto(x.v):fmtN(x.n)+' reg.'}</small></div>`).join('')}</div>`;}).join('');
+  const tl=R.filter(o=>o.dt&&o.t!=='cliente').sort((a,b)=>b.dt-a.dt).slice(0,40);
+  F_.forEach((x,i)=>F_[i]=x.replace(/\.\.(?=$|<)/g,'.'));
+  return `<div class="card pq-ficha"><div class="pq-ficha-cab"><span class="pq-ficha-ic">${PQ_ENT[e.k][1]}</span>
+      <div><small>${PQ_ENT[e.k][0]}</small><h2>${esc(e.nome)}</h2></div>
+      <button class="btn sec" onclick="PQ.ent=null;pqFiltros();pqResultado()">✕ fechar ficha</button></div>
+    <div class="pq-ficha-corpo"><div><ul class="pq-frases">${F_.map(x=>`<li>${x}</li>`).join('')||'<li>Sem movimento no recorte.</li>'}</ul>
+      <div class="pq-tops">${blocos}</div></div>
+      <div class="pq-tl"><h5>Linha do tempo</h5>${tl.map(o=>`<div class="pq-ev" style="--c:${PQ_COR[o.t]}"><i></i><div><small>${fmtData(o.dt)} · ${PQ_TIPO[o.t].n}</small>
+        <b>${esc(e.k==='cli'?(o.tit||o.ref||o.sit||''):o.cli).slice(0,60)}</b><span>${[o.val?fmtCompacto(o.val):'',o.sit&&o.t!=='venda'?String(o.sit).slice(0,28):'',o.resp&&e.k!=='resp'?nomeCurto(o.resp):''].filter(Boolean).map(esc).join(' · ')}</span></div></div>`).join('')||'<p>Sem eventos com data.</p>'}</div></div></div>`; }
+
+/* ---------- Excel ---------- */
+function pqExcel(){
+  if(typeof XLSX==='undefined'){aviso('Biblioteca do Excel indisponível.');return;}
+  const R=PQ_ULT; if(!R.length)return;
+  const cols=['Tipo','Data','Referência','Cliente','Descrição','Vendedor','Analista','UF','Cidade','Região','Divisão','Situação','Valor (R$)'];
+  const aoa=[[`Pesquisa — ${PQ.ent?PQ_ENT[PQ.ent.k][0]+': '+PQ.ent.nome:PQ.q||'todos os registros'}`],[`LS Fire · gerado em ${fmtData(hoje())} · ${R.length} registros`],[],cols,
+    ...[...R].sort((a,b)=>(+b.dt||0)-(+a.dt||0)).map(o=>[PQ_TIPO[o.t].n,o.dt||null,o.ref||'',o.cli,String(o.tit||''),o.resp||'',o.anal||'',o.uf||'',o.cid||'',o.reg||'',o.div||'',String(o.sit||''),o.val||null])];
+  const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
+  for(let r=4;r<aoa.length;r++){const d=ws[XLSX.utils.encode_cell({r,c:1})];if(d&&d.t==='d')d.z='dd/mm/yyyy';const v=ws[XLSX.utils.encode_cell({r,c:12})];if(v)v.z='#,##0';}
+  ws['!cols']=cols.map(k=>({wch:{Cliente:34,Descrição:40,Referência:22,Situação:22}[k]||12}));
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:3,c:0},e:{r:aoa.length-1,c:cols.length-1}})};
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Pesquisa');
+  const nome=`Pesquisa-${(PQ.ent?norm(PQ.ent.nome):norm(PQ.q)||'todos').replace(/\s+/g,'-').slice(0,40)}-${new Date().toISOString().slice(0,10)}.xlsx`;
+  baixarBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true})],{type:XLSX_MIME}),nome); }
+
+/* "/" em qualquer lugar da aba foca a busca; a tela monta filtros e resultado depois do render */
+document.addEventListener('keydown',e=>{ if(e.key==='/'&&EST.tela==='busca'&&!/input|textarea|select/i.test((document.activeElement||{}).tagName||'')){
+  const i=document.getElementById('pq-q'); if(i){e.preventDefault();i.focus();i.select();} } });
+document.addEventListener('click',e=>{ if(!e.target.closest||!e.target.closest('.pq-hero'))pqSug(true); });
 /* ================= 2. PROPOSTAS ================= */
 /* ---------- velocidade das propostas ----------
    Só Ploomes (CRM, desde jul/2026): é o único sistema que registra quando a
@@ -4712,7 +5081,7 @@ function abrirRelatorio(){
 }
 function relMarcarTelas(pub){
   const P=REL_PUB[pub], cx=document.getElementById('rel-telas');
-  cx.innerHTML=TELAS.map(t=>`<label><input type="checkbox" value="${t.id}" ${!P.telas||P.telas[t.id]?'checked':''}> ${t.nome}</label>`).join('');
+  cx.innerHTML=TELAS.filter(t=>t.id!=='busca').map(t=>`<label><input type="checkbox" value="${t.id}" ${!P.telas||P.telas[t.id]?'checked':''}> ${t.nome}</label>`).join('');
   document.getElementById('rel-desc').textContent=P.desc;
   document.getElementById('rel-tit').value=P.tit;
 }
