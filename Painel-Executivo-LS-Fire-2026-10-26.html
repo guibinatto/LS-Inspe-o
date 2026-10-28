@@ -344,6 +344,7 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .pq-ent-txt b{color:var(--lar)}.pq-limpa{all:unset;cursor:pointer;font-size:11px;color:var(--txt3);text-decoration:underline}
 .pq-barra{margin:14px 0 8px;flex-wrap:wrap}.pq-barra span{margin-left:auto;font-size:11px;color:var(--txt3)}
 .pq-sub{font-size:10.5px;color:var(--txt3);margin-top:1px}
+.pq-mapa-t{flex-wrap:wrap;margin-bottom:4px}.pq-mapa-t button{font-size:10.5px}
 .pq-vazio{display:flex;flex-direction:column;gap:4px;align-items:center;padding:40px;color:var(--txt3)}.pq-vazio b{color:var(--txt);font-size:14px}
 .pq-ficha{margin-bottom:12px;border-color:var(--lar)}
 .pq-ficha-cab{display:flex;gap:12px;align-items:center;margin-bottom:12px}.pq-ficha-cab>div{flex:1}
@@ -3909,7 +3910,7 @@ const REGIAO_UF={Norte:['AC','AP','AM','PA','RO','RR','TO'],Nordeste:['AL','BA',
   'Centro-Oeste':['DF','GO','MT','MS'],Sudeste:['ES','MG','RJ','SP'],Sul:['PR','RS','SC']};
 const regiaoDeUF=uf=>Object.keys(REGIAO_UF).find(r=>REGIAO_UF[r].includes(uf))||null;
 const ufDeNome=s=>{const k=norm(s);return Object.keys(UF_NOME).find(u=>norm(UF_NOME[u])===k)||uf2(s);};
-const PQ_TIPOS=[['venda','Vendas','▤'],['pedido','Pedidos','▣'],['proposta','Propostas','✎'],['aberto','Negócios abertos','⟐'],
+const PQ_TIPOS=[['venda','Vendas','▤'],['pedido','A faturar','▣'],['proposta','Propostas','✎'],['aberto','Negócios abertos','⟐'],
   ['ganho','Ganhos','✓'],['perdido','Perdidos','✕'],['interacao','Interações','☏'],['cliente','Cadastro','◍']];
 const PQ_TIPO=Object.fromEntries(PQ_TIPOS.map(([k,n,i])=>[k,{n,i}]));
 const PQ_COR={venda:'#12A06B',pedido:'#2E7D9A',proposta:'#F25C05',aberto:'#F2A505',ganho:'#5FBF8F',perdido:'#C62828',interacao:'#8C593B',cliente:'#8A817C'};
@@ -3918,7 +3919,7 @@ const PQ_FAIXA=[['f1','até 100 mil',0,1e5],['f2','100–500 mil',1e5,5e5],['f3'
 const PQ_SIT=[['venc','Data vencida'],['semdata','Sem data'],['nc','Não classificado'],['parado','Parado 30+ dias'],['po','Aguardando PO']];
 const PQ_GRUPOS=[['','Lista'],['cli','Cliente'],['resp','Vendedor'],['anal','Analista'],['uf','Estado'],['reg','Região'],['cid','Cidade'],['mes','Mês']];
 const PQ_ENT={cli:['Cliente','◍'],resp:['Vendedor','👤'],anal:['Analista','✦'],cid:['Cidade','📍'],uf:['Estado','🗺'],reg:['Região','🧭']};
-let PQ={q:'',tipos:[],per:'tudo',div:'',regs:[],faixa:'',sits:[],grupo:'',ent:null,ord:'dt',desc:true,vMin:null,vMax:null};
+let PQ={q:'',tipos:[],per:'tudo',div:'',regs:[],faixa:'',sits:[],grupo:'',ent:null,ord:'dt',desc:true,vMin:null,vMax:null,mapaT:null};
 
 /* ---------- base unificada ---------- */
 let _PQB=null;
@@ -3937,8 +3938,10 @@ function basePesq(){
     o.q=norm([o.cli,o.resp,o.anal,o.cid,o.uf,o.uf&&UF_NOME[o.uf],o.reg,o.ref,o.tit,o.sit,o.div].join(' ')); R.push(o); };
   F.todas.forEach(v=>add({t:'venda',x:v,cli:v.cli,resp:v.resp,anal:analistaVenda(v),uf:v.ufCliente||v.uf,dt:v.dt,val:v.valor,div:v.div,
     ref:refVenda(v),tit:[v.solucao,v.natureza].filter(Boolean).join(' · '),sit:v.fonte}));
-  (M.pedidos||[]).forEach(p=>add({t:'pedido',x:p,cli:p.cli,resp:p.resp,anal:p.orcNome,uf:p.ufCliente||p.uf,dt:p.dt,val:p.vNum,div:p.div,
-    ref:refPed(p),tit:p.catRot||p.cat,sit:p.etapa}));
+  /* o pedido do Controle já é uma venda (está em F.todas); aqui entra só o que
+     ainda não faturou — a carteira a faturar, pela data de entrega */
+  (M.pedidos||[]).filter(p=>!p.faturado).forEach(p=>add({t:'pedido',x:p,cli:p.cli,resp:p.resp,anal:p.orcNome,uf:p.ufCliente||p.uf,dt:p.dtEnt||p.dt,val:p.vNum,div:p.div,
+    ref:refPed(p),tit:p.catRot||p.cat,sit:[p.etapa,p.dtEnt?'entrega '+fmtData(p.dtEnt)+(p.dtEnt<hoje()?' (atrasada)':''):''].filter(Boolean).join(' · ')}));
   propostasRecorte().forEach(p=>add({t:'proposta',x:p,cli:p.cli,resp:p.resp,anal:p.neg?analista(p.neg.orc):null,uf:p.ufCliente||p.ufDaObra,
     dt:p.dt,val:p.val,div:p.div,ref:'Prop '+p.cod,tit:p.neg?p.neg.titulo:p.fase,sit:p.fase}));
   M.negocios.forEach(n=>add({t:n.aberto?'aberto':n.ganho?'ganho':'perdido',x:n,cli:n.cli,resp:n.resp,anal:analista(n.orc),
@@ -3966,9 +3969,9 @@ function entenderPesq(q){
   if((m=tira(/\b(20[12]\d)\b/)))f.per='a'+m[1];
   [['sem data','semdata'],['sem previs[aã]o','semdata'],['vencid[ao]s?','venc'],['n[aã]o classificados?','nc'],['sem status','nc'],
    ['parad[ao]s?','parado'],['aguardando po','po'],['garantidos?','po']].forEach(([re,k])=>{ if(tira(new RegExp('\\b'+re+'\\b','i')))f.sits.push(k); });
-  [['vendas?|vendid[ao]s?','venda'],['pedidos?','pedido'],['propostas?','proposta'],['abertos?|em aberto|pipeline','aberto'],
+  [['a faturar|faturar|carteira','pedido'],['vendas?|vendid[ao]s?|pedidos?','venda'],['propostas?','proposta'],['abertos?|em aberto|pipeline','aberto'],
    ['ganhos?|ganhas?','ganho'],['perdidos?|perdas?|perdidas?','perdido'],['intera[cç](ao|oes|ões)|visitas?|whatsapp|liga[cç](ao|oes|ões)','interacao']]
-    .forEach(([re,k])=>{ if(tira(new RegExp('\\b('+re+')\\b','i')))f.tipos.push(k); });
+    .forEach(([re,k])=>{ const rx=new RegExp('\\b('+re+')\\b','i'); let ach=false; while(tira(rx))ach=true; if(ach)f.tipos.push(k); });
   if(tira(/\bseq\b/i))f.div='SEQ'; else if(tira(/\bspv\b/i))f.div='SPV';
   /* sigla em maiúsculas (SC, PR) antes de normalizar; nome do estado antes da
      região, senão "Rio Grande do Sul" vira região Sul */
@@ -4133,10 +4136,17 @@ function pqResultado(){
         ...(y2?{y2:{position:'right',beginAtZero:true,grid:{display:false},ticks:{precision:0}}}:{})},
         plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
   }
-  const temV=vend.length>0, baseM=temV?vend:R.filter(o=>o.t!=='cliente'), mp=new Map(baseM.map(o=>[o.x,o]));
+  /* mapa: um tipo por vez, escolhido nos botões em cima dele (os tipos do
+     resultado); valor em R$, ou quantidade para interações e cadastro */
+  const tipM=(r.tipos.length?r.tipos:PQ_TIPOS.map(x=>x[0])).filter(t=>R.some(o=>o.t===t&&o.uf));
+  const mT=tipM.includes(PQ.mapaT)?PQ.mapaT:['venda','aberto','proposta','pedido','ganho','perdido','interacao','cliente'].find(t=>tipM.includes(t));
+  const baseM=R.filter(o=>o.t===mT), mp=new Map(baseM.map(o=>[o.x,o])), porQtd=mT==='interacao'||mT==='cliente';
+  const titM={venda:'Onde vendeu',pedido:'Onde está a carteira a faturar',proposta:'Onde estão as propostas',aberto:'Onde estão os negócios abertos',
+    ganho:'Onde ganhou',perdido:'Onde perdeu',interacao:'Onde houve interação',cliente:'Onde estão os clientes'}[mT]||'Onde estão';
   h+=`<div class="dupla">${ms.length>1&&tipG.length?card('Mês a mês',`${tipG.map(t=>PQ_TIPO[t].n.toLowerCase()).join(', ')} · segue os botões de tipo · clique numa barra para ver os registros`,graf('pq-mes')):''}
-    <div>${mapaUF('pq-mapa',temV?'Onde vendeu':'Onde estão',temV?'vendido do resultado por estado do cliente':'registros do resultado por estado',baseM.map(o=>o.x),
-      x=>(mp.get(x)||{}).uf,x=>(mp.get(x)||{}).val||0,temV?'vendas':'registros',temV?'t':'n')}</div></div>`;
+    <div>${mT?`<div class="pq-mapa-t seg">${tipM.map(t=>`<button class="${t===mT?'on':''}" onclick="PQ.mapaT='${t}';pqResultado()">${PQ_TIPO[t].i} ${PQ_TIPO[t].n}</button>`).join('')}</div>`
+      +mapaUF('pq-mapa',titM,`${PQ_TIPO[mT].n.toLowerCase()} do resultado por estado do cliente${porQtd?' · em quantidade':''}`,baseM.map(o=>o.x),
+      x=>(mp.get(x)||{}).uf,x=>(mp.get(x)||{}).val||0,porQtd?'registros':PQ_TIPO[mT].n.toLowerCase(),porQtd?'n':'t'):''}</div></div>`;
   h+=`<div class="pq-barra"><label>Agrupar por</label><div class="seg">${PQ_GRUPOS.map(([k,n])=>`<button class="${PQ.grupo===k?'on':''}" onclick="pqSet('grupo','${k}')">${n}</button>`).join('')}</div>
     <span>${fmtN(R.length)} registros</span><button class="btn sec" onclick="pqExcel()">↓ Excel</button><button class="btn sec" onclick="abrirEmailTela('busca')">✉ E-mail</button></div>`;
   h+=PQ.grupo?pqGrupos(R):pqLista(R);
