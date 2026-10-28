@@ -4113,19 +4113,28 @@ function pqResultado(){
     ${kpi('Em aberto',fmtCompacto(vS(ab)),`${fmtN(ab.length)} negócios · ${fmtN(pr.length)} propostas (${fmtCompacto(vS(pr))})`,'ale')}
     ${kpi('Win rate',gan.length+per.length?fmtPct(gan.length/(gan.length+per.length),0):'—',`${fmtN(gan.length)} ganhos · ${fmtN(per.length)} perdidos (${fmtCompacto(vS(per))})${it.length?` · ${fmtN(it.length)} interações`:''}`,'az')}
   </div>`;
-  /* por mês: vendido, propostas e negócios criados — só onde há data */
-  const ms=[...new Set(R.filter(o=>o.dt&&['venda','proposta','aberto','ganho','perdido'].includes(o.t)).map(o=>mesKey(o.dt)))].sort().slice(-18);
-  if(ms.length>1){
-    const serie=(tt,lab,cor,tipo)=>({label:lab,type:tipo||'bar',data:ms.map(k=>somar(R.filter(o=>tt.includes(o.t)&&o.dt&&mesKey(o.dt)===k),o=>o.val)),
-      itens:ms.map(k=>R.filter(o=>tt.includes(o.t)&&o.dt&&mesKey(o.dt)===k).map(o=>o.x)),backgroundColor:cor,borderColor:cor,borderRadius:2,maxBarThickness:28,
-      ...(tipo==='line'?{borderWidth:2,pointRadius:2,fill:false,tension:.25}:{})});
-    agendar('pq-mes',{type:'bar',data:{labels:ms.map(kMes),datasets:[serie(['venda'],'Vendido',PQ_COR.venda),serie(['proposta'],'Propostas',alfa(PQ_COR.proposta,.75)),
-      serie(['aberto','ganho','perdido'],'Negócios criados',PQ_COR.aberto,'line')]},
-      options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{callback:v=>fmtCompacto(v)}}},
+  /* por mês: uma série por tipo do resultado, na cor do botão do tipo — o
+     gráfico segue os botões. Sem tipo marcado: vendas, propostas, abertos,
+     ganhos e perdidos (pedido repete a venda; cadastro não tem mês).
+     Interações não têm valor: entram como quantidade, no eixo da direita. */
+  const tipG=(r.tipos.length?r.tipos:['venda','proposta','aberto','ganho','perdido']).filter(t=>t!=='cliente'&&R.some(o=>o.t===t&&o.dt));
+  const ms=[...new Set(R.filter(o=>o.dt&&tipG.includes(o.t)).map(o=>mesKey(o.dt)))].sort().slice(-18);
+  if(ms.length>1&&tipG.length){
+    const doMes=(t,k)=>R.filter(o=>o.t===t&&o.dt&&mesKey(o.dt)===k);
+    const ds=tipG.map(t=>t==='interacao'
+      ?{label:'Interações (qtd.)',type:'line',yAxisID:'y2',data:ms.map(k=>doMes(t,k).length),itens:ms.map(k=>doMes(t,k).map(o=>o.x)),
+        borderColor:PQ_COR[t],backgroundColor:PQ_COR[t],borderWidth:2,pointRadius:2,fill:false,tension:.25}
+      :{label:PQ_TIPO[t].n,data:ms.map(k=>somar(doMes(t,k),o=>o.val)),itens:ms.map(k=>doMes(t,k).map(o=>o.x)),
+        backgroundColor:PQ_COR[t],borderColor:PQ_COR[t],borderRadius:2,maxBarThickness:22});
+    const y2=tipG.includes('interacao');
+    agendar('pq-mes',{type:'bar',data:{labels:ms.map(kMes),datasets:ds},
+      options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:10,maxRotation:0}},
+        y:{beginAtZero:true,grid:{color:COR().linha},ticks:{callback:v=>fmtCompacto(v)},display:tipG.some(t=>t!=='interacao')},
+        ...(y2?{y2:{position:'right',beginAtZero:true,grid:{display:false},ticks:{precision:0}}}:{})},
         plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
   }
   const temV=vend.length>0, baseM=temV?vend:R.filter(o=>o.t!=='cliente'), mp=new Map(baseM.map(o=>[o.x,o]));
-  h+=`<div class="dupla">${ms.length>1?card('Mês a mês','vendido, propostas e negócios criados no resultado · clique para ver os registros',graf('pq-mes')):''}
+  h+=`<div class="dupla">${ms.length>1&&tipG.length?card('Mês a mês',`${tipG.map(t=>PQ_TIPO[t].n.toLowerCase()).join(', ')} · segue os botões de tipo · clique numa barra para ver os registros`,graf('pq-mes')):''}
     <div>${mapaUF('pq-mapa',temV?'Onde vendeu':'Onde estão',temV?'vendido do resultado por estado do cliente':'registros do resultado por estado',baseM.map(o=>o.x),
       x=>(mp.get(x)||{}).uf,x=>(mp.get(x)||{}).val||0,temV?'vendas':'registros',temV?'t':'n')}</div></div>`;
   h+=`<div class="pq-barra"><label>Agrupar por</label><div class="seg">${PQ_GRUPOS.map(([k,n])=>`<button class="${PQ.grupo===k?'on':''}" onclick="pqSet('grupo','${k}')">${n}</button>`).join('')}</div>
