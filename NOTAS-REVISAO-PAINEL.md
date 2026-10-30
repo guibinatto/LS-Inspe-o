@@ -5,6 +5,57 @@ Referência dos números abaixo: **ano 2026, até 30/10/2026**, sem filtros.
 
 ---
 
+## Rodada de 30/10/2026 — planilhas de 30/10 e lacunas da especificação
+
+### A. Alterações no painel interativo
+- **Menu** agrupado em VISÃO GERAL (Visão executiva; Resultados e metas), PERSPECTIVAS (Pipeline e previsão de pedidos; Carteira e previsão de faturamento), EFICIÊNCIA COMERCIAL (Propostas e conversão; Desempenho comercial; Engenharia de aplicação), MERCADO (Clientes e mercado) e APOIO (Consulta detalhada; Dados e configurações).
+- **Cartões de indicador** agora trazem o tipo (*movimento no período*, *posição na data* ou *estimativa*), a **fonte resumida**, o período e a condição (parcial, estimado, não disponível).
+- **Visão executiva**: novo cartão *Faturamento realizado*; faixa de **alertas de consistência** (conciliação oficial × pedidos, carteira × notas fiscais, carteira sem vínculo, vínculos ambíguos) com link para o detalhe.
+- **SEQ × SPV**: os valores de pedidos, pipeline, previsão ponderada e saldo a faturar são **clicáveis** e abrem os registros (com CSV). Nota explícita: SEQ/SPV não são as futuras divisões Fire, Water e Industry.
+- **Destaques e riscos**: cada item tem constatação, **evidência numérica**, impacto, ação sugerida, critério e **link para o detalhe**. Novos temas: *sem avanço registrado* (parados na etapa), *propostas além do prazo* (fila de cotação acima do SLA) e *divergência entre fontes*. A ordem considera materialidade (R$) e urgência. **Critérios configuráveis** em Dados e configurações → *Critérios dos alertas*.
+- **Plano de ação**: campo *Origem (indicador/registro)*; filtros por responsável, prioridade, status e prazo; destaque de ações **vencidas** e **próximas do vencimento**; texto explícito sobre onde fica guardado (navegador + arquivo ao salvar). Recomendações automáticas e decisões do gestor ficam em blocos separados.
+- **Resultados e metas**: desvio em R$ e % no cartão da meta; novo cartão **Esforço necessário** (quanto falta por mês para a meta anual, comparado com a média mensal realizada).
+- **Carteira e previsão de faturamento**: nova seção **Faturamento realizado** (oficial por mês × ano anterior, notas fiscais clicáveis por mês, conferência NF × oficial) e quadro **Carteira × notas fiscais — a conferir**.
+- **Definições** visíveis em Propostas (negócio, proposta, revisão, item, pedido; win rate só com decididos — abertos não são perdas), Engenharia (critério de atribuição: o analista não é responsável pela venda) e Clientes (novo, recorrente, reativado; UF do cliente × UF da obra).
+- **Clientes**: a identidade do cliente passou a ser o nome completo normalizado; nomes parecidos **não são mais juntados** (antes juntava pelas duas primeiras palavras).
+- **Data de referência salva no arquivo**: o painel salvo guarda a referência (30/10/2026) e, aberto em outro dia, continua lendo os números naquela data, com aviso e botão "Usar a data de hoje". Ao importar planilhas novas, volta automaticamente para hoje.
+- **Importação**: lê o *Comparativo de Pedidos e Faturamento* (abas de pedidos e faturamento), a nova base *Notas fiscais emitidas* (relatório mensal; reimportar o mesmo mês não duplica — chave NF + série) e procura a aba e a linha de cabeçalho reconhecidas (a Carteira de 30/10 tem uma aba vazia antes; o Faturamento Mensal tem uma linha de título antes do cabeçalho).
+
+### B. Alterações no relatório exportado (HTML/PDF)
+- Diretoria, Equipe e Financeiro incluem a faixa de alertas da Visão executiva; Diretoria e Financeiro incluem **Faturamento realizado**.
+- Destaques/riscos saem com evidência e a referência do detalhe ("detalhe: aba → seção").
+- Tabelas largas: compactação em dois passos e, como último recurso, largura fixa com quebra de texto. Verificado: **nenhum elemento passa da margem** em Diretoria (39 p.), Financeiro (23 p.), Equipe (76 p.) e Completo (106 p.).
+
+### C. Correções e mudanças que afetam números
+| Indicador (2026 até 30/10) | Antes | Depois | Motivo |
+|---|---|---|---|
+| Pedidos recebidos | R$ 36.593.136 | **R$ 36.730.682,39** | Outubro passa a usar a planilha oficial de 30/10 (R$ 2.400.544,66), que é da própria data de referência; antes usava a soma dos pedidos do mês (R$ 2.262.998,52). Bate com o total do Comparativo. |
+| Diferença de conciliação | R$ 153.810 | **R$ 291.357** | + R$ 137.546 de outubro (oficial − pedidos lançados). |
+| Saldo a faturar | R$ 30.067.900,57 (carteira de 23/10 transcrita de imagem) | **R$ 31.561.097,75** (53 pedidos, carteira de 30/10) | Carteira nova; original R$ 33.337.760,13, faturado R$ 1.776.662,38. |
+| Faturamento realizado | não disponível | **R$ 47.373.343,28** (out parcial: R$ 6.271.562,79 em 22 NFs) | Comparativo Faturamento + notas fiscais. 2025: R$ 32.450.135,03. |
+| Pedidos 2025 (referência) | R$ 31.554.769,80 | R$ 31.554.769,80 | Conferido: o Comparativo confirma os valores já cadastrados. |
+| Clientes: recompra × sem compra anterior | junção por 2 primeiras palavras | nome completo normalizado | Pode mover clientes de "recompra" para "sem compra anterior" quando eram unidades diferentes com nome parecido. |
+
+Regra nova para o mês em curso: a planilha oficial só vale se for **da própria data de referência**. Com a referência em 15/10, por exemplo, outubro volta para a soma dos pedidos até 15/10 (R$ 34.342.040,65 no ano) e o faturamento de outubro passa a ser a soma das notas até 15/10.
+
+### D. Premissas e limitações
+- O Comparativo de Faturamento e as notas fiscais **não têm vendedor nem divisão**: com filtro de vendedor/divisão o faturamento oficial não se aplica e o painel avisa.
+- Detalhe nota a nota existe só para **outubro/2026** (único relatório mensal recebido); os demais meses têm só o total oficial.
+- **AGEO Leste — PV 500127**: a NF 1662 (23/10, R$ 1.702.829,70) substituiu a NF 1651, mas a carteira de 30/10 ainda mostra o saldo integral e faturado zero. O painel **aponta** a divergência; não corrige nenhum dos lados — confirmar com o financeiro.
+- 22 pedidos da carteira de 30/10 (R$ 2,54 mi, incluindo ordens de serviço) não têm correspondente no Controle de Pedidos: ficam sem vendedor, divisão e data de entrega.
+- *Esforço necessário* divide o que falta igualmente pelos meses inteiros restantes (o mês em curso conta como já em andamento).
+- *Sem avanço registrado* usa o tempo na etapa do Ploomes (não há data do último follow-up no export).
+- Responsáveis e prazos do plano de ação nunca são preenchidos automaticamente; o plano começa vazio.
+
+### E. Validações realizadas (Chromium automatizado, 30/10/2026)
+19 de 19 verificações aprovadas:
+1. Pedidos 2026 = R$ 36.730.682,39 (Comparativo); 2. diferença de conciliação explicada; 3. faturamento 2026 = R$ 47.373.343,28; 4. carteira = R$ 31.561.097,75 em 53 pedidos; 5. NFs de outubro = R$ 6.271.562,79 em 22 notas; 6. pedidos 2025 = R$ 31.554.769,80; 7. faturamento 2025 = R$ 32.450.135,03; 8. divergência AGEO carteira × NF detectada; 9. todas as telas × 4 modos de período × SEQ/SPV/vendedor sem erro de script; 10. com filtro de vendedor, os totais oficiais não se aplicam; 11. ano 2025 fechado; 12. anos 2024/2025 sem erro; 13–14. referência 15/10 (pedidos e faturamento recalculados até a data); 15. salvar → reabrir preserva plano (origem, responsável, prazo), critérios, dados e referência; 16. reimportar o mesmo mês de NF não duplica; 17. bases vazias abrem todas as telas; 18–19. sem rolagem horizontal em 390 px e 768 px.
+Relatório: 0 elementos fora da margem nos 4 públicos.
+
+---
+
+## Rodada anterior
+
 ## 1. Lista objetiva das alterações
 
 **Organização (abas)** — menu em blocos:
