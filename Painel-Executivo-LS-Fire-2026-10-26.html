@@ -3425,8 +3425,64 @@ VISTA.resumo=function(){
     cats.map(c=>({k:c.cat,n:c.qtd,t:c.valor,itens:c.itens,cor:CORCAT[c.cat]||COR().tx3})),{rotQ:'pedidos',totQ:rv.n});
   if(somar(cats,c=>c.qtd)>rv.n)h+=`<div class="nota">Um pedido pode misturar categorias (equipamento fabricado + item de revenda) — por isso as fatias somam ${fmtN(somar(cats,c=>c.qtd))} e o centro mostra os ${fmtN(rv.n)} pedidos.</div>`;
   /* natureza do pedido fica só em Vendas: no resumo repetia a categoria de venda */
+  h+=secEvolucao();
   return h;
 };
+/* ---------- evolução da atividade comercial ----------
+   Por mês e por divisão: negócios criados (Ploomes + histórico OMIE), propostas
+   emitidas e vendas, em quantidade ou valor; interações numa faixa própria logo
+   abaixo, nos mesmos meses — estão na casa das centenas e achatariam as outras
+   linhas (e o painel não usa dois eixos). Interação raramente traz a divisão:
+   vem do negócio ligado; sem ele, da divisão do cliente (quando ele só tem uma);
+   sem ela, da divisão principal do vendedor. */
+let EVO_MODO='qtd';
+function divInteracao(){
+  const cli=new Map(), vend=new Map();
+  [...M.negocios,...histSemEspelho()].forEach(n=>{ if(n.div!=='SEQ'&&n.div!=='SPV')return;
+    const c=cli.get(n.nCli)||new Set(); c.add(n.div); cli.set(n.nCli,c);
+    const v=vend.get(n.resp)||{SEQ:0,SPV:0}; v[n.div]++; vend.set(n.resp,v); });
+  return i=>{ if(i.div==='SEQ'||i.div==='SPV')return i.div; const c=cli.get(i.nCli); if(c&&c.size===1)return [...c][0];
+    const v=vend.get(i.resp); return v&&(v.SEQ||v.SPV)?(v.SEQ>=v.SPV?'SEQ':'SPV'):null; }; }
+function secEvolucao(){
+  /* meses: o ano escolhido até o mês atual; em "Tudo", os últimos 18 meses */
+  const H=hoje(), ks=[];
+  if(EST.ano){ const a=+EST.ano, ult=a<H.getFullYear()?11:a>H.getFullYear()?-1:H.getMonth(); for(let m=0;m<=ult;m++)ks.push(a+'-'+String(m+1).padStart(2,'0')); }
+  else for(let i=17;i>=0;i--)ks.push(mesKey(new Date(H.getFullYear(),H.getMonth()-i,1)));
+  if(ks.length<2)return '';
+  const passa=x=>(!EST.div||divDe(x)===EST.div)&&(!EST.vend||x.resp===EST.vend);
+  const dI=divInteracao();
+  const fontes=[
+    ['Negócios criados','#F2A505',[...F.neg,...F.hist].filter(n=>n.dtCri),n=>n.dtCri,n=>n.vNum||0,n=>divDe(n)],
+    ['Propostas','#F25C05',propostasRecorte().filter(p=>p.dt&&passa(p)),p=>p.dt,p=>p.val||0,p=>p.div],
+    ['Vendas','#12A06B',(F.todas||[]).filter(v=>v.dt&&passa(v)),v=>v.dt,v=>v.valor||0,v=>v.div]];
+  const inter=(F.inter||[]).filter(i=>i.dt);
+  const divs=EST.div?[EST.div]:['SEQ','SPV'], val=EVO_MODO==='val';
+  /* antes do primeiro registro da base a linha não existe (null), em vez de zero:
+     proposta "zero" em junho seria falso — a base só começa em julho */
+  const ini=(arr,dt)=>{const m=arr.map(x=>mesKey(dt(x))).filter(Boolean).sort()[0]; return m||'9999';};
+  const corta=(dados,k0)=>dados.map((x,i)=>ks[i]<k0?null:x);
+  let h=sec('Evolução da atividade',`Mês a mês, por divisão: <b>negócios criados</b> no CRM (com o histórico OMIE), <b>propostas</b> emitidas e <b>vendas</b>${val?' — em valor':' — em quantidade'}; logo abaixo, as <b>interações</b> registradas no Ploomes, nos mesmos meses. Clique num ponto para ver os registros.`);
+  h+=`<div class="seg so-tela" style="margin:0 0 10px">${[['qtd','Quantidade'],['val','Valor (R$)']].map(([k,n])=>`<button class="${EVO_MODO===k?'on':''}" onclick="EVO_MODO='${k}';render()">${n}</button>`).join('')}</div>`;
+  h+=`<div class="${divs.length>1?'dupla':''}">`;
+  divs.forEach(d=>{
+    const ds=fontes.map(([lab,cor,arr,dt,v,dv])=>{ const it=ks.map(k=>arr.filter(x=>dv(x)===d&&mesKey(dt(x))===k));
+      return {label:lab,...(val?{}:{fmt:'n'}),data:corta(it.map(a=>val?somar(a,v):a.length),ini(arr,dt)),itens:it,borderColor:cor,backgroundColor:cor,borderWidth:2.5,pointRadius:3,pointHoverRadius:5,tension:.3,fill:false}; });
+    const iI=ks.map(k=>inter.filter(i=>dI(i)===d&&mesKey(i.dt)===k));
+    agendar('evo-'+d,{type:'line',ehQtd:!val,data:{labels:ks.map(kMes),datasets:ds},
+      options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{callback:x=>val?fmtCompacto(x):fmtN(x),precision:0}}},
+        plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'line'}}}}});
+    agendar('evo-i-'+d,{type:'line',ehQtd:true,data:{labels:ks.map(kMes),datasets:[{label:'Interações',fmt:'n',data:corta(iI.map(a=>a.length),ini(inter,i=>i.dt)),itens:iI,
+      borderColor:'#8C593B',backgroundColor:alfa('#8C593B',.14),borderWidth:2,pointRadius:2,tension:.3,fill:true}]},
+      options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{precision:0}}},
+        plugins:{legend:{display:false}}}});
+    const tot=f=>somar(ds[f].data,x=>x||0), totI=somar(iI,a=>a.length);
+    h+=`<div class="card"><h4>${d} <span style="font-weight:400;color:var(--txt3)">· ${d==='SEQ'?'soluções e equipamentos':'serviços e pós-vendas'}</span></h4>
+      <div class="sub">no período: ${ds.map((x,i)=>`${x.label.toLowerCase()} <b>${val?fmtCompacto(tot(i)):fmtN(tot(i))}</b>`).join(' · ')}</div>
+      <div class="cx alt"><canvas id="evo-${d}"></canvas></div>
+      <div class="sub" style="margin:10px 0 4px">Interações registradas · <b>${fmtN(totI)}</b> no período</div>
+      <div class="cx bx"><canvas id="evo-i-${d}"></canvas></div><div class="drill" id="dr-evo-${d}"></div><div class="drill" id="dr-evo-i-${d}"></div></div>`; });
+  h+=`</div><div class="nota">Negócios criados contam o Ploomes e o histórico OMIE pela data de criação; propostas existem no Ploomes desde jul/2026. Interação sem negócio ligado vai para a divisão do cliente ou, sem ela, para a divisão principal do vendedor.</div>`;
+  return h; }
 const noAnoPerda=x=>noAno({dt:x.dtFim||x.dtVenda||x.dtCri||x.dt});
 
 /* aviso de conferência: o total do mês é a planilha oficial; a soma dos pedidos confere */
