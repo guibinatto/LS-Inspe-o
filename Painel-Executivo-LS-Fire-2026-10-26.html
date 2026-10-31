@@ -5631,11 +5631,13 @@ function planoNovo(i){ const r=i!=null&&_DIAG?_DIAG.R[i]:null;
   planoGuardar(); render(); aviso('Ação incluída no plano. Responsável e prazo ficam em branco até você preencher.'); }
 /* toda mudança fica no histórico da ação; reprogramar o prazo exige justificativa;
    concluir é sempre explícito (o prazo vencer não conclui) */
-function planoSet(id,k,v){ const a=(CFG.plano||[]).find(x=>x.id===id); if(!a)return; const de=a[k]||'';
-  if(de===(v||''))return; let just='';
-  if(k==='prazo'&&de){ just=(typeof prompt==='function'?prompt(`Reprogramar de ${fmtData(data(de))} para ${v?fmtData(data(v)):'sem prazo'}. Justificativa:`):'')||'';
-    if(!just.trim()){ aviso('Reprogramação cancelada: informe a justificativa.'); render(); return; } }
-  a.hist=(a.hist||[]).concat([{em:new Date().toISOString(),campo:k,de,para:v||'',just:just.trim()}]); a[k]=v;
+function planoSet(id,k,v,just){ const a=(CFG.plano||[]).find(x=>x.id===id); if(!a)return; const de=a[k]||'';
+  if(de===(v||''))return;
+  /* reprogramação pede justificativa num formulário do próprio painel (prompt é bloqueado no Claude) */
+  if(k==='prazo'&&de&&just==null){ formModal('Reprogramar ação',[{k:'just',rot:`De ${fmtData(data(de))} para ${v?fmtData(data(v)):'sem prazo'} — justificativa (obrigatória)`,tipo:'area',rows:3}],fd=>{
+      if(!String(fd.just||'').trim()){ aviso('Informe a justificativa.'); return false; } planoSet(id,k,v,String(fd.just).trim()); },'Reprogramar');
+    render(); return; }
+  a.hist=(a.hist||[]).concat([{em:new Date().toISOString(),campo:k,de,para:v||'',just:(just||'').trim()}]); a[k]=v;
   if(k==='status'){ if(v==='Concluída')a.concluidaEm=new Date().toISOString(); else delete a.concluidaEm; }
   planoGuardar(); if(k==='status'||k==='prazo'||k==='resp')render(); }
 function planoTira(id){ CFG.plano=(CFG.plano||[]).filter(x=>x.id!==id); planoGuardar(); render(); }
@@ -6831,7 +6833,7 @@ function secHistorico(){ const S=snapsOrd(), at=snapAtual();
   const hm=[...CFG.metasHist].sort((a,b)=>a.em<b.em?1:-1);
   h+=card('Histórico de alterações de metas','Toda alteração de meta já cadastrada fica registrada com data e justificativa.',hm.length?tab([{t:'Quando'},{t:'Meta',f:1},{t:'De',n:1},{t:'Para',n:1},{t:'Justificativa',f:1}],hm.map(x=>[fmtDH(new Date(x.em)),esc(x.meta),esc(String(x.de)),esc(String(x.para)),esc(x.just||'—')])):'<p class="pl-vazio">Nenhuma alteração registrada.</p>');
   return h; }
-function snapApagar(id){ if(!confirm('Apagar esta fotografia do histórico? Comparações com ela deixam de existir.'))return; CFG.snaps=CFG.snaps.filter(s=>s.id!==id); centralGuardar(); render(); }
+function snapApagar(id){ formModal('Apagar fotografia do histórico?',[{k:'x',rot:'Comparações com esta carga deixam de existir. Esta ação não pode ser desfeita.',tipo:'html',html:''}],()=>{ CFG.snaps=CFG.snaps.filter(s=>s.id!==id); centralGuardar(); render(); },'Apagar'); }
 function centralExportar(){ const o={versao:1,exportado:new Date().toISOString()}; CENTRAL_CHAVES.concat(['plano']).forEach(k=>o[k]=CFG[k]); baixar(JSON.stringify(o),`LS-Fire-historico-${isoD(hojeReal())}.json`,'application/json'); }
 function centralImportar(f){ if(!f)return; const fr=new FileReader(); fr.onload=()=>{ try{ const o=JSON.parse(fr.result); let n=0;
     const junta=(k,id)=>{ const m=new Map((CFG[k]||[]).map(x=>[x[id],x])); (o[k]||[]).forEach(x=>{ if(!m.has(x[id])){ m.set(x[id],x); n++; } }); CFG[k]=[...m.values()]; };
@@ -7682,14 +7684,15 @@ function montarCfg(ano,manter){
      <button class="btn sec" onclick="fecharModal('m-cfg')">Cancelar</button>
    </div>`;
 }
-function salvarCfg(){
+function salvarCfg(justMeta){
   lerCfgAno();
   /* metas não mudam em silêncio: toda alteração fica no histórico; ano já
      encerrado exige justificativa */
   { const R=hoje(), mud=Object.keys(Object.assign({},CFG.metasPorAno,CFG_RASC)).filter(a=>JSON.stringify((CFG.metasPorAno||{})[a]||null)!==JSON.stringify(CFG_RASC[a]||null));
     let just='';
-    if(mud.some(a=>+a<R.getFullYear()&&CFG.metasPorAno[a])){ just=(prompt(`Você alterou a meta de ano encerrado (${mud.filter(a=>+a<R.getFullYear()).join(', ')}). Justificativa:`)||'').trim();
-      if(!just){ aviso('Alteração de meta histórica cancelada: informe a justificativa.'); return; } }
+    if(mud.some(a=>+a<R.getFullYear()&&CFG.metasPorAno[a])){ just=String(justMeta||'').trim();
+      if(!just){ formModal('Alteração de meta de ano encerrado',[{k:'just',rot:`Metas de ${mud.filter(a=>+a<R.getFullYear()).join(', ')} — justificativa (obrigatória)`,tipo:'area',rows:3}],fd=>{
+          if(!String(fd.just||'').trim()){ aviso('Informe a justificativa.'); return false; } salvarCfg(String(fd.just).trim()); },'Salvar metas'); return; } }
     mud.forEach(a=>{ const t=x=>x?`SEQ ${fmtBRL(num(x.seq)||0)} · SPV ${fmtBRL(num(x.spv)||0)} · ${(x.metas||[]).length} vendedores${Array.isArray(x.mensalPct)&&x.mensalPct.some(v=>v!==''&&v!=null)?' · distribuição mensal':''}`:'(sem meta)';
       CFG.metasHist.push({id:novoId('h'),em:new Date().toISOString(),meta:`Metas anuais ${a}`,de:t((CFG.metasPorAno||{})[a]),para:t(CFG_RASC[a]),just,antes:_clone((CFG.metasPorAno||{})[a]||null)}); });
     if(mud.length)centralGuardar(); }
@@ -7806,7 +7809,7 @@ function baseDiretoria(){
    plataforma e não pode ir junto. HTML_ORIG é lido antes de qualquer tela ser
    desenhada, então não leva estado da sessão. */
 const CAB_LOCAL='<!DOCTYPE html>\n<html lang="pt-BR" data-t="claro">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>Painel Executivo Comercial — LS Fire</title>\n';
-const CAB_ART='<!doctype html>\n<html lang="pt-BR" data-t="claro" class="artefato">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n<title>Painel Executivo LS Fire</title>\n'
+const CAB_ART='<!doctype html>\n<html lang="pt-BR" data-t="claro" class="artefato">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>Painel Executivo LS Fire</title>\n'
   +'<script>(function(){var h=document.documentElement;h.setAttribute("data-t","claro");h.setAttribute("lang","pt-BR");h.classList.add("artefato");})();<\/script>\n';
 async function corpoComDados(dados){
   const k=HTML_ORIG.indexOf('<!--LSF-INICIO-->');
