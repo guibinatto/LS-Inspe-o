@@ -5,6 +5,130 @@ Referência dos números abaixo: **ano 2026, até 30/10/2026**, sem filtros.
 
 ---
 
+## Rodada de 31/10/2026 (2) — base confiável, supervisão e preparação para uso compartilhado
+
+### 1. Diagnóstico (antes de alterar)
+
+Problemas confirmados no código, com teste, antes de corrigir:
+
+- **Período anterior equivalente errado:**
+  - a semana parcial 26–28/10 comparava com 23–25/10;
+  - setembro completo comparava com 01–30/08, sem o 31/08;
+  - a S53/2026 era comparada com a S01/2026.
+- **Passo concluído sem prazo** aparecia como "no prazo".
+- **Planilha de detalhamento** exportava o plano, os passos, os compromissos e as reuniões de todos, ignorando o filtro.
+- **Agenda, prioridades e plano** não respeitavam o filtro de pessoa e divisão.
+- **Cálculo de outros períodos** trocava temporariamente a variável global de período (`PER`) dentro de `propsNoPeriodo`.
+- **Junção navegador × arquivo** descartava a versão mais nova quando o ID já existia.
+- **Prioridade e follow-up** contavam uma interação genérica com a conta como acompanhamento do negócio.
+- **"Executor" das interações** era, na verdade, o dono da carteira.
+- **Rateio por dias úteis:** era declarado na tela, mas dentro do mês o cálculo usava dias corridos.
+- **Pontos facultativos** (carnaval, Corpus Christi) eram tratados como feriados obrigatórios.
+- **Relatórios prontos:**
+  - desmarcar todas as seções restaurava o padrão sem avisar;
+  - os rótulos mostravam IDs internos (ex.: "sup-topo");
+  - não havia como escolher um período específico.
+- **Avaliação da previsão** contava negócios ganhos antes do início do período e chamava de "real" o valor congelado.
+
+Totais registrados antes e depois, sem alteração:
+- pedidos de 2026: R$ 36.730.682,39;
+- faturamento de 2026: R$ 47.373.343,28;
+- carteira: R$ 31.561.097,75;
+- interações: 675 (após remover linhas idênticas).
+
+### 2. Correções por etapa
+
+**Etapa 1 — datas, filtros, persistência e integridade**
+- **Períodos:**
+  - completo × completo; parcial × mesmo trecho; últimos 7 dias × os 7 anteriores; intervalo × intervalo do mesmo tamanho logo antes;
+  - semana do ano anterior pela mesma semana ISO; um ano sem S53 mostra "indisponível".
+- **Filtros:** um único recorte (`noRecorte`) para passos, ações, compromissos, reuniões e interações. É usado na tela e na planilha.
+- **Persistência:**
+  - versão e data de atualização por registro editável;
+  - na junção vale a versão mais recente, e a outra fica registrada em "Conflitos";
+  - exclusões ficam marcadas e não "ressuscitam";
+  - JSON importado é validado e não sobrescreve nada;
+  - falha de gravação no navegador gera aviso.
+- **Deduplicação:**
+  - só remove linhas idênticas em todas as colunas, ou com o mesmo ID quando a coluna existir;
+  - casos suspeitos (mesma conta, dia e tipo com conteúdo diferente) ficam sinalizados e não são removidos;
+  - modo configurável e lista de exclusões com motivo em Dados → Bases.
+  - Correção encontrada pelo teste: o campo "ID original" casava com a coluna "Cidade" (que contém "id"); restringido a nomes exatos.
+- **Responsáveis:** "Interações vinculadas à carteira" no lugar de execução pessoal. Acompanhamento do negócio só conta interação registrada no próprio negócio.
+- **Passos:** "Concluído — prazo não avaliável" quando falta prazo ou data de conclusão.
+
+**Etapa 2 — motor, histórico e fechamentos**
+- **Motor de indicadores:** `indicadores(contexto)` recebe período, referência, pessoa, divisão, filtros, versões das bases e políticas, e devolve o próprio contexto. Não troca mais variáveis globais.
+- **Três contextos temporais separados:** movimento do período; posição no encerramento (pela fotografia da data, nunca uma carga posterior, com a defasagem informada); pendência atual.
+- **Cabeçalho do quadro de indicadores:** período, referência, fotografia usada, data de geração, versão das regras e cobertura.
+- **Fechamentos:** guardam contexto, metas, regras, indicadores, fontes, pedidos, compromissos e ações. É possível abrir, comparar com a apuração atual, regerar o relatório, baixar a planilha e criar uma retificação; o fechamento original é preservado.
+- **Metas:** meta esperada até a referência e meta integral. O rateio por dias úteis passou a valer de verdade dentro do mês. Calendário configurável, com pontos facultativos opcionais.
+- **Dicionário:** ID, numerador, denominador, tratamento de ausência e versão da regra (v2026.11-2).
+
+**Etapa 3 — supervisão, previsões e relatórios**
+- **Central de supervisão, área "Exige atenção":** atividades vencidas, sem próximo passo, sem interação recente (no próprio negócio), propostas atrasadas, previsões vencidas, previsões adiadas (entre cargas), ações vencidas, contas importantes sem acompanhamento e negócios críticos.
+- **Central de supervisão, área "Compromissos":** o que ficou combinado, responsável, prazo, situação, bloqueador, apoio e a justificativa da reprogramação.
+- **Avaliação das previsões:**
+  - só conta negócio ganho dentro do período;
+  - mostra a antecedência do registro e marca o registro retrospectivo, que exige justificativa;
+  - separa: % de negócios previstos que fecharam, comprometido associado aos ganhos, valor real dos pedidos (pelo PTC; sem pedido vinculado, o valor do negócio, identificado) e desvio financeiro.
+- **Ficha da engenharia:** a solicitação é declarada como aproximação; prazo acordado e bloqueios aparecem como indisponíveis, com os campos necessários; a revisão não é tratada como erro.
+- **Relatórios:**
+  - período específico, além dos atalhos;
+  - nomes amigáveis nas seções;
+  - seleção vazia gera aviso e não gera nada;
+  - "voltar ao padrão" é explícito;
+  - pessoa da engenharia recorta pelo analista;
+  - no relatório individual, a ficha abre o relatório.
+
+**Etapa 4 — interface:** cartões de alerta reorganizados (grade automática) e seletor de pessoa com vendedores e engenharia separados. Sem rolagem horizontal da página em 390 e 768 px.
+
+**Etapa 5 — arquitetura:** `ARQUITETURA.md` descreve o papel de cada sistema, as camadas, os limites do modelo local, a proposta de backend (PostgreSQL, SSO, permissões, concorrência otimista, cargas automáticas, agendamento, backup) e o caminho de migração.
+
+### 3. Mudanças nos indicadores e motivos
+
+| Indicador | Mudança | Motivo |
+|---|---|---|
+| Comparativo do período anterior | semana parcial, mês completo e S53 corrigidos | regra de comparação |
+| Posição de períodos encerrados | agora indisponível sem fotografia (antes não era exibida ou usava a atual) | não apresentar a posição de hoje como encerramento |
+| Negócios sem interação / prioridade de intervenção | 213 dos 227 abertos estão sem interação no próprio negócio há mais de 14 dias; antes, uma interação com a conta reduzia esse número e a pontuação | só conta interação registrada no próprio negócio |
+| Meta de semana ou dia com rateio por dias úteis | passa a usar dias úteis também dentro do mês | o método declarado não coincidia com o cálculo |
+| Dias úteis | carnaval e Corpus Christi deixam de ser descontados por padrão | ponto facultativo não é obrigatório em todas as unidades |
+| Confiabilidade da previsão | ganho fora do período deixa de contar; valor real separado do congelado | regra de avaliação |
+| Interações (675) | sem mudança no total; deixou de haver risco de juntar registros diferentes | regra de identidade |
+
+### 4. Testes executados
+
+- **Períodos:** 13 casos, incluindo os obrigatórios (26–28/10 × 19–21/10; setembro × agosto com 31/08; virada ISO; fevereiro; ano bissexto; trimestres de 90, 91 e 92 dias).
+- **Regras críticas:** 19 casos:
+  - deduplicação;
+  - prazo não avaliável e acompanhamento do negócio;
+  - recorte na tela, no relatório individual e na planilha;
+  - seções vazias e período específico;
+  - posição sem e com fotografia;
+  - fechamento e retificação;
+  - rateio por dias úteis e pontos facultativos;
+  - versão, conflito e exclusão;
+  - JSON antigo;
+  - reabertura do arquivo;
+  - base vazia, ausente, zero e negativo.
+- **Baterias anteriores:** Central (26) e validação geral (19).
+- **Revisão visual:** 7 modelos de relatório, sem nenhum elemento fora da margem, sem folha esticada, fonte mínima de 8,5 px e cabeçalhos repetidos. Imagens na pasta `evidencias/`.
+
+### 5. Limitações restantes
+
+- O pipeline tem uma única carga (26/10). Comparações históricas e previsões adiadas começam na próxima importação.
+- Sem export de Tarefas, ID, horário e usuário das interações, não há agenda planejada, executor nem deduplicação por ID.
+- Engenharia: faltam data da solicitação, prazo acordado, data de entrega e motivo da revisão.
+- Uso compartilhado exige backend (ver `ARQUITETURA.md`); HTML + JSON servem só para uso local e para juntar cópias.
+- Telas antigas (por exemplo, partes de Resultados e Desempenho da equipe) ainda têm cálculos próprios, que conferem com o motor nos totais testados. A migração completa para o motor está na lista de próximos passos.
+
+### 6. Próximos passos de arquitetura
+
+Ver `ARQUITETURA.md`, seção 4: API e banco com cargas automáticas, SSO, permissões, concorrência otimista, agendamento e backup.
+
+---
+
 ## Rodada de 31/10/2026 — Central de acompanhamento, supervisão e gestão comercial
 
 ### 1. Aplicação: navegação e páginas
