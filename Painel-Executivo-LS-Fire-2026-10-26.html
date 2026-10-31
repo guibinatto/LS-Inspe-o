@@ -5911,6 +5911,7 @@ VISTA.executiva=function(){
   if(c.aplicavel&&Math.abs(c.dif)>1)al.push(`Conciliação: planilha oficial ${fmtBRL(c.total)} × soma dos pedidos ${fmtBRL(c.registros)} — diferença de ${fmtBRL(c.dif)} não atribuída a divisão, vendedor ou cliente. <a onclick="irPara('dados','conc')">ver conciliação</a>`);
   { const dv=divergenciasCarteiraNF(); if(dv.length)al.push(`Carteira × notas fiscais: ${fmtN(dv.length)} pedido(s) com nota emitida e saldo ainda na carteira (${fmtBRL(somar(dv,x=>x.nf.vNum))}). <a onclick="irPara('carteira','cart-fat')">ver detalhe</a>`); }
   if(sf.oficial&&sf.semVinc.length)al.push(`Carteira sem vínculo com o Controle de Pedidos: ${fmtN(sf.semVinc.length)} pedido(s), ${fmtBRL(somar(sf.semVinc,x=>x.vNum||0))} — sem vendedor, divisão e entrega. <a onclick="irPara('dados','vinc')">ver vínculos</a>`);
+  { const df=(CFG.desfechos||[]).filter(d=>/divergente|aguardando/.test(d.situacao||'')); if(df.length)al.push(`${fmtN(df.length)} perda(s) informada(s) no painel ainda não lançada(s) no Ploomes (${fmtBRL(somar(df,d=>d.valor))}). <a onclick="DADOS_ABA='fontes';irTela('dados')">ver desfechos</a>`); }
   if(typeof CONFLITOS!=='undefined'&&CONFLITOS.length)al.push(`${fmtN(CONFLITOS.length)} registro(s) com vínculo ambíguo entre bases não foram somados duas vezes. <a onclick="irPara('dados','vinc')">ver vínculos</a>`);
   let h=`<div class="exec-cab"><span>Período: <b>${esc(per)}</b></span><span>Referência: <b>${fmtData(R)}</b>${REF_DATA?' (fixada)':''}</span><span>Gerado em ${fmtData(hojeReal())}</span>
     ${temFiltroParcial()?`<span class="kg-cond ale">recorte filtrado: ${[EST.div,EST.vend,...filtrosForaDaMeta()].filter(Boolean).map(esc).join(' · ')}</span>`:''}
@@ -6172,7 +6173,7 @@ VISTA.dados=function(){
       :`<p class="nd">Sem meta cadastrada para ${a}. Abra ◎ Editar metas.</p>`);
   }
   if(DADOS_ABA==='hist')h+=secHistorico();
-  if(DADOS_ABA==='fontes')h+=secFontes();
+  if(DADOS_ABA==='fontes')h+=secDesfechos()+secFontes();
   if(DADOS_ABA==='bases')h+=secDuplicidades();
   if(DADOS_ABA==='ind')h+=secDicionario();
   if(DADOS_ABA==='dep')h+=secDependencias();
@@ -6293,7 +6294,7 @@ function diasUteis(ini,fim){ let n=0; for(let d=_d(ini.getFullYear(),ini.getMont
 const metodoRateio=()=>CFG.rateioDias==='uteis'?`dias úteis (feriados nacionais${CAL().usarFacultativos?' + pontos facultativos':''})`:'dias corridos';
 
 /* ---------- persistência local de tudo o que é registrado no painel ---------- */
-const CENTRAL_CHAVES=['snaps','passos','comp','reunioes','metasPer','metasHist','fotos','fechamentos','relPrefs','critSup','calendario'];
+const CENTRAL_CHAVES=['snaps','passos','comp','reunioes','metasPer','metasHist','fotos','fechamentos','desfechos','relPrefs','critSup','calendario'];
 /* ---------- persistência: versões, conflitos e exclusões ----------
    Registros EDITÁVEIS (passos, reuniões, ações do plano, metas por período) têm
    versão (ver) e data de atualização: cada gravação que muda o conteúdo sobe a
@@ -6302,9 +6303,9 @@ const CENTRAL_CHAVES=['snaps','passos','comp','reunioes','metasPer','metasHist',
    JSON importado), vale a versão atualizada mais recentemente; a outra fica em
    CFG.conflitos com o motivo. Exclusão deixa um registro (CFG.excluidos) para não
    "ressuscitar" na próxima junção. */
-const EDITAVEIS=['passos','reunioes','plano','metasPer'], EVENTOS=['snaps','comp','metasHist','fotos','fechamentos'];
+const EDITAVEIS=['passos','reunioes','plano','metasPer','desfechos'], EVENTOS=['snaps','comp','metasHist','fotos','fechamentos'];
 const CHAVE_ID=k=>k==='snaps'?'fp':'id';
-const REQ={passos:['id','neg','texto','status'],reunioes:['id','tipo','data'],plano:['id'],metasPer:['id','ind','gran','chave'],snaps:['fp','regs','campos','carga'],comp:['id','vend','per','itens','em'],metasHist:['id','em'],fotos:['id','em'],fechamentos:['id','em','ctx']};
+const REQ={desfechos:['id','neg','data','just'],passos:['id','neg','texto','status'],reunioes:['id','tipo','data'],plano:['id'],metasPer:['id','ind','gran','chave'],snaps:['fp','regs','campos','carga'],comp:['id','vend','per','itens','em'],metasHist:['id','em'],fotos:['id','em'],fechamentos:['id','em','ctx']};
 const validoReg=(k,r)=>!!r&&typeof r==='object'&&(REQ[k]||['id']).every(c=>r[c]!=null&&r[c]!=='');
 const semMeta=r=>{ const o=Object.assign({},r); delete o.ver; delete o.atualizado; return JSON.stringify(o); };
 var _SOMBRA=new Map(), _AVISO_GRAV=false;
@@ -6330,7 +6331,7 @@ function mesclar(k,locais,externos,origem){ const id=CHAVE_ID(k), m=new Map(), r
       CENTRAL_CHAVES.concat(['plano']).filter(k=>Array.isArray(o[k])||Array.isArray(CFG[k])).forEach(k=>{ if(k==='relPrefs'||k==='critSup')return; CFG[k]=mesclar(k,CFG[k],o[k],'navegador').lista; });
       if(!CFG.relPrefs&&o.relPrefs)CFG.relPrefs=o.relPrefs; if(!CFG.critSup&&o.critSup)CFG.critSup=o.critSup; if(Array.isArray(o.conflitos))CFG.conflitos=(CFG.conflitos||[]).concat(o.conflitos.filter(c=>!(CFG.conflitos||[]).some(x=>x.em===c.em&&x.id===c.id))); }
     if(Array.isArray(pl))CFG.plano=mesclar('plano',CFG.plano,pl,'navegador').lista; }catch(e){ console.error(e); } }
-['snaps','passos','comp','reunioes','metasPer','metasHist','fotos','fechamentos','excluidos','conflitos','plano'].forEach(k=>{ if(!Array.isArray(CFG[k]))CFG[k]=[]; });
+['snaps','passos','comp','reunioes','metasPer','metasHist','fotos','fechamentos','excluidos','conflitos','plano','desfechos'].forEach(k=>{ if(!Array.isArray(CFG[k]))CFG[k]=[]; });
 EDITAVEIS.forEach(k=>CFG[k].forEach(r=>_SOMBRA.set(k+':'+r.id,semMeta(r))));
 const novoId=p=>(p||'x')+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 
@@ -6701,7 +6702,7 @@ function pendenciasNeg(n){ const R=hoje(), K=CRITS(), L=[], ui=ultimaInterNeg(n)
   if(!n.vNum)L.push('sem valor'); return L; }
 const COLS_NEG=[{t:'Cliente · responsável',f:1},{t:'Valor',n:1},{t:'Etapa · dias'},{t:'Última interação'},{t:'Próxima atividade / passo'},{t:'Fechamento · categoria'},{t:'Pendências'},{t:''}];
 function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=hoje();
-  return [`<b>${esc(String(n.cli).slice(0,38))}</b><br><small>${esc(nomeCurto(n.resp)||n.resp||'—')}${n.div?' · '+esc(n.div):''}</small>`,fmtBRL(n.vNum||0),
+  return [`${lnkNeg(n,`<b>${esc(String(n.cli).slice(0,38))}</b>`)}<br><small>${esc(nomeCurto(n.resp)||n.resp||'—')}${n.div?' · '+esc(n.div):''}</small>`,fmtBRL(n.vNum||0),
     `${esc(String(n.est||'—').slice(0,26))}<br><small>${n.diasEst!=null?fmtN(n.diasEst)+' dias na etapa':''}</small>`,
     ui?`${fmtData(ui.dt)}${ui.nivel==='cliente'?'<br><small>(no cliente)</small>':''}`:'<span class="nd-m">nenhuma</span>',
     pa?`${pa.dt?fmtData(pa.dt)+'<br>':''}<small>${esc(String(pa.txt).slice(0,40))}</small>${pa.passo?` <a class="td-link so-tela" onclick="passoEditar('${pa.passo.id}')">editar</a>`:''}`:'<span class="kg-cond">sem próximo passo</span>',
@@ -7403,7 +7404,8 @@ function fichaNegocio(id){ const n=M.negocios.find(x=>String(x.id)===String(id))
     <h4>Linha do tempo</h4><p class="nd-m">Interações registradas no próprio negócio (${fmtN(ints.length)}), propostas, passos do painel, previsão e desfecho.</p>${svgTimeline(ev)}
     <h4>Pendências</h4><p>${esc(n.aberto?pendenciasNeg(n).join(' · ')||'nenhuma':'negócio encerrado')}</p>
     <h4>Mudanças observadas entre cargas</h4><p class="nd-m">${mud.length?mud.map(esc).join('<br>'):esc(MSG_SEM_HIST())}</p>
-    <div class="pl-bar so-tela"><button class="btn sec" onclick="fecharModal('m-form');novoPasso('${n.id}')">＋ próximo passo</button><button class="btn sec" onclick="fecharModal('m-form');planoNovoNeg('${n.id}')">＋ ação no plano</button></div></div>`;
+    ${n.ajusteManual?`<div class="nota" style="border-left-color:var(--ale)"><b>Perda informada no painel</b> em ${fmtDH(new Date(n.ajusteManual.em))}${n.ajusteManual.por?' por '+esc(n.ajusteManual.por):''} — fonte: ${esc(n.ajusteManual.just)}. O export do Ploomes traz o negócio como ${esc(n.ajusteManual.sitOrig.toLowerCase())}.</div>`:''}
+    <div class="pl-bar so-tela">${n.aberto?`<button class="btn sec" onclick="fecharModal('m-form');registrarDesfecho('${n.id}')">Registrar perda</button>`:''}<button class="btn sec" onclick="fecharModal('m-form');novoPasso('${n.id}')">＋ próximo passo</button><button class="btn sec" onclick="fecharModal('m-form');planoNovoNeg('${n.id}')">＋ ação no plano</button></div></div>`;
   formModal(`${n.cli} — ${String(n.titulo||'').slice(0,60)}`,[{k:'x',rot:'',tipo:'html',html}],()=>{},'Fechar'); }
 const lnkNeg=(n,txt)=>`<a class="td-link" onclick="fichaNegocio('${n.id}')" title="Abrir ficha do negócio">${txt}</a>`;
 
@@ -7642,6 +7644,36 @@ function narrativaRel(k){ const P=PER, X=indicadoresPeriodo(P); if(!X)return '';
   if(!L.length)return '';
   return `<div class="sec"><h3>Resumo do período</h3><p>${esc(P.rot)} · referência ${fmtData(R)} · ${esc(recorteTexto())}</p></div><table class="tab narr"><tbody>${L.map(([t,x])=>`<tr><th style="width:190px;text-align:left;vertical-align:top">${esc(t)}</th><td>${esc(x)}</td></tr>`).join('')}</tbody></table>`; }
 
+/* ---------- desfecho informado no painel (correção manual identificada) ----------
+   Quando o negócio já foi perdido mas o export do Ploomes ainda o traz aberto, o
+   gestor registra o desfecho aqui: data, motivo, quem informou e justificativa.
+   O dado importado NÃO é alterado: o negócio passa a ser lido como perdido, com a
+   marca "informado no painel". Na próxima carga, se o Ploomes também mostrar
+   perdido, fica "confirmado"; se ainda mostrar aberto, aparece como divergência. */
+const MOTIVOS_PERDA=['Preço','Prazo de entrega','Concorrente','Projeto cancelado / adiado','Especificação técnica','Sem retorno do cliente','Outro'];
+function aplicarDesfechos(){ (CFG.desfechos||[]).forEach(d=>{ const n=M.negocios.find(x=>String(x.id)===String(d.neg)); if(!n){ d.situacao='negócio não está na carga atual'; return; }
+    if(n.perdido){ d.situacao=n.ajusteManual?d.situacao:'confirmado pelo Ploomes'; if(!n.ajusteManual)return; }
+    if(n.ganho){ d.situacao='divergente: o Ploomes mostra GANHO'; return; }
+    const imp=(BRUTO._meta&&BRUTO._meta.imp&&BRUTO._meta.imp.negocios)||{};
+    d.situacao=imp.em&&imp.em>d.em?'divergente: a carga mais recente do Ploomes ainda mostra aberto':'aguardando atualização no Ploomes';
+    n.ajusteManual={tipo:'desfecho',id:d.id,em:d.em,por:d.por,just:d.just,sitOrig:n.sit};
+    n.perdido=true; n.aberto=false; n.sit='Perdido'; n.etapa='7. Perdido'; n.dtFim=data(d.data); n.motivoPerda=d.motivo+(d.obs?' — '+d.obs:''); n.motivoTxt=d.motivo; }); }
+function registrarDesfecho(id){ const n=M.negocios.find(x=>String(x.id)===String(id)); if(!n)return;
+  formModal(`Registrar perda — ${n.cli} (${n.codProposta||n.id})`,[
+    {k:'x',rot:`O export do Ploomes de ${fmtData(new Date(((BRUTO._meta||{}).imp||{}).negocios?.em||Date.now()))} traz este negócio ${n.sit.toLowerCase()} (${n.etapa}). O registro aqui é uma correção manual identificada: o dado importado não é alterado e a perda deve ser lançada também no Ploomes.`,tipo:'html',html:''},
+    {k:'data',rot:'Data da perda',tipo:'date',v:isoD(hojeReal())},{k:'motivo',rot:'Motivo',tipo:'sel',ops:MOTIVOS_PERDA,v:'Concorrente'},{k:'obs',rot:'Detalhe do motivo (opcional)'},
+    {k:'por',rot:'Informado por',lista:'dl-pessoas'},{k:'just',rot:'Fonte da informação (obrigatória — ex.: e-mail do cliente de 29/10)',tipo:'area',rows:2}],fd=>{
+      if(!String(fd.just||'').trim()||!fd.data){ aviso('Informe a data e a fonte da informação.'); return false; }
+      CFG.desfechos=(CFG.desfechos||[]).filter(d=>String(d.neg)!==String(id)).concat([{id:novoId('d'),neg:String(id),cli:n.cli,cod:String(n.codProposta||''),valor:n.vNum||0,desfecho:'Perdido',data:fd.data,motivo:fd.motivo,obs:fd.obs||'',por:fd.por||'',just:fd.just.trim(),em:new Date().toISOString()}]);
+      centralGuardar(); limparCaches(); construir(); aplicar(); aviso(`${n.cli}: perda registrada no painel. Sai da previsão e do pipeline; lance também no Ploomes.`); },'Registrar perda'); }
+function desfazerDesfecho(did){ const d=(CFG.desfechos||[]).find(x=>x.id===did); if(!d)return;
+  formModal('Desfazer o desfecho informado?',[{k:'x',rot:`${d.cli}: o negócio volta a ser lido como no export do Ploomes.`,tipo:'html',html:''}],()=>{ excluirReg('desfechos',did); CFG.desfechos=CFG.desfechos.filter(x=>x.id!==did); centralGuardar(); limparCaches(); construir(); aplicar(); },'Desfazer'); }
+function secDesfechos(){ const L=CFG.desfechos||[];
+  return card('Desfechos informados no painel','Negócios que o gestor informou como perdidos antes de o Ploomes ser atualizado. Correção manual: o dado importado não muda; a perda deve ser lançada no Ploomes.',
+    L.length?tab([{t:'Cliente',f:1},{t:'Proposta'},{t:'Valor',n:1},{t:'Perdido em'},{t:'Motivo'},{t:'Informado por'},{t:'Fonte',f:1},{t:'Registrado em'},{t:'Situação',f:1},{t:''}],
+      L.map(d=>[esc(d.cli),esc(d.cod||'—'),fmtBRL(d.valor),fmtData(data(d.data)),esc(d.motivo+(d.obs?' — '+d.obs:'')),esc(d.por||'—'),esc(d.just),fmtDH(new Date(d.em)),`<span class="kg-cond${/divergente/.test(d.situacao||'')?' err':''}">${esc(d.situacao||'—')}</span>`,`<button class="mini so-tela" onclick="desfazerDesfecho('${d.id}')">desfazer</button>`]))
+    :'<p class="pl-vazio">Nenhum desfecho informado. Para registrar, abra a ficha do negócio (clique no cliente) → "Registrar perda".</p>'); }
+
 /* ---------- composição com as telas existentes ---------- */
 { const _pipe=VISTA.pipeline, _res=VISTA.resultados, _des=VISTA.desempenho, _cons=construir;
   VISTA.pipeline=function(){ return secPipelineAnalitico()+secCompromissos()+secInspecao()+sec('Posição do pipeline','Retrato na data de referência: valor, horizonte, política de probabilidade e qualidade das informações.','pipe-pos')+_pipe(); };
@@ -7652,7 +7684,7 @@ function narrativaRel(k){ const P=PER, X=indicadoresPeriodo(P); if(!X)return '';
       <span class="nd-m">Sem ranking nem nota geral: compare cada pessoa com a própria meta, carteira e período de atuação.</span></div>`;
     if(v)h+=EST.fichaTipo==='eng'||(an.includes(v)&&!vs.includes(v))?fichaAnalista(v):fichaPessoa(v);
     return h+sec('Equipe','Indicadores lado a lado, cada um com seu contexto (carteira, região, divisão). A ordem é alfabética ou por valor — não é ranking de desempenho.','des-eq')+_des(); };
-  construir=function(){ const r=_cons.apply(this,arguments); try{ snapGarantir(); }catch(e){ console.error(e); } return r; }; }
+  construir=function(){ const r=_cons.apply(this,arguments); try{ snapGarantir(); }catch(e){ console.error(e); } try{ aplicarDesfechos(); }catch(e){ console.error(e); } return r; }; }
 
 let REL_ULTIMO=null;
 

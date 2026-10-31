@@ -1,0 +1,16 @@
+const {chromium}=require('playwright');
+(async()=>{ const b=await chromium.launch(); const p=await b.newPage({viewport:{width:1400,height:1000}}); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('file://'+process.argv[2]); await p.waitForFunction(()=>typeof F!=='undefined'&&F.todas);
+ console.log(await p.evaluate(()=>{ const id='606156347', o={}; const n0=F.ab.find(n=>String(n.id)===id);
+   o.antes={naPrevisao:prevNeg(n0),ab:F.ab.length,prev:previsaoPedidos().previsao,snapSit:snapMapa(snapAtual()).get(id).sit};
+   fichaNegocio(id); o.botao=!!document.querySelector('#m-form button[onclick*="registrarDesfecho"]'); fecharModal('m-form');
+   registrarDesfecho(id); const f=document.getElementById('f-form'); f.requestSubmit(); o.semFonte=(CFG.desfechos||[]).length;
+   f.just.value='Teste: e-mail do cliente'; f.por.value='Guilherme Binatto'; f.requestSubmit();
+   const n=M.negocios.find(x=>String(x.id)===id);
+   o.depois={perdido:n.perdido,aberto:n.aberto,ab:F.ab.length,prev:previsaoPedidos().previsao,naLista:F.ab.some(x=>String(x.id)===id),perdidosPer:indicadoresPeriodo(PER).per,snapSit:snapMapa(snapAtual()).get(id).sit,situacao:CFG.desfechos[0].situacao,motivo:n.motivoPerda};
+   irTela('executiva'); o.alerta=/perda\(s\) informada/.test(document.getElementById('tela').innerText);
+   DADOS_ABA='fontes'; irTela('dados'); o.lista=/BYD AUTO/.test(document.getElementById('tela').innerText);
+   desfazerDesfecho(CFG.desfechos[0].id); document.getElementById('f-form').requestSubmit();
+   o.desfeito={aberto:M.negocios.find(x=>String(x.id)===id).aberto,ab:F.ab.length,prev:previsaoPedidos().previsao};
+   return JSON.stringify(o,null,1); }));
+ console.log('ERROS',errs); await b.close(); })();
