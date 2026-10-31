@@ -5,6 +5,75 @@ Referência dos números abaixo: **ano 2026, até 30/10/2026**, sem filtros.
 
 ---
 
+## Rodada de 31/10/2026 — Central de acompanhamento, supervisão e gestão comercial
+
+### 1. Aplicação: navegação e páginas
+| Grupo | Página | O que responde |
+|---|---|---|
+| Rotina | **Central de supervisão** (nova, página inicial) | quem precisa agir, em qual negócio, por qual motivo, até quando |
+| Rotina | Visão executiva | resultado, meta, desvios; o plano aparece só em resumo |
+| Execução | **Atividades e follow-up** (nova) | interações realizadas, clientes contatados, cobertura do pipeline, próximos passos |
+| Execução | Pipeline e inspeção | posição de cada negócio, mudanças entre cargas, previsão e compromisso |
+| Execução | Propostas e engenharia | as duas antigas páginas, em abas, sem duplicar |
+| Resultado | Resultados e metas | quadro de indicadores do período × anterior equivalente × ano anterior × meta; evolução |
+| Resultado | Desempenho por pessoa | ficha individual (reunião 1:1) + equipe com contexto |
+| Resultado | Carteira e faturamento · Clientes e mercado | sem mudança de cálculo |
+| Gestão | **Reuniões e planos de ação** (nova) | reuniões, compromissos anteriores, ações, reprogramações |
+| Gestão | **Central de relatórios** (nova) | 7 modelos prontos + planilha |
+| Apoio | Consulta detalhada · Dados e configurações | + critérios, histórico/snapshots, dicionário, dependências |
+
+**Períodos**: diário, semanal (ISO, segunda a domingo), últimos 7 dias (separado da semana-calendário), mensal, trimestral (civil), anual, acumulado e intervalo; atalhos Hoje, Esta semana, Semana anterior, Últimos 7 dias, Este mês, Mês anterior, Este trimestre, Trimestre anterior, Este ano, Ano anterior. "Hoje" no fuso America/Sao_Paulo. Comparações: período anterior equivalente (mesmo trecho quando o período está em andamento) e mesmo período do ano anterior (mesma semana ISO para semanas).
+
+**Central de supervisão**: 6 alertas clicáveis (pendências críticas, atividades vencidas, sem próximo passo, propostas atrasadas, previsões vencidas, ações gerenciais vencidas), agenda da semana, situação por vendedor (cada número abre a lista; o nome abre a ficha), fila da engenharia, negócios que precisam de intervenção com pontuação 0–100 e o motivo, compromissos da última reunião e prioridades da semana. Pontuação = pesos configuráveis × valor, prazo/proximidade do fechamento, tempo sem atividade, reincidência (adiamentos observados e compromisso não cumprido) e importância da conta (conta A = 80% dos pedidos em 24 meses).
+
+**Próximo passo**: o export do Ploomes não traz a próxima tarefa; o painel permite registrar o passo (texto, responsável, prazo). Situações: planejado, vencido (não conclui sozinho), reprogramado (com justificativa obrigatória), concluído no prazo / com atraso, cancelado.
+
+**Inspeção do pipeline**: por negócio — cliente, responsável, valor, etapa e dias, última interação (do negócio ou da conta), próxima atividade, fechamento previsto, categoria, pendências e mudanças desde a carga de referência (novos, ganhos, perdidos, valor ↑/↓, avanço/recuo, previsão trazida/levada/adiada, troca de responsável).
+
+**Previsão e compromisso**: realizado · previsão calculada (política de probabilidade) · declarada pelo vendedor (evidência, bloqueador, próxima ação, data) · revisão da supervisão (justificativa obrigatória, nunca substitui a do vendedor) · cenário potencial. Cada registro é uma versão imutável. Confiabilidade medida só com compromissos encerrados e valores congelados.
+
+**Reuniões**: tipo, data, período, participantes, pessoa, indicadores capturados ao abrir (congelados), decisões, bloqueadores, apoio, status e ações. A reunião seguinte do mesmo tipo/pessoa mostra automaticamente a situação das ações da anterior. Ação só conclui por ato explícito; reprogramação de prazo exige justificativa e fica no histórico.
+
+**Metas por período**: resultado, atividade, prazo e qualidade cadastral; semanal, mensal, trimestral ou anual; escopo empresa, divisão ou pessoa; vigência. Sem meta explícita, rateio da meta maior por dias corridos ou dias úteis (feriados nacionais + carnaval e Corpus Christi), com o método escrito. Alterar meta exige justificativa; mudar metas anuais de ano encerrado também.
+
+### 2. Relatórios prontos (Central de relatórios)
+A) Acompanhamento diário · B) Supervisão semanal da equipe · C) Reunião individual do vendedor · D) Acompanhamento semanal da engenharia · E) Fechamento mensal comercial · F) Revisão trimestral · G) Consolidado anual. O usuário escolhe modelo, período (atalho), pessoa e divisão e gera; personalizar seções é opcional e as preferências ficam salvas. Saída em HTML/PDF (texto selecionável) e **planilha .xlsx** com Resumo, Pedidos, Negócios abertos (pendências, mudanças, pontuação), Interações, Propostas, Plano, Próximos passos, Compromissos e Reuniões. Fotografias de períodos encerrados podem ser congeladas.
+
+### 3. Histórico e snapshots
+Cada carga diferente do export de negócios vira uma fotografia imutável (data da carga, data efetiva = última atualização no arquivo, fonte, id, cliente, responsável, divisão, valor, etapa, previsão, categoria, situação). **Só existe uma carga até hoje (26/10/2026)** — conferido em todo o histórico do repositório —, por isso as comparações mostram: "Comparação histórica indisponível. Acompanhamento iniciado em 26/10/2026." Diferenças entre cargas são "mudanças observadas entre cargas"; negócio ausente numa carga nova **não** vira perdido. Exportar/Importar JSON junta históricos de cópias diferentes sem sobrescrever nada.
+
+### 4. Correção que afeta números
+| Indicador | Antes | Depois | Motivo |
+|---|---|---|---|
+| Interações registradas (todo o painel) | 2.619 | **675** | 1.944 linhas **idênticas** no export (ex.: 334 registros "Simples" iguais de um cliente num mesmo dia). Contadas uma vez; o número de repetidas aparece em Dados → Bases. Afeta atividades por vendedor, visitas e follow-ups das telas antigas. |
+| Indicadores fora da cobertura da base | 0 | **sem base** | Novas oportunidades e propostas antes de 06/07/2026 e interações antes de 11/05/2026 aparecem como indisponíveis, não como zero. |
+Pedidos (R$ 36.730.682,39), faturamento (R$ 47.373.343,28), carteira e demais números da rodada anterior não mudaram.
+
+### 5. Dependências e limitações
+- **Exige servidor, não simulado**: sincronização entre usuários, login/permissões, agendamento de relatórios e e-mails, captura automática das cargas do Ploomes/ERP.
+- **Persistência**: registros ficam no navegador e no arquivo ao usar ↓ Salvar.
+- **Atividades**: o export não identifica quem executou nem traz tarefas planejadas. Campos necessários: export de Tarefas (data prevista, conclusão, status, usuário).
+- **Engenharia**: faltam data da solicitação, prazo acordado, data de entrega, tempo aguardando informação e motivo de revisão; o cumprimento de prazo aparece como indisponível e revisão não é tratada como erro.
+
+### 6. Validações realizadas (Chromium automatizado)
+26 verificações novas aprovadas, além das 19 anteriores (que continuam aprovadas):
+- 13 telas × 10 atalhos sem erro.
+- Semana ISO na virada do ano: S53/2026 = 28/12/2026–03/01/2027; 01/01/2026 cai na S01 (29/12/2025–04/01/2026).
+- 4º trimestre civil correto; últimos 7 dias separados da semana-calendário.
+- Mês parcial comparado com o mesmo trecho; semana com a semana ISO anterior e a mesma semana do ano anterior.
+- Indicadores do período batem com os pedidos e o faturamento do painel.
+- Conversão anual = Σ ganhos ÷ Σ decididos dos meses.
+- Aviso de histórico indisponível exibido.
+- Próximo passo vencido e reprogramação: sem justificativa é recusada; com justificativa, registrada.
+- Compromisso do vendedor e revisão da supervisão ficam em versões separadas; a revisão exige justificativa.
+- A reunião seguinte mostra as ações da anterior; ação não conclui sozinha.
+- Os 7 relatórios gerados sem nada fora da margem; planilha .xlsx gerada.
+- Salvar → reabrir (sem cache do navegador) preserva cargas, passos, compromissos, reuniões e plano.
+- Uma nova carga simulada vira snapshot e detecta valor, previsão e responsável; o ausente não vira perdido.
+- Sem rolagem horizontal em 390 px e 768 px.
+
+---
+
 ## Rodada de 30/10/2026 — planilhas de 30/10 e lacunas da especificação
 
 ### A. Alterações no painel interativo
