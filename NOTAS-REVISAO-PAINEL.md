@@ -5,6 +5,102 @@ Referência dos números abaixo: **ano 2026, até 30/10/2026**, sem filtros.
 
 ---
 
+## Rodada de 31/10/2026 (3) — reformulação visual, gráficos e infográficos
+
+### 0. Referências
+Nenhuma das cinco referências (SAP Business One, Salesforce Trailhead, IBM Carbon — dashboards e gráficos, Atlassian — cores) pôde ser consultada: os domínios não resolvem na rede desta sessão (learning.sap.com, trailhead.salesforce.com, carbondesignsystem.com e atlassian.design precisam ser liberados nas configurações de rede do ambiente). Foram aplicados os princípios conhecidos dessas fontes:
+- SAP: visão geral com indicadores, gráficos e listas com detalhe;
+- Salesforce: mudanças do pipeline por categoria;
+- Carbon: um gráfico por pergunta, com título, eixos a partir de zero e tabela alternativa;
+- Atlassian: paleta categórica fixa, cores de estado separadas das categorias e sem depender só de cor.
+
+### 1. Diagnóstico visual (medido antes de alterar)
+- **Contraste:**
+  - texto secundário com 3,1:1 sobre branco (mínimo 4,5:1);
+  - texto branco sobre o laranja da marca com 3,3:1;
+  - laranja da marca (usado também como cor do SEQ) contra o vermelho de "crítico": 1,3:1, ou seja, indistinguíveis.
+- **SEQ e SPV:** coloridos com laranja e marrom, as mesmas cores da marca e muito próximas das cores de alerta.
+- **Tipografia:** números em fonte monoespaçada e texto em Arial, misturados.
+- **Cabeçalho:** cerca de 10 controles; o menu lateral não recolhia; os gráficos tinham animação.
+- **Gráficos:** não informavam a pergunta respondida, só alguns tinham fonte e unidade, e nenhum oferecia tabela.
+
+### 2. Sistema visual implementado
+- **Cores (tokens):**
+  - fundo #F3F4F6, superfícies brancas, texto #1F2328, secundário #4A5462, terciário #5E6977 (5,6:1);
+  - ação principal #C2410C (texto branco com 5,2:1); laranja #FF6600 só como marca;
+  - séries de dados em ardósia e azul;
+  - SEQ #2F6FB3 e SPV #7E52B8, fixas em todas as páginas e sem significado de bom ou ruim;
+  - estados: favorável #18794A, atenção #9A5B00, crítico #C0281C;
+  - paleta categórica de 6 cores sem verde e sem vermelho.
+- **Tipografia:** fontes do sistema (Segoe UI, Inter, Roboto, Arial), sem download. Números tabulares. Texto de 14 px, tabelas de 12,5 px, indicadores de 28 px.
+- **Forma:** arredondamento de 6 px, sem sombras, bordas discretas, espaçamento em múltiplos de 4. Foco visível; animação desligada e preferência por movimento reduzido respeitada.
+- **Estrutura:**
+  - menu em ROTINA, ANÁLISE e APOIO, recolhível no computador e com menu de página no celular;
+  - Engenharia de aplicação volta a ser página própria;
+  - cabeçalho com "Relatórios" e "Salvar"; e-mail, relatório livre e importação foram para o menu "Mais".
+
+### 3. Central de supervisão (nova composição)
+1. **Contexto:** página, período, referência, pessoa, divisão e situação de cada base (dias desde a importação, com indicador de cor).
+2. **Seis indicadores prioritários**, cada um abrindo a lista de origem, mais quatro alertas secundários.
+3. **Execução e resultado nas últimas 8 semanas ISO**, em duas escalas separadas, ao lado da lista de negócios para intervenção (com pontuação e motivo).
+4. **Painéis "Agenda da semana", "Compromissos em aberto", "Ações vencidas" e "Bloqueadores e apoio"**, cada um respondendo a uma pergunta.
+5. **Infográficos** de distribuição das pendências e de situação das ações (a situação é atual, não um fluxo histórico).
+6. **Supervisão por pessoa:** tabela e mapa de calor pessoa × semana, alternando entre interações, propostas e pedidos.
+7. **Fila da engenharia** por faixa de espera.
+
+### 4. Gráficos e infográficos (dados reais)
+| | Gráfico | Onde |
+|---|---|---|
+| A | Realizado × meta (bullet: barra a partir de zero e traço da meta) por SEQ, SPV e total, com diferença e atingimento | Resultados |
+| B | Evolução: pedidos por semana (colunas) e acumulado × meta (linha, existente) | Central, Resultados |
+| C | Cascata do pipeline entre cargas: cada negócio em uma única categoria, início + movimentos = fim, ajuste explícito. Só aparece com duas cargas | Pipeline |
+| D | Distribuição por etapa (valor) e mediana de dias na etapa | Pipeline |
+| E | Previsão por mês: integral, ponderado e declarado lado a lado (não se somam) | Pipeline |
+| F | Interações por semana por tipo (existente) e clientes distintos | Atividades, Central |
+| G | Mapa de calor pessoa × semana, uma métrica por vez | Central |
+| H | Envelhecimento por faixa (tempo na etapa ou idade), com mediana | Pipeline |
+| I–K | Perdas por motivo, Pareto de clientes, carteira por mês de entrega (existentes, agora com "Ver tabela" e CSV) | Propostas, Clientes, Carteira |
+| L | Fila de cotação por faixa de espera e analista (espera declarada como aproximação) | Engenharia, Central |
+| Infográficos | Ficha do negócio, com caminho oportunidade → proposta → pedido e linha do tempo; faixa de pendências; situação das ações | Central, listas, inspeção |
+
+Todo gráfico novo traz título, pergunta, período, unidade, legenda, fonte, marca de parcial ou estimado, "Ver tabela" e CSV, e o clique abre a lista com o filtro escrito ("Filtro: …"). Os gráficos antigos ganharam "Ver tabela" e CSV gerados a partir dos mesmos números desenhados.
+
+### 5. Relatórios
+- Cada modelo abre com um "Resumo do período" próprio, em frases diretas e só com dados:
+  - semanal: execução, mudanças, pendências e próximos compromissos;
+  - mensal: resultado, comparação, variações observadas por vendedor (sem atribuir causa) e recuperação;
+  - trimestral: previsibilidade e gargalos;
+  - anual: concentração e planejamento.
+- Variação percentual é omitida quando a base é desproporcional (ex.: R$ 2,2 mi contra R$ 12 mil).
+- **Paginação:**
+  - gráficos lado a lado viram uma coluna;
+  - grades, listas de painel e a metodologia são divididas;
+  - título de seção não fica sozinho no pé da folha;
+  - resultado nos 7 modelos: 0 elementos fora da margem e 0 folhas mais altas que A4, menor fonte de 8,5 px.
+
+### 6. Mudanças nos indicadores
+Nenhum total mudou nesta rodada (pedidos 2026 R$ 36.730.682,39, faturamento R$ 47.373.343,28, carteira R$ 31.561.097,75, interações 675). Novos indicadores visuais:
+- distribuição das pendências: cada negócio em uma única faixa;
+- cascata com reconciliação exata;
+- previsão com três medidas separadas.
+
+### 7. Testes executados
+Ver `testes/README.md`. Resultados finais da rodada:
+- períodos 13/13;
+- gráficos e interface 11/11;
+- regras críticas 18/18;
+- Central 26/26;
+- totais 19/19.
+
+Revisão visual em `evidencias/` (páginas dos 7 relatórios) e `evidencias/telas/` (desktop, tablet e celular).
+
+### 8. Limitações restantes
+- A cascata, as previsões adiadas e as mudanças entre cargas dependem da segunda importação do export de negócios.
+- A ficha da pessoa e alguns gráficos antigos ainda usam o desenho anterior dentro do novo tema; o padrão completo (pergunta, fonte, período) está nos gráficos novos.
+- "Executor", tarefas planejadas e prazo da engenharia continuam dependendo de campos que não estão nos exports (ver `ARQUITETURA.md`).
+
+---
+
 ## Rodada de 31/10/2026 (2) — base confiável, supervisão e preparação para uso compartilhado
 
 ### 1. Diagnóstico (antes de alterar)
@@ -100,7 +196,7 @@ Totais registrados antes e depois, sem alteração:
 ### 4. Testes executados
 
 - **Períodos:** 13 casos, incluindo os obrigatórios (26–28/10 × 19–21/10; setembro × agosto com 31/08; virada ISO; fevereiro; ano bissexto; trimestres de 90, 91 e 92 dias).
-- **Regras críticas:** 19 casos:
+- **Regras críticas:** 18 casos:
   - deduplicação;
   - prazo não avaliável e acompanhamento do negócio;
   - recorte na tela, no relatório individual e na planilha;
