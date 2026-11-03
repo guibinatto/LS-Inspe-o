@@ -36,10 +36,10 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>{R.push([c?'OK ':'FALHA
  ok('Ref 15/10: faturamento de outubro = notas até 15/10',r15.fat<47373343&&r15.fat>41101780,r15.fat);
  // plano + salvar → reabrir
  await p.evaluate(()=>{irTela('executiva');planoNovo(0);CFG.plano[CFG.plano.length-1].resp='Teste';CFG.plano[CFG.plano.length-1].prazo='2026-11-02';planoGuardar();setCrit('metaRisco',80);});
- const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.mkdirSync('/tmp/lsval/t',{recursive:true}); fs.writeFileSync('/tmp/lsval/t/salvo.html',html);
+ const refSalva=await p.evaluate(()=>isoD(hoje())); const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.mkdirSync('/tmp/lsval/t',{recursive:true}); fs.writeFileSync('/tmp/lsval/t/salvo.html',html);
  const p2=await abre('file:///tmp/lsval/t/salvo.html');
  const s2=await p2.evaluate(()=>({pl:(CFG.plano||[]).map(a=>a.resp+'|'+a.prazo+'|'+a.origem),crit:CRIT().metaRisco,ref:CFG.dataRefSalva,ped:realizado().c.total,fat:faturamentoRealizado().total,nf:M.notas.length}));
- ok('Salvar → reabrir: plano (origem, responsável, prazo), critérios, dados e referência',s2.pl.some(x=>x.startsWith('Teste|2026-11-02|'))&&s2.crit===80&&s2.ref==='2026-10-30'&&near(s2.ped,36730682.39)&&s2.nf===22,JSON.stringify(s2));
+ ok('Salvar → reabrir: plano (origem, responsável, prazo), critérios, dados e referência',s2.pl.some(x=>x.startsWith('Teste|2026-11-02|'))&&s2.crit===80&&s2.ref===refSalva&&near(s2.ped,36730682.39)&&s2.nf===22,JSON.stringify(s2));
  await p2.close();
  // reimportação idempotente
  await p.setInputFiles('#inp-arq','/tmp/lsin/b/fatmensal.xlsx'); await p.waitForTimeout(2500);

@@ -3005,8 +3005,9 @@ function desenhar(id,cfg){
   const pOpt=(cfg.options&&cfg.options.plugins)||{};
   const tipPad={backgroundColor:cssVar('--bg2'),borderColor:c.linha,borderWidth:1,
     titleColor:cssVar('--txt'),bodyColor:cssVar('--txt2'),padding:9,cornerRadius:7,
-    callbacks:{label:ct=>{const v=ct.parsed.y!==undefined?ct.parsed.y:ct.parsed;
-      return ' '+ct.dataset.label+': '+fmtTip(ct.dataset)(v);}}};
+    callbacks:{label:ct=>{const hz=ct.chart.options.indexAxis==='y', v=hz?ct.parsed.x:(ct.parsed.y!==undefined?ct.parsed.y:ct.parsed);
+      const lb=ct.dataset.label&&ct.dataset.label!=='R$'?ct.dataset.label+': ':'';
+      return ' '+lb+fmtTip(ct.dataset)(v);}}};
   /* o merge precisa ser feito DEPOIS, senão cfg.options.plugins sobrescreve o padrão
      e volta a legenda de série única em todo gráfico que passa só um tooltip */
   /* no relatório o gráfico vira imagem: sem animação (senão a foto sai no meio
@@ -3014,6 +3015,9 @@ function desenhar(id,cfg){
   cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,
     animation:REL_GERANDO?false:{duration:320},devicePixelRatio:REL_GERANDO?2:undefined,
     interaction:{mode:'index',intersect:false}},cfg.options);
+  if(cfg.options.indexAxis==='y'){ const n=(cfg.data.labels||[]).length, sc=cfg.options.scales=cfg.options.scales||{};
+    sc.y=Object.assign({},sc.y); sc.y.ticks=Object.assign({autoSkip:false,font:{size:11.5}},sc.y.ticks,{autoSkip:false});
+    const cx=el.closest('.cx'); if(cx){ const alvo=Math.max(cx.clientHeight||0,n*24+(cfg.options.plugins&&cfg.options.plugins.legend&&cfg.options.plugins.legend.display?70:44)); cx.style.height=alvo+'px'; } }
   cfg.options.plugins=Object.assign({legend:{display:false}},pOpt,
     {tooltip:Object.assign({},tipPad,pOpt.tooltip,
       {callbacks:Object.assign({},tipPad.callbacks,pOpt.tooltip&&pOpt.tooltip.callbacks)})});
@@ -3285,9 +3289,9 @@ function iniciar(){
 const CHARTS_EXTRA={};   /* opções calculadas depois de agendar (ex.: deltas do mês a mês) */
 const DIVS=['SEQ','SPV'];
 const CORDIV={SEQ:()=>cssVar('--seq'),SPV:()=>cssVar('--spv')};
-const CORCAT={'Fabricação própria':'#F25C05','Revenda':'#594437','Locação':'#A63F03','Serviços':'#F2A505','Serviços Prestados':'#F2A505',
-  'Sem classificação no ERP':'#D9D1CB',
-  'Adiantamento':'#8C593B','Venda de ativos':'#B3AAA4','Recuperação de despesas':'#B3AAA4','(sem categoria)':'#D9D1CB'};
+const CORCAT={'Fabricação própria':'#2F6FB3','Revenda':'#16807F','Locação':'#B26A00','Serviços':'#B0457A','Serviços Prestados':'#B0457A',
+  'Sem classificação no ERP':'#C3CAD2',
+  'Adiantamento':'#5B6B7F','Venda de ativos':'#9AA4B1','Recuperação de despesas':'#9AA4B1','(sem categoria)':'#C3CAD2'};
 const divDe=x=>{ const d=String(x.div||'').toUpperCase(); return d==='SEQ'||d==='SPV'?d:'(n/d)'; };
 const brl=v=>fmtBRL(Math.round(v||0));
 const qv=(n,t)=>`${fmtN(n)} · ${fmtCompacto(t)}`;
@@ -5037,6 +5041,8 @@ function vendasCorpo(){
   const tc=somar(cats,x=>x.valor)||1, inf=somar(cats,x=>x.estimado||0), sc=(cats.find(x=>x.cat===SEM_CAT)||{valor:0}).valor;
   h+=sec('Categoria fiscal do ERP',`Fabricação própria × revenda × locação × serviços, pela classificação do ERP. <b>Confirmada</b> ${fmtPct((tc-inf-sc)/tc,0)} · <b>inferida</b> pela composição da família ${fmtPct(inf/tc,0)} · <b>não classificada</b> ${fmtPct(sc/tc,0)}. Um pedido pode ter mais de uma categoria: a contagem é de <b>ocorrências</b> de categoria, não de pedidos.`,'res-cat');
   h+=`<div class="seg so-tela" style="margin:0 0 8px">${[['estimado','Confirmada + inferida'],['erp','Só confirmada pelo ERP']].map(([k,n])=>`<button class="${CAT_MODO===k?'on':''}" onclick="setCatModo('${k}')">${n}</button>`).join('')}</div>`;
+  { const gc=cats.filter(x=>x.cat!==CAT_NEG).map(x=>({k:x.cat,t:x.valor,n:x.qtd,itens:x.itens||[],cor:CORCAT[x.cat]||'#5B6B7F'}));
+    h+=parQV('v-cat','Categoria fiscal — gráficos','Em valor (R$) e em ocorrências de categoria. Mesma cor para a mesma categoria nos dois gráficos.',gc,{rotQ:'ocorrências',subQ:'ocorrências de categoria (um pedido pode ter mais de uma)',horiz:true}).replace('data-sid="q:v-cat"','data-sid="q:v-cat"'); }
   h+=card('',`${CAT_MODO==='erp'?'Só o que o ERP classificou; o resto fica "sem classificação".':'Inclui a parte inferida (barra listrada na tabela).'}`,
     tab([{t:'Categoria',f:1},{t:'Valor',n:1},{t:'Confirmado',n:1},{t:'Inferido',n:1},{t:'Ocorrências',n:1},{t:'% do valor',n:1}],
       cats.map(x=>[esc(x.cat),fmtBRL(x.valor),x.cat===SEM_CAT?'—':fmtBRL(x.valor-(x.estimado||0)),x.estimado?fmtBRL(x.estimado):'—',fmtN(x.qtd),fmtPct(x.valor/tc,0)])));
@@ -7047,12 +7053,12 @@ const REL_MODELOS=[
  {k:'rF',nome:'Revisão trimestral',per:'triAnt',desc:'Tendências, comparativos, qualidade do pipeline, previsibilidade, gargalos e prioridades seguintes.',
    telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
  {k:'rG',nome:'Consolidado anual',per:'esteAno',desc:'Resultado consolidado, evolução mensal e trimestral, equipes, clientes, mix, perdas, carteira e planejamento.',
-   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-cat','q:v-vend'],clientes:'*',desempenho:['des-vend','des-meta'],propostas:['perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat'],pipeline:['pipe-conf2'],reunioes:['plano']}}];
+   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-cat','q:v-cat','q:v-vend'],clientes:'*',desempenho:['des-vend','des-meta'],propostas:['perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat'],pipeline:['pipe-conf2'],reunioes:['plano']}}];
 const ATALHOS=[['hoje','Hoje'],['estaSemana','Esta semana'],['semAnt','Semana anterior'],['u7','Últimos 7 dias'],['esteMes','Este mês'],['mesAnt','Mês anterior'],['esteTri','Este trimestre'],['triAnt','Trimestre anterior'],['esteAno','Este ano'],['anoAnt','Ano anterior'],['atual','Período atual do painel']];
 var RELC={modelo:'rB'};
 const SEC_NOMES={'*':'Todas as seções','sup-exec':'Execução e resultado (8 semanas) e intervenção','sup-pend':'Pendências e situação das ações','pipe-casc':'Cascata do pipeline','pipe-etapa':'Distribuição por etapa','pipe-aging':'Envelhecimento','pipe-prev':'Previsão por mês','res-bullet':'Realizado contra a meta','eng-fila':'Fila de cotação','sup-topo':'Pendências','sup-agenda':'Agenda','sup-vend':'Situação por vendedor','sup-eng':'Fila da engenharia','sup-int':'Negócios para intervenção','sup-comp':'Compromissos em aberto','sup-reu':'Compromissos da última reunião','sup-prio':'Prioridades da semana',
  'atv-kpi':'Execução no período','atv-pessoa':'Interações vinculadas à carteira','atv-sem':'Interações por semana','atv-passos':'Próximos passos','pipe-insp':'Inspeção das oportunidades','pipe-mud':'Mudanças entre fotografias','pipe-comp':'Previsão e compromisso','pipe-conf2':'Confiabilidade das previsões','kpi:pipeline':'Indicadores do pipeline',
- 'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
+ 'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria (tabela)','q:v-cat':'Mix por categoria (gráficos)','q:c-top':'Top 10 clientes','q:v-cli':'Top 10 clientes','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
  'prop-conv':'Conversão e perdas','perd-wr':'Win rate','perd-mot':'Motivos de perda','prop-vel':'Velocidade das propostas','eng-sup':'Supervisão da engenharia','kpi:executiva':'Indicadores principais','exec-alertas':'Alertas de consistência','exec-div':'SEQ × SPV','exec-diag':'Destaques e riscos',
  'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
 const nomeSec=s=>SEC_NOMES[s]||s.replace(/^kpi:/,'Indicadores — ');
