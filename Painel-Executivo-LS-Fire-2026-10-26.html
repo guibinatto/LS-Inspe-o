@@ -1083,6 +1083,7 @@ td>.so-tela,td>span.so-tela{display:inline-flex;flex-wrap:wrap;gap:4px;align-ite
 .divs .bloco-div h5.seq,.rel-meta-termo h5.seq{color:var(--seq)!important} .divs .bloco-div h5.spv,.rel-meta-termo h5.spv{color:var(--spv)!important}
 .fe-div i.seq,.fe-leg i.seq,.orc-bar i.seq,.orc-leg i.seq{background:var(--seq)!important} .fe-div i.spv,.fe-leg i.spv,.orc-bar i.spv,.orc-leg i.spv{background:var(--spv)!important}
 .orc-cx h5,.orc h5{color:var(--txt2)!important}
+.rel-tela,.rel-cont,.rel-capa-data,.rel-rod span{color:#5E6977!important}
 .barra i{background:var(--g-real)!important} .drill-cab b{color:var(--txt)!important} .chip b{color:var(--txt)!important}
 </style>
 
@@ -8108,7 +8109,7 @@ async function gerarRelatorio(opt){
   const corpo=paginas.map((p,i)=>`<section class="rel-pag${p.alta?' alta':''}">${cab(i+2)}<div class="rel-conteudo">${p.itens.join('')}</div>${rod}</section>`).join('');
   const html=capa+corpo;
   const folhas=view.querySelector('.rel-folhas'); folhas.innerHTML=html;
-  REL_ULTIMO={tit,pub,html,temaOrig,fluido};
+  REL_ULTIMO={tit,pub,html,temaOrig,fluido,perRot:PER.rot,ref:fmtData(hoje()),recorte:recorteTexto()};
   document.getElementById('rel-info').textContent=`${total} páginas · ${P.nome}${anexos.length?` · ${anexos.length} tabela(s) completas no anexo`:''}`;
   relZoom();
   render();   /* a tela do app volta a ter os gráficos vivos por baixo */
@@ -8117,14 +8118,16 @@ async function gerarRelatorio(opt){
 function baixarLeitura(){
   if(!REL_ULTIMO)return;
   const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
-  const doc=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(REL_ULTIMO.tit)}</title>
+  /* tema claro no DOCUMENTO (html), não só no body: os tokens de cor ficam no html */
+  const doc=`<!doctype html><html lang="pt-BR" data-t="claro" style="color-scheme:light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(REL_ULTIMO.tit)}</title>
 <style>${css}
-html,body{background:#F6F4F2!important;overflow:auto!important;height:auto!important}
+html,body{background:#F3F4F6!important;color:#1F2328!important;overflow:auto!important;height:auto!important}
 .leit{max-width:860px;margin:0 auto;padding:16px}.leit h1{font-size:22px;margin:6px 0}.leit .rel-blk{margin:0 0 18px}
 .leit .rel-cap{font-size:16px;margin:28px 0 10px}.leit .tw{overflow-x:auto!important}.leit img{max-width:100%!important;height:auto!important}
 .leit .g4,.leit .g3,.leit .dupla,.leit .divs{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))!important}
-.leit .kpi .val{font-size:22px!important}</style></head><body data-t="claro"><main class="leit">
-<p style="color:#9A908A;font-size:12px">LS FIRE · COMERCIAL</p><h1>${esc(REL_ULTIMO.tit)}</h1><p style="font-size:13px">${esc(PER.rot)} · ref. ${fmtData(hoje())} · gerado em ${fmtData(new Date())}</p>
+.leit .kpi .val{font-size:22px!important}
+@media(max-width:600px){.leit .tab.narr th,.leit .tab.narr td{display:block;width:auto!important;border:0}.leit .tab.narr tr{display:block;border-bottom:1px solid #DDE1E6;padding:6px 0}.leit .tab.narr th{padding-bottom:0}}</style></head><body data-t="claro"><main class="leit">
+<p style="color:#5E6977;font-size:12px">LS FIRE · COMERCIAL</p><h1>${esc(REL_ULTIMO.tit)}</h1><p style="font-size:13px">${esc(REL_ULTIMO.perRot||PER.rot)} · ref. ${REL_ULTIMO.ref||fmtData(hoje())} · ${esc(REL_ULTIMO.recorte||'')} · gerado em ${fmtData(new Date())}</p>
 ${REL_ULTIMO.fluido}</main></body></html>`;
   baixar(doc,`Leitura-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${new Date().toISOString().slice(0,10)}.html`,'text/html;charset=utf-8'); }
 
