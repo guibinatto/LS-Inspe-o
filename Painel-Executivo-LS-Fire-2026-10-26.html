@@ -583,7 +583,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .fv-cx{padding:14px 18px}
 .fv{display:flex;flex-direction:column}
 .fv-lin{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:center;gap:16px}
-.fv-bar{height:62px;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.fv-bar{height:56px;justify-self:center;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25);border-radius:3px}
 .fv-bar b{font:700 22px 'Segoe UI',Inter,Roboto,Arial,sans-serif;line-height:1.1}
 .fv-bar span{font:600 12px 'Segoe UI',Inter,Roboto,Arial,sans-serif;opacity:.95}
 .fv-rot b{font-size:13.5px;display:block}
@@ -1078,6 +1078,12 @@ td>.so-tela,td>span.so-tela{display:inline-flex;flex-wrap:wrap;gap:4px;align-ite
   .pl-bar .btn,.pl-bar label.btn{flex:1 1 100%} .relc-form label{flex:1 1 100%;min-width:0} .drill-cab{flex-wrap:wrap;row-gap:6px} .gb-bt{margin-left:0} }
 /* números de gráficos e quadros na fonte do sistema (sem monoespaçada) */
 .divs .lin b,.divs .lin small,.cfg-ano span b,.yoy-res b,.yoy-res em,.yoy-c b{font-family:inherit!important;font-variant-numeric:tabular-nums}
+
+/* divisões: SEQ e SPV sempre com as mesmas cores, inclusive nos quadros em HTML */
+.divs .bloco-div h5.seq,.rel-meta-termo h5.seq{color:var(--seq)!important} .divs .bloco-div h5.spv,.rel-meta-termo h5.spv{color:var(--spv)!important}
+.fe-div i.seq,.fe-leg i.seq,.orc-bar i.seq,.orc-leg i.seq{background:var(--seq)!important} .fe-div i.spv,.fe-leg i.spv,.orc-bar i.spv,.orc-leg i.spv{background:var(--spv)!important}
+.orc-cx h5,.orc h5{color:var(--txt2)!important}
+.barra i{background:var(--g-real)!important} .drill-cab b{color:var(--txt)!important} .chip b{color:var(--txt)!important}
 </style>
 
 </head><body><div class="app">
@@ -1185,9 +1191,9 @@ td>.so-tela,td>span.so-tela{display:inline-flex;flex-wrap:wrap;gap:4px;align-ite
    Paleta categórica validada (contraste/CVD aprovados)
    ============================================================ */
 /* paleta LS Fire: laranja da marca + famílias monocromática, terra e análoga (ver :root no CSS) */
-const PAL=['#F25C05','#594437','#F2A505','#A63F03','#8C593B','#F28505','#332D2A'];
-const C_OK='#12A06B', C_ERRO='#F20905', C_ALERTA='#F2A505', C_LAR='#F25C05', C_AZ='#594437',
-      C_CINZA='#B3AAA4', C_ROXO='#A63F03', C_CIANO='#F28505';
+const PAL=['#3B5B86','#16807F','#B26A00','#B0457A','#5B6B7F','#6E7F2E','#1F2328'];
+const C_OK='#18794A', C_ERRO='#C0281C', C_ALERTA='#B26A00', C_LAR='#3B5B86', C_AZ='#16807F',
+      C_CINZA='#9AA4B1', C_ROXO='#B0457A', C_CIANO='#6E7F2E';
 const cor=i=>PAL[i%PAL.length];
 
 /* ---------- utilidades ---------- */
@@ -1505,7 +1511,7 @@ const NATUREZA_DESC={
   'Serviços':'manutenção em campo e em fábrica, ITM e tratamento — hora técnica, ART e NFPA 25',
   'Locação':'rentals (família REN) — carteira recorrente'};
 const ORDEM_NATUREZA=['Equipamento','Peças','Serviços','Locação','(sem família)'];
-const NATUREZA_COR={Equipamento:'#F25C05','Peças':'#594437','Serviços':'#F2A505','Locação':'#A63F03','(sem família)':'#B3AAA4'};
+const NATUREZA_COR={Equipamento:'#3B5B86','Peças':'#16807F','Serviços':'#B26A00','Locação':'#B0457A','(sem família)':'#9AA4B1'};
 function natureza(fam){ const k=String(fam||'').toUpperCase().trim();
   return NATUREZA_FAM[k]||(k?'(sem família)':'(sem família)'); }
 
@@ -2006,12 +2012,12 @@ function vendaAjustada(x){ return !!(x&&x.valorDet!==undefined&&x.fatorOf!=null&
 const FASES_PROP=[
   {k:'Ganha',        cor:C_OK, desc:'venda ganha marcada no CRM'},
   {k:'Perdida',      cor:C_ERRO, desc:'venda ganha = não'},
-  {k:'Em fechamento',cor:'#A63F03', desc:'estágio Fechamento', rx:/fechamento/i},
-  {k:'Em negociação',cor:'#F25C05', desc:'cotação na mão do cliente: apresentação, follow-up, aprovação técnica',
+  {k:'Em fechamento',cor:'#B0457A', desc:'estágio Fechamento', rx:/fechamento/i},
+  {k:'Em negociação',cor:'#3B5B86', desc:'cotação na mão do cliente: apresentação, follow-up, aprovação técnica',
    rx:/apresenta|follow|aprova[çc][ãa]o t[ée]cnica|negocia/i},
-  {k:'Em cotação',   cor:'#F2A505', desc:'ainda na casa: primeiro contato, cadastro, geração da cotação, envio PEC',
+  {k:'Em cotação',   cor:'#B26A00', desc:'ainda na casa: primeiro contato, cadastro, geração da cotação, envio PEC',
    rx:/primeiro contato|prospec|qualific|aprova[çc][ãa]o cadastral|gera[çc][ãa]o da cota|envio pec|elaborando/i},
-  {k:'Outros',       cor:'#8C593B', desc:'estágio fora do funil de venda: pós-vendas ou sem estágio'},
+  {k:'Outros',       cor:'#5B6B7F', desc:'estágio fora do funil de venda: pós-vendas ou sem estágio'},
   {k:'Sem negócio',  cor:C_CINZA, desc:'o código da proposta não casou com nenhum negócio do CRM'}];
 const FASE_COR={}; FASES_PROP.forEach(f=>FASE_COR[f.k]=f.cor);
 const ORDEM_FASE=FASES_PROP.map(f=>f.k);
@@ -2826,7 +2832,7 @@ function cssVar(n){return getComputedStyle(document.documentElement).getProperty
 /* cores de DADOS (não da marca): série principal ardósia-azul, segunda série violeta;
    o laranja fica para ações e marca */
 const COR=()=>({lar:cssVar('--g-real')||cssVar('--lar'),ok:cssVar('--ok'),err:cssVar('--err'),ale:cssVar('--ale'),
-  az:cssVar('--g2')||cssVar('--az'),rox:cssVar('--g5'),cia:cssVar('--g3'),tx3:cssVar('--txt3'),linha:cssVar('--linha'),
+  az:cssVar('--g3')||cssVar('--az'),   /* teal: o violeta é exclusivo do SPV */rox:cssVar('--g5'),cia:cssVar('--g3'),tx3:cssVar('--txt3'),linha:cssVar('--linha'),
   neu:cssVar('--txt2')||'#6B625C'});
 
 function kpi(rot,val,pe,cls,gg){return `<div class="kpi ${cls||''} ${gg?'gg':''}">
@@ -2896,7 +2902,7 @@ const COLS_DRILL={
     ['Cliente',x=>esc(x.cli)],
     ['Produto principal',x=>esc(String(x.prodPrinc||'—')).slice(0,40)+(x.nItens>1?` <span class="tag">+${x.nItens-1}</span>`:'')],
     ['Itens',x=>fmtN(x.nItens),x=>x.nItens,1],
-    ['Fase',x=>`<span class="tag" style="background:${FASE_COR[x.fase]||'#B3AAA4'}1e;color:${FASE_COR[x.fase]||'#B3AAA4'}">${esc(x.fase||'—')}</span>`,x=>ORDEM_FASE.indexOf(x.fase)],
+    ['Fase',x=>`<span class="tag" style="background:${FASE_COR[x.fase]||'#9AA4B1'}1e;color:${FASE_COR[x.fase]||'#9AA4B1'}">${esc(x.fase||'—')}</span>`,x=>ORDEM_FASE.indexOf(x.fase)],
     ['Categoria',x=>esc(String(x.cat||'—'))],['Norma',x=>esc(String(x.norma||'—'))],
     ['Qtd',x=>fmtD(x.q,0),x=>x.q,1],['Total',x=>fmtBRL(x.total),x=>x.total,1]],
   proposta:[['Proposta',x=>esc(x.cod||'—')],['Cliente',x=>esc(x.cli)],
@@ -3015,6 +3021,15 @@ function desenhar(id,cfg){
   cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,
     animation:REL_GERANDO?false:{duration:320},devicePixelRatio:REL_GERANDO?2:undefined,
     interaction:{mode:'index',intersect:false}},cfg.options);
+  if(cfg.type==='bar'&&cfg.options.indexAxis!=='y'){ const sc=cfg.options.scales=cfg.options.scales||{}, n=(cfg.data.labels||[]).length;
+    sc.x=Object.assign({},sc.x); sc.x.ticks=Object.assign({},sc.x.ticks,{maxRotation:0,minRotation:0,autoSkip:n>16});
+    if(!sc.x.ticks.callback&&!cfg.semQuebra)sc.x.ticks.callback=function(v){ const r=this.getLabelForValue(v); if(Array.isArray(r))return r; const l=String(r); if(l.length<=10||n>14)return l; const w=l.split(' '), o=[]; let c='';
+      w.forEach(x=>{ if((c+' '+x).trim().length>11&&c){ o.push(c); c=x; } else c=(c+' '+x).trim(); }); if(c)o.push(c); return o.slice(0,2); }; }
+  /* linhas e barras: grade discreta, só horizontal */
+  if(cfg.type==='bar'||cfg.type==='line'){ const sc=cfg.options.scales=cfg.options.scales||{}, cl=cssVar('--linha');
+    ['x','y'].forEach(ax=>{ if(!sc[ax])return; sc[ax]=Object.assign({},sc[ax]); sc[ax].border=Object.assign({display:false},sc[ax].border);
+      const valor=(ax==='x')===(cfg.options.indexAxis==='y'); sc[ax].grid=Object.assign({},sc[ax].grid,valor?{color:cl,drawTicks:false}:{display:false}); }); }
+  if(cfg.type==='bar')(cfg.data.datasets||[]).forEach(d=>{ if(d.type&&d.type!=='bar')return; if(d.borderRadius==null||d.borderRadius>3)d.borderRadius=2; });
   if(cfg.options.indexAxis==='y'){ const n=(cfg.data.labels||[]).length, sc=cfg.options.scales=cfg.options.scales||{};
     sc.y=Object.assign({},sc.y); sc.y.ticks=Object.assign({autoSkip:false,font:{size:11.5}},sc.y.ticks,{autoSkip:false});
     const cx=el.closest('.cx'); if(cx){ const alvo=Math.max(cx.clientHeight||0,n*24+(cfg.options.plugins&&cfg.options.plugins.legend&&cfg.options.plugins.legend.display?70:44)); cx.style.height=alvo+'px'; } }
@@ -3234,6 +3249,7 @@ function avisoFiltros(tela){
     const fora=bs.filter(b=>!d.v[b]&&!(b==='venda'&&(d.v.neg||d.v.ped))); if(fora.length)L.push(`<b>${esc(d.rot)}</b> não se aplica a ${fora.map(b=>ROT_BASE[b]).join(' e ')} — ignorado nessas análises`); });
   return L.length?`<div class="nota aviso-f">Filtros nesta aba: ${L.join('; ')}.</div>`:''; }
 function render(){
+  Object.keys(CHARTS).forEach(k=>{ try{ CHARTS[k].destroy(); }catch(e){} delete CHARTS[k]; });
   const fn=VISTA[EST.tela]||VISTA.executiva;
   const t=TELAS.find(x=>x.id===EST.tela)||{};
   const avRef=REF_DO_ARQUIVO&&REF_DATA?`<div class="nota aviso-ref so-tela" style="border-left-color:var(--az)"><b>Painel salvo com data de referência ${fmtData(REF_DATA)}.</b> Os números são lidos como naquela data (mês em curso, vencidos, meta até a data), para não mudarem de interpretação ao abrir em outro dia. <button class="btn sec" onclick="setRef('')">Usar a data de hoje (${fmtData(hojeReal())})</button></div>`:'';
@@ -3313,7 +3329,7 @@ function parQV(pre,tit,sub,grupos,opts){
   const o=opts||{};
   /* a mesma categoria tem a mesma cor em R$ e em quantidade; sem cor própria,
      a série única fica cinza-grafite — laranja e azul são SEQ e SPV no painel */
-  const coresDe=gs=>gs.map((g,i)=>{const c=g.cor||(o.cores?o.cores[i%o.cores.length]:COR().neu);return g.parcial?parcialCor(c):c;});
+  const coresDe=gs=>gs.map((g,i)=>{const c=g.cor||(o.cores?o.cores[i%o.cores.length]:cssVar('--g-real'));return g.parcial?parcialCor(c):c;});
   const cfg=(gs,campo,fmt)=>{
     const ds=o.stackDiv
       ? DIVS.map(d=>({label:d,fmt,data:gs.map(g=>(g.por&&g.por[d])?g.por[d][campo]:0),
@@ -3378,7 +3394,7 @@ Chart.register({id:'deltas',afterDraw(ch){
       if(ctx.measureText(t).width>passo-4&&z.subCurto)t=z.subCurto;
       ctx.fillStyle=cssVar('--txt3'); ctx.fillText(t,x,y0+h+FS*.85); } });
   ctx.restore(); }});
-const PAL_ROSCA=()=>[COR().lar,COR().az,'#F2A505','#A63F03','#8C593B','#F28505','#332D2A','#F23205','#7D2F02','#B3AAA4'];
+const PAL_ROSCA=()=>[COR().lar,COR().az,'#B26A00','#B0457A','#5B6B7F','#6E7F2E','#1F2328','#C0281C','#2F4858','#9AA4B1'];
 function cfgRosca(gs,campo,fmt,sub,centro){
   const pal=PAL_ROSCA(), tot=somar(gs,g=>g[campo]), escR=escalaR(Math.max(0,...gs.map(g=>g[campo]||0)));
   const fv=fmt==='n'?fmtN:escR.f;
@@ -3397,6 +3413,9 @@ function cfgRosca(gs,campo,fmt,sub,centro){
 /* par de roscas R$ | quantidade — mesmo contrato de parQV (grupos {k,n,t,itens,cor}) */
 function parRosca(pre,tit,sub,grupos,opts){
   const o=opts||{}; const gs=grupos.filter(g=>g.t>0||g.n>0);
+  /* mais de 4 partes: rosca não permite comparar; barras deitadas em ordem de valor */
+  if(gs.length>4){ const ord=[...gs].sort((a,b)=>b.t-a.t);
+    return parQV(pre,tit,(sub||'')+(o.totQ!=null?` Total de ${o.rotQ||'registros'} distintos: ${fmtN(o.totQ)} (um registro pode estar em mais de uma categoria).`:''),ord,{rotQ:o.rotQ||'registros',horiz:true,gruposQ:[...gs].sort((a,b)=>b.n-a.n)}); }
   agendar(pre+'-v',cfgRosca(gs,'t',undefined));
   /* quando um registro cai em mais de uma fatia, o furo mostra o total real, não a soma das fatias */
   agendar(pre+'-q',cfgRosca(gs,'n','n',o.rotQ||'registros',o.totQ!=null?{txt:fmtN(o.totQ),sub:o.rotQ||'registros'}:null));
@@ -3408,7 +3427,7 @@ function parRosca(pre,tit,sub,grupos,opts){
    em todo o painel; o que não tem divisão identificada entra em cinza */
 function roscaDiv(pre,tit,sub,itens,val,rotQ,o){ o=o||{};
   const gs=DIVS.map(d=>{const a=itens.filter(x=>divDe(x)===d);return {k:d==='SEQ'?'SEQ — equipamentos':'SPV — peças e serviços',n:a.length,t:somar(a,val),itens:a,cor:CORDIV[d]()};});
-  const sd=itens.filter(x=>!DIVS.includes(divDe(x))); if(sd.length)gs.push({k:'sem divisão',n:sd.length,t:somar(sd,val),itens:sd,cor:'#B3AAA4'});
+  const sd=itens.filter(x=>!DIVS.includes(divDe(x))); if(sd.length)gs.push({k:'sem divisão',n:sd.length,t:somar(sd,val),itens:sd,cor:'#9AA4B1'});
   if(o.contaN)gs.forEach(g=>{g.n=o.contaN(g.itens);});
   return parRosca(pre,tit,sub,gs,Object.assign({rotQ},o.totQ!=null?{totQ:o.totQ}:{}));
 }
@@ -3457,7 +3476,7 @@ function barrasMeta(linhas,fr){
 /* rosca com muitas fatias: as n maiores + "Outros" (fatia fina não se lê) */
 function topOutros(gs,n){ const ord=[...gs].sort((a,b)=>b.t-a.t);
   if(ord.length<=n)return ord; const resto=ord.slice(n-1), it=resto.flatMap(g=>g.itens||[]);
-  return ord.slice(0,n-1).concat([Object.assign({k:`Outros (${resto.length})`,itens:it,cor:'#D9D1CB'},resumo(it,x=>x.valor!==undefined?x.valor:(x.vNum!==undefined?x.vNum:(x.val||0))))]); }
+  return ord.slice(0,n-1).concat([Object.assign({k:`Outros (${resto.length})`,itens:it,cor:'#C3CAD2'},resumo(it,x=>x.valor!==undefined?x.valor:(x.vNum!==undefined?x.vNum:(x.val||0))))]); }
 /* velocímetro: meio anel em SVG. v = fração; marca = onde deveria estar (opcional) */
 function velocimetro(tit,v,txt,sub,cor,marca){
   const R=64,C=Math.PI*R, f=Math.max(0,Math.min(1,v||0));
@@ -3569,7 +3588,7 @@ function treemap(id,grupos,rotQ){
   const ord=[...grupos].sort((a,b)=>b.t-a.t), tot=somar(ord,g=>g.t)||1, pal=PAL_ROSCA();
   let gs=ord.slice(0,6);
   if(ord.length>6){ const resto=ord.slice(6), it=resto.flatMap(g=>g.itens||[]);
-    gs.push({k:`Outros (${resto.length})`,t:somar(resto,g=>g.t),n:somar(resto,g=>g.n),itens:it,cor:'#B3AAA4',outros:resto}); }
+    gs.push({k:`Outros (${resto.length})`,t:somar(resto,g=>g.t),n:somar(resto,g=>g.n),itens:it,cor:'#9AA4B1',outros:resto}); }
   gs=gs.map((g,i)=>Object.assign({},g,{cor:g.cor||pal[i%pal.length]}));
   TREES[id]=gs; const e=escalaR(Math.max(...gs.map(g=>g.t),0));
   const desenho=(W,H,cls,cabeNome)=>`<div class="tree ${cls}" style="aspect-ratio:${W}/${H}">${squarify(gs.map((g,i)=>({v:g.t,i})),W,H).map(z=>{
@@ -3705,7 +3724,7 @@ function acumAno(arr,dtDe,f,ano){ const ult=ano===HOJE.getFullYear()?HOJE.getMon
 /* anos anteriores: o mais recente em roxo, os mais antigos cada vez mais claros */
 /* anos anteriores em cinzas quentes (o marrom é do SPV), do mais recente (escuro) ao mais antigo (claro) —
    o mesmo cinza das barras do ano anterior no mês a mês */
-const corAnoAnt=i=>[COR().neu,'#9A908A','#C4BCB6','#DDD7D2'][Math.min(i,3)];
+const corAnoAnt=i=>[COR().neu,'#8A94A3','#C3CAD2','#DDE1E6'][Math.min(i,3)];
 /* vendas de um ano com os filtros do recorte (menos o de ano) */
 const vendasDoAno=(a,ate)=>F.todas.filter(v=>v.dt&&v.dt.getFullYear()===a&&(!ate||v.dt<=ate)
   &&(!EST.div||v.div===EST.div)&&(!EST.vend||v.resp===EST.vend)&&dimOK(v,'venda'));
@@ -3931,9 +3950,9 @@ function secEvolucao(){
   const passa=x=>(!EST.div||divDe(x)===EST.div)&&(!EST.vend||x.resp===EST.vend);
   const dI=divInteracao();
   const fontes=[
-    ['Negócios criados','#F2A505',[...F.neg,...F.hist].filter(n=>n.dtCri),n=>n.dtCri,n=>n.vNum||0,n=>divDe(n)],
-    ['Propostas','#F25C05',propostasRecorte().filter(p=>p.dt&&passa(p)),p=>p.dt,p=>p.val||0,p=>p.div],
-    ['Vendas','#12A06B',(F.todas||[]).filter(v=>v.dt&&passa(v)),v=>v.dt,v=>v.valor||0,v=>v.div]];
+    ['Negócios criados','#B26A00',[...F.neg,...F.hist].filter(n=>n.dtCri),n=>n.dtCri,n=>n.vNum||0,n=>divDe(n)],
+    ['Propostas','#3B5B86',propostasRecorte().filter(p=>p.dt&&passa(p)),p=>p.dt,p=>p.val||0,p=>p.div],
+    ['Vendas','#18794A',(F.todas||[]).filter(v=>v.dt&&passa(v)),v=>v.dt,v=>v.valor||0,v=>v.div]];
   const inter=(F.inter||[]).filter(i=>i.dt);
   const divs=EST.div?[EST.div]:['SEQ','SPV'], val=EVO_MODO==='val';
   /* antes do primeiro registro da base a linha não existe (null), em vez de zero:
@@ -3951,7 +3970,7 @@ function secEvolucao(){
       options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{callback:x=>val?fmtCompacto(x):fmtN(x),precision:0}}},
         plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'line'}}}}});
     agendar('evo-i-'+d,{type:'line',ehQtd:true,data:{labels:ks.map(kMes),datasets:[{label:'Interações',fmt:'n',data:corta(iI.map(a=>a.length),ini(inter,i=>i.dt)),itens:iI,
-      borderColor:'#8C593B',backgroundColor:alfa('#8C593B',.14),borderWidth:2,pointRadius:2,tension:.3,fill:true}]},
+      borderColor:'#5B6B7F',backgroundColor:alfa('#5B6B7F',.14),borderWidth:2,pointRadius:2,tension:.3,fill:true}]},
       options:{scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12,maxRotation:0}},y:{beginAtZero:true,grid:{color:COR().linha},ticks:{precision:0}}},
         plugins:{legend:{display:false}}}});
     const tot=f=>somar(ds[f].data,x=>x||0), totI=somar(iI,a=>a.length);
@@ -3989,12 +4008,12 @@ function avisoERP(){ const L=divergenciasERP().filter(x=>!EST.ano||String(x.a)==
    "Entra na previsão": classes com evidência de decisão próxima. As demais
    aparecem como potencial, mas não somam na previsão de pedidos. */
 const POLITICA_PADRAO=[
-  {k:'Aprovado / aguardando PO',p:1,  camada:'Alta confiança',entra:true, cor:'#12A06B'},
-  {k:'Em negociação',          p:.6, camada:'Provável',      entra:true, cor:'#5FBF8F'},
-  {k:'Obra em compra',         p:.5, camada:'Provável',      entra:true, cor:'#F25C05'},
-  {k:'Em disputa',             p:.25,camada:'Possível',      entra:false,cor:'#F2A505'},
-  {k:'Estudo / projeto',       p:.1, camada:'Possível',      entra:false,cor:'#8C593B'},
-  {k:'Não classificado',       p:.2, camada:'Possível',      entra:false,cor:'#B3AAA4'}];
+  {k:'Aprovado / aguardando PO',p:1,  camada:'Alta confiança',entra:true, cor:'#18794A'},
+  {k:'Em negociação',          p:.6, camada:'Provável',      entra:true, cor:'#4CAF7A'},
+  {k:'Obra em compra',         p:.5, camada:'Provável',      entra:true, cor:'#3B5B86'},
+  {k:'Em disputa',             p:.25,camada:'Possível',      entra:false,cor:'#B26A00'},
+  {k:'Estudo / projeto',       p:.1, camada:'Possível',      entra:false,cor:'#5B6B7F'},
+  {k:'Não classificado',       p:.2, camada:'Possível',      entra:false,cor:'#9AA4B1'}];
 const POL=()=>POLITICA_PADRAO.map(x=>Object.assign({},x,(CFG.probs||{})[x.k]!=null?{p:num(CFG.probs[x.k])}:{}));
 const polDe=k=>POL().find(x=>x.k===k)||POL()[POL().length-1];
 const ROT_CAMADA={'Alta confiança':'Alta confiança — aguardando pedido','Provável':'Provável','Possível':'Possível (fora da previsão)'};
@@ -4003,7 +4022,7 @@ const PROB_CERTEZA=new Proxy({},{get:(o,k)=>typeof k==='string'?polDe(k).p:undef
 const COR_PREV=Object.fromEntries(POLITICA_PADRAO.map(x=>[x.k,x.cor]));
 const CAMADA=new Proxy({},{get:(o,k)=>typeof k==='string'?polDe(k).camada:undefined});
 const CAMADAS=['Alta confiança','Provável','Possível'];
-const COR_CAMADA={'Alta confiança':'#12A06B','Provável':'#F25C05','Possível':'#C9C0B8'};
+const COR_CAMADA={'Alta confiança':'#18794A','Provável':'#3B5B86','Possível':'#C3CAD2'};
 const camadaNeg=n=>polDe(n.certeza).camada;
 /* valor ponderado (todo o pipeline) e valor que entra na previsão (só as classes marcadas) */
 const probNeg=n=>polDe(n.certeza).p;
@@ -4079,7 +4098,7 @@ function htmlVendPrev(){
     <button onclick="enviarVendPrev(${i})">✉ Enviar para ${esc(g.nome.split(' ')[0])} confirmar</button></div>`;
   return `<div class="drill-cx">${cab}${tab([{t:'Referência',f:1},{t:'Cliente',f:1},{t:'Título',f:1},{t:'Etapa',f:1},{t:'Status atual',f:1},{t:'Camada',f:1},{t:'Previsão',n:1},{t:'Valor',n:1},{t:'Pendência',f:1}],
     g.itens.map(n=>{const c=camadaNeg(n);return [esc(refNeg(n)),esc(n.cli),esc(String(n.titulo||'—')).slice(0,44),esc(String(n.etapa||'—')),
-      `<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${COR_PREV[n.certeza]||'#B3AAA4'};margin-right:5px"></i>${esc(n.certeza)}`,
+      `<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${COR_PREV[n.certeza]||'#9AA4B1'};margin-right:5px"></i>${esc(n.certeza)}`,
       `<span style="color:${c==='Possível'?'var(--txt3)':COR_CAMADA[c]}">${c}</span>`,
       n.dtPrev?fmtData(n.dtPrev):'—',fmtBRL(n.vNum),pend(n)];}),520)}</div>`; }
 function verVendPrev(i){ const g=PREV_GR[i]; if(!g)return; PREV_VEND=g.nome;
@@ -4191,7 +4210,7 @@ function corpoEmailHTML(g){
   const ok=it.filter(n=>!ajustesNeg(n).length).length, L=insightsVend(g,3);
   const th='style="background:#FF6600;color:#fff;font-weight:bold;padding:4px 6px;border:1px solid #d9d9d9;text-align:left;white-space:nowrap"';
   const td=(x,extra)=>`<td style="padding:3px 6px;border:1px solid #d9d9d9;vertical-align:top;${extra||''}">${x}</td>`;
-  const cor=p=>p==='Sem data'?'#C62828':'#B26A00';
+  const cor=p=>p==='Sem data'?'#C0281C':'#B26A00';
   const linhas=it.map((n,k)=>{const aj=ajustesNeg(n), pd=pendsNeg(n);
     return `<tr style="background:${k%2?'#fafafa':'#fff'}">${td(esc(refNeg(n)),'white-space:nowrap')}${td(esc(String(n.cli).slice(0,38)))}${td(esc(String(n.titulo||'—').slice(0,48)))}
       ${td(esc(n.certeza))}${td(n.dtPrev?fmtData(n.dtPrev):'<b style="color:#C62828">sem data</b>','white-space:nowrap')}
@@ -4462,7 +4481,7 @@ const ufDeNome=s=>{const k=norm(s);return Object.keys(UF_NOME).find(u=>norm(UF_N
 const PQ_TIPOS=[['venda','Vendas','▤'],['pedido','A faturar','▣'],['proposta','Propostas','✎'],['aberto','Negócios abertos','⟐'],
   ['ganho','Ganhos','✓'],['perdido','Perdidos','✕'],['interacao','Interações','☏'],['cliente','Cadastro','◍']];
 const PQ_TIPO=Object.fromEntries(PQ_TIPOS.map(([k,n,i])=>[k,{n,i}]));
-const PQ_COR={venda:'#12A06B',pedido:'#2E7D9A',proposta:'#F25C05',aberto:'#F2A505',ganho:'#5FBF8F',perdido:'#C62828',interacao:'#8C593B',cliente:'#8A817C'};
+const PQ_COR={venda:'#18794A',pedido:'#2E7D9A',proposta:'#3B5B86',aberto:'#B26A00',ganho:'#4CAF7A',perdido:'#C0281C',interacao:'#5B6B7F',cliente:'#6B7684'};
 const PQ_PER=[['30d','30 dias'],['90d','90 dias'],['12m','12 meses'],['ano','Este ano'],['tudo','Tudo']];
 const PQ_FAIXA=[['f1','até 100 mil',0,1e5],['f2','100–500 mil',1e5,5e5],['f3','500 mil–1 mi',5e5,1e6],['f4','acima de 1 mi',1e6,Infinity]];
 const PQ_SIT=[['venc','Data vencida'],['semdata','Sem data'],['nc','Não classificado'],['parado','Parado 30+ dias'],['po','Aguardando PO']];
@@ -4874,15 +4893,15 @@ function propostasCorpo(){
   const saiu=props.filter(p=>['Em negociação','Em fechamento','Ganha','Perdida'].includes(p.fase)), deci=props.filter(p=>p.ganho||p.perdido);
   const semResp=saiu.filter(p=>!p.ganho&&!p.perdido);
   h+=sec('Conversão das propostas',`Das propostas emitidas, quantas chegaram ao cliente, quantas já foram decididas e quantas viraram venda; o percentual entre as faixas é a conversão de uma para a outra. ${fmtN(semResp.length)} propostas (${fmtCompacto(somar(semResp,p=>p.val))}) estão com o cliente, sem resposta. Em que estágio está cada negócio: aba <b>Negócios</b>.`,'prop-funil');
-  h+=funilVertical([{k:'Emitidas',desc:'todas as propostas do recorte',n:props.length,t:r.t,cor:'#4D4D4D'},
-    {k:'Apresentadas',desc:'chegaram ao cliente: em negociação, fechamento ou já respondidas',n:saiu.length,t:somar(saiu,p=>p.val),cor:'#8A8A8A',conv:'das emitidas'},
-    {k:'Decididas',desc:'o cliente respondeu: ganha ou perdida',n:deci.length,t:somar(deci,p=>p.val),cor:'#FFA366',conv:'das apresentadas',
+  h+=funilVertical([{k:'Emitidas',desc:'todas as propostas do recorte',n:props.length,t:r.t,cor:'#2F4858'},
+    {k:'Apresentadas',desc:'chegaram ao cliente: em negociação, fechamento ou já respondidas',n:saiu.length,t:somar(saiu,p=>p.val),cor:'#3B5B86',conv:'das emitidas'},
+    {k:'Decididas',desc:'o cliente respondeu: ganha ou perdida',n:deci.length,t:somar(deci,p=>p.val),cor:'#4A6FA5',conv:'das apresentadas',
       partes:[{k:'ganhas',n:g.length,t:somar(g,p=>p.val),cor:COR().ok},{k:'perdidas',n:pe.length,t:somar(pe,p=>p.val),cor:COR().err}]},
-    {k:'Ganhas',desc:'viraram negócio ganho',n:g.length,t:somar(g,p=>p.val),cor:'#FF6600',conv:'das decididas (win rate por proposta)'}]);
+    {k:'Ganhas',desc:'viraram negócio ganho',n:g.length,t:somar(g,p=>p.val),cor:'#18794A',conv:'das decididas (win rate por proposta)'}]);
   h+=secVelocidade();
   /* por vendedor, empilhado pela situação da proposta (a fase do negócio fica na aba Negócios) */
   const vend=[...agrupa(props.filter(p=>p.resp),p=>p.resp).entries()].map(([k,v])=>({k,v,n:v.length,t:somar(v,p=>p.val)})).sort((a,b)=>b.t-a.t);
-  const SIT=[['Ganha',p=>p.ganho,COR().ok],['Perdida',p=>p.perdido,COR().err],['Em aberto',p=>!p.ganho&&!p.perdido,'#F2A505']].filter(([,f])=>props.some(f));
+  const SIT=[['Ganha',p=>p.ganho,COR().ok],['Perdida',p=>p.perdido,COR().err],['Em aberto',p=>!p.ganho&&!p.perdido,'#8A94A3']].filter(([,f])=>props.some(f));
   const dsF=(campo)=>SIT.map(([k,f,cor])=>({label:k,fmt:campo==='n'?'n':undefined,
     data:vend.map(x=>{const a=x.v.filter(f);return campo==='n'?a.length:somar(a,p=>p.val);}),
     itens:vend.map(x=>propsDrill(x.v.filter(f))),backgroundColor:cor,borderRadius:2,maxBarThickness:44,stack:'f'}));
@@ -5201,7 +5220,7 @@ function secCotAnalistas(){
       código, última revisão). Por isso as duas contas não batem, e não devem bater. Espelhos do CRM dentro do histórico
       (número PL-&lt;id&gt;) ficam de fora para a mesma oportunidade não contar duas vezes.</div>`);
   h+=sec('Cotações por analista','Cada quadrado é um lote de cotações: quem produz mais e quem produz menos.');
-  h+=pictograma(ol.map(x=>({k:nomeCurto(x.k),n:x.n,t:x.t})),'n','cotações',null,'cotações',l=>[{v:l.n,cor:'#A63F03'}]);
+  h+=pictograma(ol.map(x=>({k:nomeCurto(x.k),n:x.n,t:x.t})),'n','cotações',null,'cotações',l=>[{v:l.n,cor:'#B0457A'}]);
   return h;
 };
 
@@ -5244,7 +5263,7 @@ function secFup(){
     const LL=L.filter(x=>x.tot||x.a.length);
   if(LL.length&&ultM.length){
     /* meses no eixo x, um vendedor por cor: dá para ver cada mês e a evolução de cada um */
-    const LF=LL.filter(x=>x.tot), CV=['#F25C05','#594437','#F2A505','#B3AAA4','#A63F03','#332D2A','#F28505'], cv=j=>CV[j%CV.length];
+    const LF=LL.filter(x=>x.tot), CV=['#3B5B86','#16807F','#B26A00','#9AA4B1','#B0457A','#1F2328','#6E7F2E'], cv=j=>CV[j%CV.length];
     agendar('e-fup',{type:'bar',data:{labels:ultM.map(m=>kMes(m)+(m===MES_ATUAL?'*':'')),datasets:LF.map((x,j)=>({label:nomeCurto(x.k),fmt:'n',
       data:x.pm.map(a=>a.length),itens:x.pm,
       backgroundColor:ultM.map(m=>m===MES_ATUAL?parcialCor(cv(j)):cv(j)),borderRadius:3,maxBarThickness:30}))},
@@ -5440,7 +5459,7 @@ function analistasCorpo(){
   const noAnoCri=x=>noAno({dt:x.dtCri});
   const cot=F.neg.filter(n=>n.orc&&noAnoCri(n)).concat(F.hist.filter(o=>o.orc&&noAnoCri(o)))
     .filter(x=>analista(x.orc)!=='(sem analista)');
-  const COR_AN=['#594437','#F2A505','#A63F03','#F23205','#332D2A','#F28505','#C4BCB6'];
+  const COR_AN=['#16807F','#B26A00','#B0457A','#C0281C','#1F2328','#6E7F2E','#C3CAD2'];
   const ordemA=[...L.map(x=>x.k)]; cot.forEach(x=>{const k=analista(x.orc);if(!ordemA.includes(k))ordemA.push(k);});
   const corA=k=>COR_AN[ordemA.indexOf(k)%COR_AN.length];
   /* par mês a mês empilhado por analista, R$ | quantidade, com drill */
@@ -5565,7 +5584,7 @@ VISTA.clientes=function(){
   if(porCli.length>=5&&tot>0){ const nc=porCli.length; let ac=0;
     const cls=[], pts=[{x:0,y:0}];
     porCli.forEach((c,i)=>{ const antes=ac/tot; ac+=c.t; cls.push(antes<.8?'A':antes<.95?'B':'C'); pts.push({x:(i+1)/nc*100,y:ac/tot*100}); });
-    const cor={A:COR().lar,B:'#F2A505',C:'#9A908A'};
+    const cor={A:COR().lar,B:'#B26A00',C:'#8A94A3'};
     const cl=['A','B','C'].map(k=>{ const a=porCli.filter((c,i)=>cls[i]===k); return {k,n:a.length,t:somar(a,c=>c.t),nomes:a.map(c=>c.k),itens:a.flatMap(c=>c.v)}; });
     const xA=cl[0].n/nc*100, xB=(cl[0].n+cl[1].n)/nc*100, yA=pts[cl[0].n].y;
     const faixas=[['A',0,xA],['B',xA,xB],['C',xB,100]];
@@ -5852,7 +5871,7 @@ function graficoRealMeta(id){
     const y=ant.meses.find(q=>q.m===m); sa+=y?y.valor:0; anter.push(ant.meses.length?sa:null); }
   const series=[{label:`Realizado ${a}`,data:real,cor:COR().lar,preenche:true,rot:'ultimo'}];
   if(mc.valor)series.push({label:`Meta ${a}`,data:meta,cor:COR().neu,tracejado:true,semPonto:true,rot:'ultimo'});
-  if(ant.meses.length&&ant.total)series.push({label:String(a-1),data:anter,cor:'#B3AAA4',fino:true,semPonto:true,rot:'ultimo'});
+  if(ant.meses.length&&ant.total)series.push({label:String(a-1),data:anter,cor:'#9AA4B1',fino:true,semPonto:true,rot:'ultimo'});
   agendar(id,cfgLinha(KMESN.map(m=>m+'/'+String(a).slice(2)),series));
   return card(`Realizado × meta — acumulado de ${a}`,`Pedidos recebidos somados mês a mês (${c.rotTotal}); meta ${mc.valor?'— '+pesosMes(a).fonte:'— '+(mc.motivo||'não cadastrada')}; ${a-1} como referência. Meses futuros ficam em branco.`,graf(id,'alt')); }
 
@@ -6123,7 +6142,7 @@ VISTA.carteira=function(){
   const grp=['SEQ','SPV','Sem divisão identificada'], dv=c=>c.div==='SEQ'||c.div==='SPV'?c.div:'Sem divisão identificada';
   agendar('f-cart',{type:'bar',data:{labels:BPG.map(b=>b.k==='atras'?'vencida':b.rot),datasets:grp.map(d=>({label:d,stack:'s',
       data:BPG.map(b=>v(b.itens.filter(c=>dv(c)===d))),itens:BPG.map(b=>b.itens.filter(c=>dv(c)===d)),
-      backgroundColor:BPG.map(b=>{const k=d==='SEQ'?CORDIV.SEQ():d==='SPV'?CORDIV.SPV():'#B3AAA4';return b.k==='atras'?alfa(k,.55):k;}),borderRadius:2,maxBarThickness:52}))},
+      backgroundColor:BPG.map(b=>{const k=d==='SEQ'?CORDIV.SEQ():d==='SPV'?CORDIV.SPV():'#9AA4B1';return b.k==='atras'?alfa(k,.55):k;}),borderRadius:2,maxBarThickness:52}))},
     options:{scales:{x:{stacked:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:0}},y:{stacked:true,beginAtZero:true,grid:{color:COR().linha},ticks:{callback:x=>fmtCompacto(x)}}},
       plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
   h+=card('Saldo por mês de entrega (aproximação do faturamento)','clique numa barra para ver os pedidos',graf('f-cart','alt'));
@@ -6840,7 +6859,7 @@ VISTA.atividades=function(){
   const TT=tipos.map(x=>x[0]).concat(['Visita','Ligação','E-mail','WhatsApp','Reunião']).filter((v,i,a)=>a.indexOf(v)===i);
   const allI=dedupInter(F.inter.filter(i=>i.dt>=sem[0]&&i.dt<=R&&(!EST.div||!i.div||i.div===EST.div))).out;
   agendar('atv-sem-g',{type:'bar',ehQtd:true,data:{labels:sem.map(d=>'S'+String(semanaISO(d)).padStart(2,'0')),datasets:TT.map((t,j)=>({label:t,stack:'s',fmt:'n',data:sem.map(d=>allI.filter(i=>TIPO_ATIV(i.tipo)===t&&i.dt>=d&&i.dt<=addDias(d,6)).length),
-      itens:sem.map(d=>allI.filter(i=>TIPO_ATIV(i.tipo)===t&&i.dt>=d&&i.dt<=addDias(d,6))),backgroundColor:[COR().lar,COR().az,COR().neu,'#B3AAA4','#E8A87C','#8E7766','#D9C2B0'][j%7],maxBarThickness:30}))},
+      itens:sem.map(d=>allI.filter(i=>TIPO_ATIV(i.tipo)===t&&i.dt>=d&&i.dt<=addDias(d,6))),backgroundColor:[COR().lar,COR().az,COR().neu,'#9AA4B1','#C98A1A','#A0784E','#C3CAD2'][j%7],maxBarThickness:30}))},
     options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:COR().linha}}},plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10}}}}});
   h+=sec('Interações por semana ISO','Segunda a domingo. A última semana pode estar em andamento.','atv-sem')+card('','clique numa barra para ver as interações',graf('atv-sem-g','alt'));
   /* próximos passos do painel */
@@ -8205,13 +8224,13 @@ const pluginRot={id:'rot',afterDatasetsDraw(ch,_a,op){
   const area=ch.chartArea||{}; const nCat=Math.max(1,(ch.data.labels||[]).length);
   /* barras lado a lado por categoria: uma por pilha, não uma por série */
   const vis=new Set(ch.data.datasets.map((d,i)=>ch.getDatasetMeta(i).hidden?null:(d.stack||'_'+i)).filter(Boolean)).size||1;
-  let FS=10;
-  if(tipo==='bar'&&horiz){FS=Math.max(6,Math.min(10,Math.floor((area.bottom-area.top)/(nCat*vis))-2));}
+  let FS=11;
+  if(tipo==='bar'&&horiz){FS=Math.max(6,Math.min(11,Math.floor((area.bottom-area.top)/(nCat*vis))-2));}
   else if(tipo!=='doughnut'&&tipo!=='pie'){const passo=(area.right-area.left)/nCat;
     if(passo<44)FS=Math.max(6,passo/5.2);}
   if(FS<6)return;
-  ctx.save(); ctx.font=`bold ${FS}px 'Segoe UI',Inter,Roboto,Arial,sans-serif`;
-  const cor=cssVar('--txt'), cor2=cssVar('--bg');
+  ctx.save(); ctx.font=`600 ${FS}px 'Segoe UI',Inter,Roboto,Arial,sans-serif`;
+  const cor=cssVar('--txt'), cor2=cssVar('--bg2')||cssVar('--bg');
   const multi=st=>ch.data.datasets.filter((d,i)=>d.stack===st&&!ch.getDatasetMeta(i).hidden).length>1;
   ch.data.datasets.forEach((ds,di)=>{
     const meta=ch.getDatasetMeta(di); if(meta.hidden||ds.semRot)return;
@@ -8244,9 +8263,7 @@ const pluginRot={id:'rot',afterDatasetsDraw(ch,_a,op){
         ctx.textAlign='center'; ctx.textBaseline='middle';
         /* etiqueta escura atrás do número: texto branco com contorno ficava borrado
            sobre o laranja e sobre a barra listrada do mês em curso */
-        const pw=w+8, ph=FS+5; ctx.fillStyle='rgba(51,45,42,.82)'; ctx.beginPath();
-        if(ctx.roundRect)ctx.roundRect(x-pw/2,y-ph/2,pw,ph,4); else ctx.rect(x-pw/2,y-ph/2,pw,ph); ctx.fill();
-        ctx.fillStyle='#fff'; ctx.fillText(t,x,y+.5); return;
+        ctx.lineWidth=2.5; ctx.strokeStyle='rgba(20,24,30,.35)'; ctx.strokeText(t,x,y+.5); ctx.fillStyle='#fff'; ctx.fillText(t,x,y+.5); return;
       }
       let x=p.x,y=p.y;
       if(tipo==='line'){ const w=ctx.measureText(t).width;
