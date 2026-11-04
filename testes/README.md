@@ -16,3 +16,4 @@ Rodar com: `node testes/<arquivo>.js "$PWD/Painel-Executivo-LS-Fire-2026-10-26.h
 | consulta.js | buscas por nome, código de proposta, cidade e frase ("SC acima de 500 mil") na Consulta detalhada | resultados conferidos |
 | desfecho-manual.js | registrar perda pelo painel: sai do pipeline e da previsão, alerta, desfazer | ok |
 | leitura-celular.js | leitura do relatório no celular, modo claro e escuro do aparelho: contraste e largura | contraste mínimo 4,7:1, sem rolagem lateral |
+| versao-separada.js `<Painel.html> <pasta>` | versão em arquivos separados (index.html + styles.css + app.js, Chart.js e SheetJS por CDN) contra o arquivo único: mesmas telas, sem erros, giro no botão de exportação, planilha válida, CSS nos relatórios baixados, "↓ Salvar", tabelas com rolagem lateral e 1ª coluna fixa no celular. Rodar com `LANG=C.UTF-8` | 31/31 (04/11/2026) |
