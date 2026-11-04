@@ -5133,8 +5133,13 @@ function perdasCorpo(){
     h+=waffle(`De cada 100 decididos, ${Math.round(wrN*100)} foram ganhos`,[{k:'ganhos',n:gan.length,t:vG,cor:COR().ok},{k:'perdidos',n:perd.length,t:vP,cor:COR().err}],
       `Em valor, o aproveitamento é de ${fmtPct(wrV,0)}: ${fmtCompacto(vG)} ganhos de ${fmtCompacto(vG+vP)} decididos.`); }
   const mot=grupos(perd,motivo,x=>x.vNum||0,99);
-  h+=sec('Motivos de perda','Por que a proposta caiu — no histórico OMIE e no CRM. Barra pelo valor perdido; ao lado, quantas oportunidades. Preço perde as grandes, prazo perde as pequenas.','perd-mot');
-  h+=ranking('l-mot',mot.slice(0,10),'oport.',COR().err);
+  /* data da perda: o Ploomes não exporta; vale a última atualização do negócio (aproximada).
+     Por isso perdas antigas caem no mês em que o negócio foi editado pela última vez. */
+  const aprox=perd.filter(x=>dataPerda(x).aprox).length, ondeAprox=()=>{ const m=new Map(); F.perd.filter(x=>dataPerda(x).aprox).forEach(x=>{ const d=dataPerda(x).dt; if(!d)return; const k=KMESN[d.getMonth()]+'/'+String(d.getFullYear()).slice(2); m.set(k,(m.get(k)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,n])=>`${n} em ${k}`).join(', '); };
+  h+=sec('Motivos de perda','Por que a proposta caiu — no histórico OMIE e no CRM. Barra pelo valor perdido; ao lado, quantas oportunidades.','perd-mot');
+  if(!mot.length)h+=card('','',`<p class="pl-vazio"><b>Nenhuma perda com data em ${esc(PER.rot)}.</b> Atenção: o Ploomes não exporta a data da perda — o painel usa a última atualização do negócio, então perdas do CRM aparecem no mês em que o negócio foi editado pela última vez (${esc(ondeAprox()||'—')}). Para perdas no mês certo, o export precisa trazer a data da perda.</p>`);
+  else { h+=ranking('l-mot',mot.slice(0,10),'oport.',COR().err);
+    if(aprox)h+=`<div class="nota">${fmtN(aprox)} de ${fmtN(perd.length)} perdas com data APROXIMADA (última atualização do negócio no Ploomes). A distribuição por mês pode estar deslocada.</div>`; }
   const pv=grupos(perd,x=>x.resp||'(sem responsável)',x=>x.vNum||0,12);
   h+=parQV('l-vend','Perdas por vendedor','Quem perdeu quanto.',pv.map(x=>Object.assign(x,{k:nomeCurto(x.k)})),{rotQ:'oportunidades',stackDiv:true});
   const ms=meses(perd,x=>x.dtFim||x.dtVenda||x.dtCri||x.dt);
