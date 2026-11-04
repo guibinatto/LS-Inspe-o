@@ -6710,7 +6710,10 @@ function vendedoresAtivos(){ const s=new Set(); (metasDoAno(PER.ano||hoje().getF
 /* listas de origem dos alertas: cada número clicável abre a lista aqui */
 var SUPL={};
 function regLista(k,tit,linhas,cols){ SUPL[k]={tit,linhas,cols}; return k; }
-function abrirLista(k,alvo){ const L=SUPL[k], el=document.getElementById(alvo||'sup-lista'); if(!L||!el)return;
+function abrirLista(k,alvo){ const L=SUPL[k]; if(!L)return; const el=document.getElementById(alvo||'sup-lista');
+  /* página sem área de lista: abre numa janela, com o mesmo conteúdo e o CSV */
+  if(!el){ formModal(L.tit,[{k:'x',rot:`${fmtN(L.linhas.length)} registro(s)`,tipo:'html',html:`<div class="pl-bar"><button type="button" class="btn sec" onclick="baixarLista('${k}')">↓ CSV</button></div>${L.linhas.length?`<div class="tw">${tab(L.cols.map(c=>typeof c==='string'?{t:c}:c),L.linhas.slice(0,400),400)}</div>`:'<p class="pl-vazio">Nada nesta lista.</p>'}`}],()=>{},'Fechar');
+    const cx=document.querySelector('#m-form .cx-modal'); if(cx)cx.style.maxWidth='1100px'; return; }
   el.innerHTML=`<div class="drill-cx"><div class="drill-cab"><b>${esc(L.tit)}</b><span>${fmtN(L.linhas.length)} registro(s)</span>
     <button onclick="baixarLista('${k}')">↓ CSV</button><button onclick="document.getElementById('${alvo||'sup-lista'}').innerHTML=''">✕ fechar</button></div>
     ${L.linhas.length?tab(L.cols.map(c=>typeof c==='string'?{t:c}:c),L.linhas.slice(0,400),400):'<div class="vazio">Nada nesta lista.</div>'}</div>`;
@@ -7376,12 +7379,12 @@ function svgBullet(rows,fmt){ fmt=fmt||fmtCompacto; const W=640, lw=120, rw=170,
 /* colunas de UMA série; null = sem dado (traço), futuro = rótulo "futuro"; nunca liga lacunas */
 function svgColunas(lab,vals,o){ o=o||{}; const W=o.W||560, H=o.H||180, pl=8, pb=22, pt=18, n=lab.length, bw=(W-pl*2)/n, mx=Math.max(1,...vals.filter(v=>v!=null))*1.12, Y=v=>H-pb-(H-pb-pt)*(v/mx), f=o.fmt||fmtCompacto;
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'colunas')}"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${lab.map((l,i)=>{ const v=vals[i], x=pl+i*bw;
-    return `<g${clique(o.k&&o.k[i])}>${v==null?txtSvg(x+bw/2,H-pb-6,o.fut&&o.fut[i]?'futuro':'—',{a:'middle',fs:11,c:corV('--txt3')}):`<rect x="${sx(x+bw*.18)}" y="${sx(Y(v))}" width="${sx(bw*.64)}" height="${sx(H-pb-Y(v))}" fill="${(o.cores&&o.cores[i])||o.cor||corV('--g-real')}"${o.parc&&o.parc[i]?` fill-opacity=".55" stroke="${o.cor||corV('--g-real')}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,Y(v)-4,f(v),{a:'middle',fs:11,c:corV('--txt')})}`}
+    return `<g${clique(o.k&&o.k[i])}>${o.k&&o.k[i]?`<rect x="${sx(x)}" y="0" width="${sx(bw)}" height="${H}" fill="transparent"/>`:''}${v==null?txtSvg(x+bw/2,H-pb-6,o.fut&&o.fut[i]?'futuro':'—',{a:'middle',fs:11,c:corV('--txt3')}):`<rect x="${sx(x+bw*.18)}" y="${sx(Y(v))}" width="${sx(bw*.64)}" height="${sx(H-pb-Y(v))}" fill="${(o.cores&&o.cores[i])||o.cor||corV('--g-real')}"${o.parc&&o.parc[i]?` fill-opacity=".55" stroke="${o.cor||corV('--g-real')}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,Y(v)-4,f(v),{a:'middle',fs:11,c:corV('--txt')})}`}
       ${txtSvg(x+bw/2,H-6,l,{a:'middle',fs:11,c:corV('--txt3')})}</g>`; }).join('')}</svg>`; }
 /* barras horizontais ordenadas */
 function svgBarrasH(items,o){ o=o||{}; const W=o.W||600, lw=o.lw||200, rw=o.rw||110, H=items.length*26+6, mx=Math.max(1,...items.map(i=>i.val||0)), X=v=>(W-lw-rw)*(v/mx), f=o.fmt||fmtCompacto;
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'barras')}">${items.map((it,i)=>{ const y=4+i*26;
-    return `<g${clique(it.k)}>${txtSvg(lw-8,y+15,String(it.rot).slice(0,30),{a:'end',fs:12,c:corV('--txt')})}<rect x="${lw}" y="${y+4}" width="${sx(Math.max(it.val?1:0,X(it.val||0)))}" height="15" fill="${it.cor||o.cor||corV('--g-real')}"/>
+    return `<g${clique(it.k)}>${it.k?`<rect x="0" y="${y}" width="${W}" height="24" fill="transparent"/>`:''}${txtSvg(lw-8,y+15,String(it.rot).slice(0,30),{a:'end',fs:12,c:corV('--txt')})}<rect x="${lw}" y="${y+4}" width="${sx(Math.max(it.val?1:0,X(it.val||0)))}" height="15" fill="${it.cor||o.cor||corV('--g-real')}"/>
       ${txtSvg(lw+X(it.val||0)+6,y+15,`${f(it.val||0)}${it.extra?' · '+it.extra:''}`,{fs:11.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
 /* faixa proporcional (infográfico): partes de um total — proporção correta, rótulos e números */
 function svgFaixa(partes,o){ o=o||{}; const W=o.W||640, tot=somar(partes,p=>p.val||0)||1; let x=0;
@@ -7391,7 +7394,7 @@ function svgCascata(passos,o){ o=o||{}; const W=o.W||720, H=220, pl=8, pb=40, pt
   const pts=passos.map(p=>{ let a,b; if(p.tot){ a=0; b=p.val; acc=p.val; } else { a=acc; acc+=p.val; b=acc; } return Object.assign({},p,{a,b}); });
   const mx=Math.max(1,...pts.map(p=>Math.max(p.a,p.b)))*1.1, Y=v=>H-pb-(H-pb-pt)*(v/mx);
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cascata do pipeline"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${pts.map((p,i)=>{ const x=pl+i*bw, y1=Y(Math.max(p.a,p.b)), y2=Y(Math.min(p.a,p.b)), c=p.tot?corV('--g-real'):p.val>=0?corV('--g1'):corV('--g4');
-    return `<g${clique(p.k)}><rect x="${sx(x+bw*.15)}" y="${sx(y1)}" width="${sx(bw*.7)}" height="${sx(Math.max(1,y2-y1))}" fill="${c}"${p.ajuste?` fill-opacity=".45" stroke="${c}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,y1-4,(p.tot?'':p.val>=0?'+':'−')+fmtCompacto(Math.abs(p.val)),{a:'middle',fs:11,c:corV('--txt')})}
+    return `<g${clique(p.k)}>${p.k?`<rect x="${sx(x)}" y="0" width="${sx(bw)}" height="${H}" fill="transparent"/>`:''}<rect x="${sx(x+bw*.15)}" y="${sx(y1)}" width="${sx(bw*.7)}" height="${sx(Math.max(1,y2-y1))}" fill="${c}"${p.ajuste?` fill-opacity=".45" stroke="${c}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,y1-4,(p.tot?'':p.val>=0?'+':'−')+fmtCompacto(Math.abs(p.val)),{a:'middle',fs:11,c:corV('--txt')})}
       ${txtSvg(x+bw/2,H-pb+14,p.rot.split(' ')[0],{a:'middle',fs:10.5,c:corV('--txt2')})}${txtSvg(x+bw/2,H-pb+27,p.rot.split(' ').slice(1).join(' '),{a:'middle',fs:10.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
 /* mapa de calor pessoa × semana: escala sequencial azul, número escrito na célula */
 function svgHeat(linhas,cols,M,o){ o=o||{}; const lw=150, cw=Math.max(44,Math.min(64,Math.floor(560/Math.max(1,cols.length)))), ch=24, W=lw+cols.length*cw+4, H=28+linhas.length*ch, mx=Math.max(1,...M.flat().filter(v=>v!=null));

@@ -12,3 +12,5 @@ Rodar com: `node testes/<arquivo>.js "$PWD/Painel-Executivo-LS-Fire-2026-10-26.h
 | revisao-visual.js `<pasta>` | gera os 7 relatórios, mede margens, folhas altas, fonte mínima e salva imagens | 0 fora da margem |
 
 `central.js` e `totais.js` importam as planilhas de 30/10 de `/tmp/lsin/{a,b,c}` (comparativo, faturamento mensal, carteira); ajuste o caminho para rodar em outra máquina.
+| clica-tudo.js `[limite por página]` | percorre as 14 páginas e o topo clicando em cada elemento interativo; registra erros de JavaScript, erros de console, diálogos nativos e cliques sem efeito | 387 cliques, 0 erros, 0 sem efeito |
+| consulta.js | buscas por nome, código de proposta, cidade e frase ("SC acima de 500 mil") na Consulta detalhada | resultados conferidos |
