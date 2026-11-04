@@ -4023,7 +4023,7 @@ const PROB_CERTEZA=new Proxy({},{get:(o,k)=>typeof k==='string'?polDe(k).p:undef
 const COR_PREV=Object.fromEntries(POLITICA_PADRAO.map(x=>[x.k,x.cor]));
 const CAMADA=new Proxy({},{get:(o,k)=>typeof k==='string'?polDe(k).camada:undefined});
 const CAMADAS=['Alta confiança','Provável','Possível'];
-const COR_CAMADA={'Alta confiança':'#18794A','Provável':'#3B5B86','Possível':'#C3CAD2'};
+const COR_CAMADA={'Alta confiança':'#18794A','Provável':'#3B5B86','Possível':'#6B7684'};
 const camadaNeg=n=>polDe(n.certeza).camada;
 /* valor ponderado (todo o pipeline) e valor que entra na previsão (só as classes marcadas) */
 const probNeg=n=>polDe(n.certeza).p;
