@@ -88,3 +88,11 @@ O app continua sendo um único HTML que funciona offline. As camadas estão sepa
 | **ID, horário e usuário** no export de interações | Deduplicação por identificador e atribuição ao executor |
 | Na **engenharia**: data da solicitação, prazo acordado, data de entrega, tempo aguardando informação, motivo de revisão | Cumprimento de prazo e tempo de elaboração separado do tempo de espera |
 | **Data de extração** nos exports | Cobertura declarada de cada carga, em vez da inferência pela última atualização |
+
+## Contratos de serviço (05/11/2026)
+
+- **Bases**: `contratos` (Omie · Contratos por Cliente: vigência, situação, valor) e `os` (Omie · OS por Cliente: uma linha por ordem de serviço, com nº do contrato de venda, vigência e previsão de faturamento). Detecção: `ordem de servico` + `total do servico` → `os`.
+- **Motor** `contratosModelo()`: uma OS pertence a um contrato quando o número dela está na base de contratos ou alguma OS com esse número traz a vigência; as demais são avulsas (toda OS conta uma vez). Vigência sem ano (`05/01 ~ 04/01/27`) é deduzida com a primeira OS como âncora e marcada como aproximada. OS incluídas depois da data de referência ficam fora.
+- **Alertas**: sem OS no mês esperado (cadência observada; o mês corrente não conta), meses sem OS nos últimos 12, vencimento em até 90 dias, renovação sem negócio aberto no Ploomes (vencimento em até 180 dias).
+- **Ploomes**: vínculo pelo nome do cliente (exato; senão 12 primeiras letras) — o número do contrato do Omie não existe no Ploomes.
+- **Tela** `contratos`, capítulo "Contratos de serviço" nos relatórios (mensal, trimestral, diretoria, financeiro), Excel `contratosExcel()`.

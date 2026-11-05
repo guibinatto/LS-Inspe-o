@@ -145,6 +145,13 @@ const CAMPOS={
   estagio:['estagio do negocio','estagio'],modelo:['modelo'],dtCriacao:['data da criacao'],
   obra:['projeto obra do negocio','projeto obra'],cidadeObra:['cidade da obra do negocio','cidade da obra'],
   produtos:['produtos da proposta']},
+ os:{cliente:['cliente nome fantasia','cliente'],razao:['cliente razao social','razao social'],
+  prev:['previsao de faturamento completa','previsao de faturamento'],situacao:['situacao'],
+  total:['total do servico'],impostos:['impostos retidos'],liquido:['total liquido'],iss:['valor iss retido'],
+  categoria:['categoria'],cidade:['cidade'],dtInc:['data de inclusao completa','data de inclusao'],uf:['estado','uf'],
+  contrato:['n do contrato de venda','no do contrato de venda','numero do contrato de venda','contrato de venda'],
+  pedCli:['n do pedido do cliente','pedido do cliente'],parcelas:['numero de parcelas'],os:['ordem de servico'],
+  valor:['valor do servico'],vendedor:['vendedor'],vigencia:['vigencia do contrato']},
  contratos:{cliente:['cliente nome fantasia','cliente'],razao:['cliente razao social','razao social'],
   contrato:['contrato','numero do contrato'],ini:['vigencia inicial completa','vigencia inicial'],
   fim:['vigencia final completa','vigencia final'],situacao:['situacao'],
@@ -228,7 +235,8 @@ const ASSINATURAS={propCab:['codigo','numero da revisao','nome do responsavel','
  notas:['valor total da nf','data emissao','status da nota','no pv ls','serie'],
  omie:['total da nota fiscal','codigo da familia','descricao do produto completa','previsao de faturamento completa','situacao da op'],
  vendasOmie:['categoria omie','numero venda de produto omie','id venda de produto omie','status pedido omie','etapa omie'],
- contratos:['vigencia inicial completa','vigencia final completa','total do servico','impostos retidos','total liquido']};
+ contratos:['vigencia inicial completa','vigencia final completa','total do servico','impostos retidos','total liquido'],
+ os:['ordem de servico','previsao de faturamento completa','n do contrato de venda','vigencia do contrato','total do servico']};
 
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
   for(const campo in dic){ for(const alias of dic[campo]){ const i=nc.indexOf(alias); if(i>=0){mapa[campo]=i;break;} }
@@ -244,6 +252,7 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
   if(tem('valor total da nf')&&(tem('data emissao')||tem('serie')))return 'notas';
   if(tem('ptc')&&tem('data do pedido'))return 'pedidos';
   if(tem('numero venda de produto omie')||tem('status pedido omie'))return 'vendasOmie';
+  if(tem('ordem de servico')&&tem('total do servico'))return 'os';
   if(tem('vigencia inicial completa')&&tem('total do servico'))return 'contratos';
   if(tem('check in verificado')||tem('data de checkout'))return 'interacoes';
   for(const base in ASSINATURAS){ let s=ASSINATURAS[base].filter(a=>nc.some(c=>c===a||c.includes(a))).length*3;
@@ -390,7 +399,7 @@ const corrValDe=ref=>{const k=norm(ref); if(!k)return null;
   const c=(CFG.corrVal||[]).find(x=>norm(x.ref)===k); return c?num(c.valor):null;};
 const foraManualOmie=chave=>(CFG.dupOmieFora||[]).some(x=>('n:'+norm(x))===chave);
 
-let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],carteira:[],notas:[]};
+let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[]};
 let ETAPAS={}, ORDEM_EST=[], IDX_EMP=new Map();
 let TEM_SEG_CRM=false;                          /* o export do CRM traz a coluna Segmento? */
 const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao cadastral','geracao da cotacao','envio pec engenharia','elaborando proposta','apresentacao da cotacao follow up','negociacao','fechamento','pos vendas'];
@@ -401,12 +410,13 @@ const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao ca
 function limparCaches(){
   _IDXCAT=null; _IDX_PROPNEG=null; _IDX_NEGCLI=null; _IDX_EMP_C=null; _IDX_EMP_P=null; _vendFallback=null;
   _fatOfCache=null; _fatOfKey=''; _INI_BASE=null; _IDX_INT=null; _CONTAS_A=null; _ADIA=null;
+  if(typeof _CTR!=='undefined')_CTR=null;
   if(typeof _curto!=='undefined'){ _curto=null; _anal=null; _histUnico=null; _PQB=null; _PQI=null; }
 }
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
   limparCaches(); PROPCAB=new Map();
-  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],carteira:[],notas:[]};
+  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
   M.negocios.forEach(n=>{
@@ -565,6 +575,30 @@ function construir(){
       c.busca=norm([c.cli,c.num,c.sit,c.cat,c.cidade,c.uf].join(' '));
       lim.push(c); });
     M.contratos=lim; })();
+
+  /* ---- OS de serviço (Omie · "OS por Cliente") ----
+     Uma linha por ordem de serviço, com o nº do contrato de venda e a vigência
+     quando a OS pertence a um contrato. É a fonte do faturamento mês a mês dos
+     contratos. A vigência às vezes vem sem ano ("05/01 ~ 04/01/27"): o ano é
+     deduzido em contratosModelo(), com a primeira OS como âncora. */
+  (function(){ const lim=[];
+    (M.os||[]).forEach(o=>{
+      o.cli=(o.cliente&&String(o.cliente).trim())||(o.razao&&String(o.razao).trim())||'';
+      if(!o.cli)return;                                   /* linha de total do export */
+      o.nCli=norm(o.cli);
+      const nc=String(o.contrato==null?'':o.contrato).trim(); o.numOrig=nc;
+      o.num=(!nc||/^n\/?d$/i.test(nc))?null:numContrato(nc);
+      const vg=String(o.vigencia==null?'':o.vigencia).trim(); o.vig=(!vg||/^n\/?d$/i.test(vg))?null:vg;
+      o.vNum=num(o.total)||0; o.vLiq=num(o.liquido); o.vImp=num(o.impostos)||0;
+      o.dt=data(o.prev); o.dtI=data(o.dtInc);
+      o.sit=String(o.situacao||'').trim()||'(sem situação)'; o.faturado=/^faturad/i.test(o.sit);
+      o.inativo=/inativo/i.test(String(o.vendedor||''));
+      o.resp=vendedor(String(o.vendedor||'').replace(/\s*\(inativo\)\s*/i,''));
+      o.mes=mesKey(o.dt); o.cat=(o.categoria&&String(o.categoria).trim())||null;
+      o.nOS=o.os==null?'':String(o.os).trim();
+      o.busca=norm([o.cli,o.numOrig,o.nOS,o.sit,o.cidade,o.uf,o.resp].join(' '));
+      lim.push(o); });
+    M.os=lim; })();
 
   /* ---- Vendas (Ploomes × Omie): pedidos recebidos com a CATEGORIA do ERP.
      Não é fonte de valor (a integração gera mais de um registro por negócio) —
@@ -1613,11 +1647,12 @@ const TELAS=[
  {id:'desempenho',bloco:'Análise',ic:'⚑',nome:'Vendedores',tit:'Vendedores',sub:'Ficha individual para a reunião e visão da equipe com contexto',fase:''},
  {id:'engenharia',bloco:'Análise',ic:'✦',nome:'Engenharia de aplicação',tit:'Engenharia de aplicação',sub:'Fila, entregas, tempo até a proposta e carga por analista',fase:''},
  {id:'carteira',bloco:'Análise',ic:'◷',nome:'Carteira e faturamento',tit:'Carteira e faturamento',sub:'Faturamento realizado, saldo a faturar, atrasos e vínculos',fase:''},
+ {id:'contratos',bloco:'Análise',ic:'⟳',nome:'Contratos de serviço',tit:'Contratos de serviço',sub:'Vigência, faturamento mês a mês pelas OS, vencimentos e renovação no Ploomes',fase:''},
  {id:'clientes',bloco:'Análise',ic:'◍',nome:'Clientes e mercado',tit:'Clientes e mercado',sub:'Quem compra, quem volta, concentração e regiões',fase:''},
  {id:'relatorios',bloco:'Apoio',ic:'▣',nome:'Relatórios prontos',tit:'Relatórios prontos',sub:'Diário, semanal, individual, engenharia, mensal, trimestral e anual',fase:''},
  {id:'busca',bloco:'Apoio',ic:'⌕',nome:'Consulta detalhada',tit:'Consulta detalhada',sub:'Qualquer cliente, vendedor, analista, cidade ou estado, em todas as bases',fase:''},
  {id:'dados',bloco:'Apoio',ic:'⚙',nome:'Dados e configurações',tit:'Dados e configurações',sub:'Importação, bases, metas, critérios, histórico, fontes, dicionário e arquitetura',fase:''}];
-const TELA_ALIAS={central:'supervisao',resumo:'executiva',equipe:'desempenho',vendas:'resultados',previsao:'pipeline',perdas:'propostas',equipe:'desempenho',analistas:'engenharia',pesquisa:'busca'};
+const TELA_ALIAS={contrato:'contratos',os:'contratos',central:'supervisao',resumo:'executiva',equipe:'desempenho',vendas:'resultados',previsao:'pipeline',perdas:'propostas',equipe:'desempenho',analistas:'engenharia',pesquisa:'busca'};
 const telaId=id=>TELA_ALIAS[id]||id;
 /* onde cada tela fica na linha do tempo comercial — é o que separa Pipeline
    (antes do pedido) de Produção & Entrega (depois dele) */
@@ -4980,6 +5015,211 @@ VISTA.carteira=function(){
       c.vinc?`<span class="tag ${c.vinc.conf==='alta'?'t-ok':c.vinc.conf?'t-abr':''}">${c.vinc.conf||'sem'}</span> ${esc(c.vinc.crit)}`:'—']),520));
   return h; };
 
+
+/* =============== CONTRATOS DE SERVIÇO =============== */
+/* Fontes: "Contratos por Cliente" (Omie: vigência, situação e valor da parcela)
+   e "OS por Cliente" (Omie: cada ordem de serviço, com o nº do contrato de venda
+   e a previsão de faturamento). O cruzamento com o Ploomes é pelo CLIENTE (nome
+   exato; sem ele, as 12 primeiras letras com um candidato só) — o número do
+   contrato do Omie não existe no Ploomes.
+   Uma OS pertence a um contrato quando o número dela aparece na base de
+   contratos OU quando alguma OS com esse número traz a vigência. As demais são
+   OS avulsas (serviço pontual ou contrato sem número no Omie). */
+const numContrato=s=>String(s||'').trim().replace(/^n[º°o.]*\s*/i,'').replace(/\s+/g,' ');
+const _ano2=y=>y==null||y===''?null:(+y<100?2000+(+y):+y);
+/* "01/06/25 ~ 01/07/28", "05/01 ~ 04/01/27", "14/04 ~ 14/07" → {ini,fim,aprox} */
+function vigParse(s,ancora){
+  const m=String(s||'').match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*[~–-]\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/); if(!m)return null;
+  const [d1,m1,y1,d2,m2,y2]=[+m[1],+m[2],_ano2(m[3]),+m[4],+m[5],_ano2(m[6])];
+  let ini=y1?_dataOK(y1,m1,d1):null, fim=y2?_dataOK(y2,m2,d2):null;
+  if(!ini){ if(ancora){ let y=ancora.getFullYear(); ini=_dataOK(y,m1,d1); if(ini&&ini>ancora)ini=_dataOK(y-1,m1,d1); }
+    else if(fim){ let y=fim.getFullYear(); ini=_dataOK(y,m1,d1); if(ini&&ini>=fim)ini=_dataOK(y-1,m1,d1); } }
+  if(!fim&&ini){ fim=_dataOK(ini.getFullYear(),m2,d2); if(fim&&fim<=ini)fim=_dataOK(ini.getFullYear()+1,m2,d2); }
+  return {ini,fim,aprox:!y1||!y2}; }
+const mesesEntre=(a,b)=>{ const [ya,ma]=a.split('-').map(Number), [yb,mb]=b.split('-').map(Number); return (yb-ya)*12+(mb-ma); };
+const mesSoma=(k,n)=>{ const [y,m]=k.split('-').map(Number), d=new Date(y,m-1+n,1); return mesKey(d); };
+/* Ploomes do cliente: negócios, empresa (dono da conta) e última interação */
+function ctrPloomes(nCli){
+  const pre=nCli.slice(0,12), um=(L,f)=>{ const ex=L.filter(x=>f(x)===nCli); if(ex.length)return ex;
+    if(pre.length<8)return []; const pf=L.filter(x=>String(f(x)||'').slice(0,12)===pre); return pf; };
+  const negs=um(M.negocios||[],n=>n.nCli), ab=negs.filter(n=>n.aberto);
+  const emp=um(M.empresas||[],e=>e.nNome)[0]||null;
+  const it=um(F.inter||[],i=>i.nCli).filter(i=>i.dt&&i.dt<=hoje()).sort((a,b)=>b.dt-a.dt);
+  return {negs,ab,abSPV:ab.filter(n=>n.div==='SPV'),emp,dono:emp&&emp.resp&&emp.resp!=='(sem responsável)'?emp.resp:null,ultInter:it[0]||null,nInter:it.length}; }
+let _CTR=null;
+function contratosModelo(){
+  const R=hoje(), chave=+R+'|'+(M.os||[]).length+'|'+(M.contratos||[]).length;
+  if(_CTR&&_CTR.chave===chave)return _CTR;
+  /* OS incluídas depois da data de referência ficam fora, como nas outras bases */
+  const os=(M.os||[]).filter(o=>!o.dtI||o.dtI<=R), base=M.contratos||[], G=new Map();
+  const g=k=>{ if(!G.has(k))G.set(k,{num:k,os:[],base:null}); return G.get(k); };
+  base.forEach(c=>{ if(c.num)g(numContrato(c.num)).base=c; });
+  const vigNum=new Set(os.filter(o=>o.num&&o.vig).map(o=>o.num));
+  os.forEach(o=>{ if(o.num&&(vigNum.has(o.num)||G.has(o.num)))g(o.num).os.push(o); });
+  const mesR=mesKey(R);
+  const L=[...G.values()].map(c=>{
+    const O=c.os.slice().sort((a,b)=>(a.dt||0)-(b.dt||0)), b=c.base;
+    c.cli=(b&&b.cli)||(O[0]&&O[0].cli)||'(sem cliente)'; c.nCli=norm(c.cli);
+    c.uf=(b&&b.uf)||(O[0]&&O[0].uf)||''; c.cidade=(b&&b.cidade)||(O[0]&&O[0].cidade)||'';
+    const anc=O.map(o=>o.dt||o.dtI).filter(Boolean).sort((x,y)=>x-y)[0]||null;
+    if(b&&(b.dtIni||b.dtFim)){ c.ini=b.dtIni; c.fim=b.dtFim; c.aprox=false; c.fonteVig='Contratos (Omie)'; }
+    else { const vs=O.map(o=>o.vig).filter(Boolean), v=vs.sort((x,y)=>vs.filter(z=>z===y).length-vs.filter(z=>z===x).length)[0], p=vigParse(v,anc);
+      c.vigTxt=v||''; c.ini=p&&p.ini; c.fim=p&&p.fim; c.aprox=!!(p&&p.aprox); c.fonteVig=v?'OS (Omie)':'—'; }
+    c.parcela=b?b.vNum:null; c.sitBase=b?b.sit:null;
+    c.fat=somar(O.filter(o=>o.faturado),o=>o.vNum); c.aguard=somar(O.filter(o=>!o.faturado),o=>o.vNum); c.total=c.fat+c.aguard;
+    c.porMes={}; O.forEach(o=>{ if(o.mes)c.porMes[o.mes]=(c.porMes[o.mes]||0)+o.vNum; });
+    const ms=Object.keys(c.porMes).sort(); c.mesIni=ms[0]||null; c.mesFim=ms[ms.length-1]||null;
+    const gaps=ms.slice(1).map((m,i)=>mesesEntre(ms[i],m)); c.cadencia=gaps.length?Math.max(1,Math.round(mediana(gaps))):null;
+    c.span=ms.length?mesesEntre(ms[0],ms[ms.length-1])+1:0; c.mensal=c.span?c.total/c.span:null;
+    c.lacunas=c.span?c.span-ms.length:0;
+    { const lim=mesSoma(mesR,-12), de=[c.ini?mesKey(c.ini):null,lim].filter(Boolean).sort().pop(), ate=[c.fim?mesKey(c.fim):null,mesSoma(mesR,-1)].filter(Boolean).sort()[0];
+      c.mesesVazios=[]; if(de&&ate&&c.mesIni){ for(let m=[de,c.mesIni].sort().pop();m<=ate;m=mesSoma(m,1))if(!c.porMes[m])c.mesesVazios.push(m); } }
+    c.ultOS=O.length?O[O.length-1]:null;
+    c.resp=(c.ultOS&&c.ultOS.resp)||'(sem responsável)'; c.respInativo=!!(c.ultOS&&c.ultOS.inativo);
+    c.diasFim=c.fim?diasEntre(R,c.fim):null;
+    c.cancelado=!!(b&&b.cancelado);
+    c.status=c.cancelado?'Cancelado':c.fim&&c.fim<R?'Encerrado':c.ini&&c.ini>R?'Futuro':c.fim&&c.diasFim<=90?'A vencer':'Vigente';
+    c.vigente=c.status==='Vigente'||c.status==='A vencer';
+    /* faturamento esperado: contrato vigente cuja última OS ficou para trás da
+       cadência observada (mensal = 1). O mês corrente ainda não conta como falta. */
+    c.mesesSemOS=c.mesFim?Math.max(0,mesesEntre(c.mesFim,mesR)-1):null;
+    c.proxMes=c.mesFim&&c.cadencia?mesSoma(c.mesFim,c.cadencia):null;
+    c.atrasado=c.vigente&&c.ini&&c.ini<=R&&(c.mesFim==null?diasEntre(c.ini,R)>45:c.mesesSemOS>=(c.cadencia||1));
+    c.pl=ctrPloomes(c.nCli); c.dono=c.pl.dono;
+    c.renovar=!c.cancelado&&c.fim&&c.diasFim<=180&&c.diasFim>=-60;
+    c.semRenov=c.renovar&&!c.pl.ab.length;
+    c.alertas=[c.atrasado?(c.mesFim?`sem OS desde ${mesRot(c.mesFim)}`:'nenhuma OS desde o início'):'',
+      c.status==='A vencer'?`vence em ${fmtN(c.diasFim)} dias`:'', c.mesesVazios.length&&!c.cancelado?`sem OS em ${c.mesesVazios.length>3?fmtN(c.mesesVazios.length)+' meses':c.mesesVazios.map(mesRot).join(', ')}`:'', c.semRenov?'sem negócio aberto no Ploomes':'',
+      c.respInativo?'vendedor da OS inativo':'', c.aprox?'vigência sem ano: deduzida':''].filter(Boolean);
+    c.busca=norm([c.num,c.cli,c.resp,c.dono,c.cidade,c.uf].join(' '));
+    return c; }).sort((a,b)=>(b.vigente-a.vigente)||((a.fim||9e15)-(b.fim||9e15)));
+  const noCtr=new Set(L.flatMap(c=>c.os)), avulsas=os.filter(o=>!noCtr.has(o));
+  _CTR={chave,L,os,avulsas,semNum:avulsas.filter(o=>!o.num),aguard:os.filter(o=>!o.faturado),base,R};
+  return _CTR; }
+function ctrRecorte(L,f){ const v=EST.vend; return v?L.filter(x=>f(x).includes(v)):L; }
+function ctrConsulta(nome){ irTela('busca'); setTimeout(()=>pqExemplo(nome),30); }
+const ctrTag=s=>`<span class="tag ${{Vigente:'t-ok','A vencer':'t-ale',Encerrado:'',Cancelado:'t-err',Futuro:'t-az'}[s]||''}">${esc(s)}</span>`;
+const _dc=d=>fmtData(d).slice(0,6)+fmtData(d).slice(8);
+const ctrVig=c=>c.ini||c.fim?`<span style="white-space:nowrap">${c.ini?_dc(c.ini):'?'} – ${c.fim?_dc(c.fim):'sem fim'}</span>${c.aprox?' <span class="tag" title="A vigência veio sem o ano no Omie; o ano foi deduzido pela primeira OS">aprox.</span>':''}`:'<span class="nd">sem vigência</span>';
+const OS_COLS=[{t:'OS',f:1},{t:'Previsão fat.',n:1},{t:'Cliente',f:1},{t:'Contrato'},{t:'Situação'},{t:'Valor',n:1},{t:'Vendedor'},{t:'Categoria'}];
+const osLinha=o=>[esc(o.nOS||'—'),o.dt?fmtData(o.dt):'—',esc(String(o.cli).slice(0,40)),esc(o.numOrig&&!/^n\/?d$/i.test(o.numOrig)?o.numOrig:'—'),
+  `<span class="tag ${o.faturado?'t-ok':'t-ale'}">${esc(o.sit)}</span>`,fmtBRL(o.vNum),esc(nomeCurto(o.resp)||o.resp)+(o.inativo?' <small>(inativo)</small>':''),esc(String(o.cat||'—').replace(/\s*\(.*$/,''))];
+/* barras de vigência: do início ao fim de cada contrato, com a data de hoje */
+function svgVigencias(L,o){ o=o||{}; const R=hoje(); L=L.filter(c=>c.ini||c.fim); if(!L.length)return '<p class="pl-vazio">Nenhum contrato com vigência.</p>';
+  const ds=L.flatMap(c=>[c.ini,c.fim]).filter(Boolean); let a=new Date(Math.min(...ds,+R)), z=new Date(Math.max(...ds,+R));
+  a=new Date(a.getFullYear(),0,1); z=new Date(z.getFullYear()+1,0,1);
+  const W=o.W||760, lw=210, rw=96, ch=28, H=34+L.length*ch, X=d=>lw+(W-lw-rw)*((d-a)/(z-a));
+  const cor={Vigente:corV('--g-real'),'A vencer':corV('--ale'),Encerrado:'#9AA4B1',Cancelado:corV('--err'),Futuro:corV('--g3')};
+  let anos=''; for(let y=a.getFullYear();y<=z.getFullYear();y++){ const x=X(new Date(y,0,1)); anos+=`<line x1="${sx(x)}" x2="${sx(x)}" y1="18" y2="${H-4}" stroke="${corV('--linha')}"/>${y<z.getFullYear()?txtSvg(x+4,14,String(y),{fs:11,c:corV('--txt3')}):''}`; }
+  const xr=X(R);
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vigência dos contratos"><title>Vigência dos contratos</title>${anos}
+    ${L.map((c,i)=>{ const y=26+i*ch, x1=X(c.ini||a), x2=X(c.fim||z), k=o.k&&o.k[i];
+      return `<g${clique(k)}>${k?`<rect x="0" y="${y}" width="${W}" height="${ch-2}" fill="transparent"/>`:''}${txtSvg(lw-8,y+12,String(c.cli).slice(0,26),{a:'end',fs:12,c:corV('--txt')})}${txtSvg(lw-8,y+24,c.num,{a:'end',fs:10.5,c:corV('--txt3')})}
+        <rect x="${sx(x1)}" y="${y+5}" width="${sx(Math.max(3,x2-x1))}" height="14" rx="2" fill="${cor[c.status]||corV('--g-real')}" ${c.aprox?`stroke="${corV('--txt2')}" stroke-dasharray="3 2"`:''} opacity="${c.vigente?1:.55}"/>
+        ${txtSvg(W-rw+6,y+16,c.status==='A vencer'||c.status==='Vigente'?(c.diasFim!=null?`${fmtN(c.diasFim)} dias`:'sem fim'):c.status.toLowerCase(),{fs:11.5,c:c.status==='A vencer'?corV('--ale'):corV('--txt2'),w:c.status==='A vencer'?700:400})}</g>`; }).join('')}
+    <line x1="${sx(xr)}" x2="${sx(xr)}" y1="18" y2="${H-2}" stroke="${corV('--lar')}" stroke-width="2"/>${txtSvg(xr+4,H-6,'hoje',{fs:11,c:corV('--lar'),w:700})}</svg>`; }
+VISTA.contratos=function(){
+  const C=contratosModelo(), R=C.R, temOS=C.os.length, temBase=C.base.length;
+  if(!temOS&&!temBase)return card('Nenhuma base de contratos carregada','',`<p>Para acompanhar os contratos, importe em <b>Dados e configurações → ↑ Importar planilhas</b>:</p>
+    <ul><li><b>Contratos por Cliente</b> (Omie · Serviços → Contratos), <b>sem filtro de situação</b>: vigência, situação e valor de cada contrato;</li>
+    <li><b>OS por Cliente</b> (Omie · Serviços → Ordens de Serviço), com as colunas <i>Nº do Contrato de Venda</i> e <i>Vigência do Contrato</i>: o faturamento mês a mês.</li></ul>
+    <p>O painel cruza os dois pelo número do contrato e com o Ploomes pelo cliente.</p><button class="btn" onclick="abrirModal('m-dados');listarBases()">↑ Importar planilhas</button>`);
+  const L=ctrRecorte(C.L,c=>[c.resp,c.dono]), V=L.filter(c=>c.vigente), AV=L.filter(c=>c.status==='A vencer'), AT=L.filter(c=>c.atrasado);
+  const SR=L.filter(c=>c.semRenov), ENC=L.filter(c=>(c.status==='Encerrado'||c.status==='Cancelado')&&c.fim&&diasEntre(c.fim,R)<=90);
+  const OS=ctrRecorte(C.os,o=>[o.resp]), osCtr=new Set(C.L.flatMap(c=>c.os)), AVU=OS.filter(o=>!osCtr.has(o));
+  const AG=OS.filter(o=>!o.faturado), SN=AVU.filter(o=>!o.num), v=a=>somar(a,o=>o.vNum);
+  const fatPerC=OS.filter(o=>o.faturado&&noPer(o.dt)&&osCtr.has(o)), fatPerA=OS.filter(o=>o.faturado&&noPer(o.dt)&&!osCtr.has(o));
+  const recMensal=somar(V,c=>c.parcela||c.mensal||0);
+  const cl={}; const k=(nome,tit,lin,cols)=>regLista('ctr-'+nome,tit,lin,cols||OS_COLS);
+  const linC=c=>[esc(c.num),esc(String(c.cli).slice(0,40)),ctrVig(c),ctrTag(c.status),c.diasFim==null?'—':fmtN(c.diasFim),fmtBRL(c.total),c.mesFim?mesRot(c.mesFim):'—',esc(c.alertas.join(' · ')||'—')];
+  const COLS_C=[{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Vigência'},{t:'Situação'},{t:'Dias p/ vencer',n:1},{t:'Faturado + a faturar',n:1},{t:'Última OS',n:1},{t:'Atenção',f:1}];
+  k('vig','Contratos vigentes',V.map(linC),COLS_C); k('av','Contratos a vencer em até 90 dias',AV.map(linC),COLS_C); k('at','Contratos sem OS no mês esperado',AT.map(linC),COLS_C);
+  k('sr','Contratos a renovar sem negócio aberto no Ploomes',SR.map(linC),COLS_C); k('enc','Encerrados ou cancelados nos últimos 90 dias',ENC.map(linC),COLS_C);
+  k('ag','OS aguardando faturamento',AG.sort((a,b)=>(a.dt||0)-(b.dt||0)).map(osLinha)); k('sn','OS sem número de contrato',SN.sort((a,b)=>(b.dt||0)-(a.dt||0)).map(osLinha));
+  k('fp','OS faturadas no período',fatPerC.concat(fatPerA).sort((a,b)=>(a.dt||0)-(b.dt||0)).map(osLinha));
+  let h='';
+  if(EST.vend)h+=`<div class="nota">Recorte: ${esc(EST.vend)} — contratos em que é o vendedor da última OS ou o dono da conta no Ploomes. O filtro de divisão não se aplica aqui (contratos são do SPV).</div>`;
+  h+=`<div class="g g4 kpis-2">
+    ${cardG({rot:'Contratos vigentes',val:lnk('ctr-vig',fmtN(V.length)),tipo:'pos',per:`posição em ${fmtData(R)}`,sub:recMensal?`~${fmtCompacto(recMensal)}/mês (parcela do contrato ou média das OS)`:'',fonte:'Omie'})}
+    ${cardG({rot:'A vencer em até 90 dias',val:lnk('ctr-av',fmtN(AV.length)),tipo:'pos',per:`até ${fmtData(new Date(+R+90*864e5))}`,cls:AV.length?'ale':'ok',sub:AV.length?AV.map(c=>esc(String(c.cli).split(' ')[0])+' '+fmtData(c.fim).slice(0,5)).join(' · '):'nenhum',fonte:'Omie'})}
+    ${cardG({rot:'Sem OS no mês esperado',val:lnk('ctr-at',fmtN(AT.length)),tipo:'pos',per:`até ${mesRot(mesSoma(mesKey(R),-1))}`,cls:AT.length?'err':'ok',sub:(AT.length?'vigentes cuja última OS ficou para trás da cadência':'última OS em dia em todos os vigentes')+(L.filter(c=>c.vigente&&c.mesesVazios.length).length?` · ${fmtN(L.filter(c=>c.vigente&&c.mesesVazios.length).length)} com mês sem OS nos últimos 12`:''),fonte:'Omie · OS'})}
+    ${cardG({rot:'Aguardando faturamento',val:lnk('ctr-ag',fmtCompacto(v(AG))),tipo:'pos',per:`posição em ${fmtData(R)}`,cls:AG.length?'lar':'',sub:`${fmtN(AG.length)} OS · ${fmtN(AG.filter(o=>o.dt&&o.dt<R).length)} com previsão já passada`,fonte:'Omie · OS'})}
+    ${cardG({rot:'Faturado em contratos',val:lnk('ctr-fp',fmtCompacto(v(fatPerC))),tipo:'mov',per:PER.rot,sub:`+ ${fmtCompacto(v(fatPerA))} em OS avulsas`,fonte:'Omie · OS'})}
+    ${cardG({rot:'A renovar sem negócio no Ploomes',val:lnk('ctr-sr',fmtN(SR.length)),tipo:'pos',per:'vencimento em até 180 dias',cls:SR.length?'err':'ok',sub:'cliente sem negócio aberto para a renovação',fonte:'Omie × Ploomes'})}
+    ${cardG({rot:'Encerrados ou cancelados',val:lnk('ctr-enc',fmtN(ENC.length)),tipo:'pos',per:'últimos 90 dias',sub:ENC.map(c=>esc(String(c.cli).split(' ')[0])).join(' · ')||'nenhum',fonte:'Omie'})}
+    ${cardG({rot:'OS sem número de contrato',val:lnk('ctr-sn',fmtN(SN.length)),tipo:'pos',per:'todas as OS da base',cls:SN.length?'ale':'ok',sub:`${fmtCompacto(v(SN))} — avulsas ou contrato não vinculado no Omie`,fonte:'Omie · OS'})}
+  </div>`;
+  const nCtrOS=C.L.filter(c=>!c.base).length;
+  if(!temOS)h+=`<div class="nota" style="border-left-color:var(--ale)"><b>Base incompleta:</b> falta a planilha "OS por Cliente" do Omie. Sem ela não há faturamento mês a mês, OS aguardando faturamento nem aviso de mês sem OS — só a vigência e a situação dos contratos. <button class="btn sec" onclick="abrirModal('m-dados');listarBases()">↑ Importar planilhas</button></div>`;
+  if(!temBase||nCtrOS)h+=`<div class="nota" style="border-left-color:var(--ale)"><b>Base incompleta:</b> ${temBase?`a planilha "Contratos por Cliente" tem ${fmtN(C.base.length)} contrato(s) (${[...new Set(C.base.map(c=>c.sit))].map(esc).join(', ')}), e ${fmtN(nCtrOS)} contrato(s) aparecem só nas OS`:'a planilha "Contratos por Cliente" não foi carregada'}. Para esses, a vigência vem do campo da OS${C.L.some(c=>c.aprox)?' (às vezes sem o ano, que é deduzido pela primeira OS)':''} e não há valor contratado. Exporte o "Contratos por Cliente" <b>sem filtro de situação</b> e importe aqui.</div>`;
+  /* lista principal */
+  h+=sec('Contratos','Um por linha: vigentes primeiro, do vencimento mais próximo para o mais distante. Clique no número para ver as OS do contrato.','ctr-lista');
+  L.forEach((c,i)=>regLista('ctr-c'+i,`Contrato ${c.num} — ${c.cli}`,c.os.slice().sort((a,b)=>(a.dt||0)-(b.dt||0)).map(osLinha),OS_COLS));
+  h+=card('','',tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Vigência'},{t:'Situação'},{t:'Vence em',n:1},{t:'Valor no contrato / média mês',n:1},{t:'Faturado',n:1},{t:'A faturar',n:1},{t:'OS',n:1},{t:'Última OS',n:1},{t:'Vendedor · dono da conta'},{t:'Atenção',f:1}],
+    L.map((c,i)=>[lnk('ctr-c'+i,esc(c.num)),`<a class="td-link" onclick="ctrConsulta('${esc(String(c.cli).replace(/'/g,''))}')" title="Abrir na Consulta detalhada">${esc(String(c.cli).slice(0,36))}</a>`,ctrVig(c),ctrTag(c.status),
+      c.diasFim==null?'—':`<span style="color:${c.status==='A vencer'?'var(--ale)':'inherit'}">${fmtN(c.diasFim)} d</span>`,
+      c.parcela?fmtBRL(c.parcela)+' <small>contrato</small>':c.mensal?fmtBRL(c.mensal)+' <small>média</small>':'—',fmtBRL(c.fat),c.aguard?`<b>${fmtBRL(c.aguard)}</b>`:'—',fmtN(c.os.length),
+      c.mesFim?`<span style="color:${c.atrasado?'var(--err)':'inherit'}">${mesRot(c.mesFim)}</span>`:'—',
+      esc(nomeCurto(c.resp)||c.resp)+(c.respInativo?' <small>(inativo)</small>':'')+(c.dono&&c.dono!==c.resp?` · ${esc(nomeCurto(c.dono)||c.dono)}`:''),
+      c.alertas.length?c.alertas.map(a=>`<span class="tag ${/^sem OS desde|sem negócio|nenhuma/.test(a)?'t-err':/^sem OS em/.test(a)?'t-ale':/vence/.test(a)?'t-ale':''}">${esc(a)}</span>`).join(' '):'<span class="tag t-ok">ok</span>']),560));
+  /* vigências */
+  h+=sec('Vigência dos contratos','Barra do início ao fim da vigência; a linha laranja é a data de referência. Tracejado = ano deduzido. Clique numa barra para ver as OS.','ctr-vig');
+  h+=blocoGraf({id:'ctr-vig-g',tit:'Quando cada contrato começa e termina',perg:'Quais vencem primeiro e quanto falta?',per:`posição em ${fmtData(R)}`,fonte:'Omie — Contratos e OS',
+    corpo:svgVigencias(L,{k:L.map((c,i)=>'ctr-c'+i)}),
+    tabela:{cols:['Contrato','Cliente','Início','Fim','Situação','Dias para vencer','Origem da vigência'],linhas:L.map(c=>[c.num,c.cli,c.ini?fmtData(c.ini):'—',c.fim?fmtData(c.fim):'—',c.status,c.diasFim==null?'—':c.diasFim,c.fonteVig+(c.aprox?' (ano deduzido)':'')])}});
+  /* mês a mês */
+  const meses=[...Array(12).keys()].map(i=>mesSoma(mesKey(R),i-11)), LM=L.filter(c=>meses.some(m=>c.porMes[m]));
+  const MX=LM.map(c=>meses.map(m=>c.porMes[m]||null));
+  LM.forEach((c,i)=>meses.forEach((m,j)=>regLista(`ctr-m${i}_${j}`,`${c.num} — ${c.cli} · ${mesRot(m)}`,c.os.filter(o=>o.mes===m).map(osLinha),OS_COLS)));
+  h+=sec('Faturamento mês a mês','Valor das OS de cada contrato pelo mês da previsão de faturamento (faturadas e aguardando). Mês vazio dentro da vigência = medição ou faturamento a conferir; valor dobrado logo depois costuma ser o faturamento acumulado dos meses em falta.','ctr-mes');
+  h+=blocoGraf({id:'ctr-heat',tit:'OS por contrato e mês',perg:'Algum contrato deixou de faturar num mês?',per:`${mesRot(meses[0])} a ${mesRot(meses[11])}`,unid:'R$ mil',fonte:'Omie — OS por Cliente',nota:'— = nenhuma OS no mês',
+    corpo:LM.length?svgHeat(LM.map(c=>String(c.cli).split(/[\s+]+/)[0].slice(0,10)+' · '+c.num.slice(-5)),meses.map(mesRot),MX,{fmt:x=>(x/1000).toLocaleString('pt-BR',{maximumFractionDigits:x<1e4?1:0}),k:LM.map((c,i)=>meses.map((m,j)=>`ctr-m${i}_${j}`)),aria:'Faturamento por contrato e mês'}):'<p class="pl-vazio">Nenhuma OS de contrato nos últimos 12 meses.</p>',
+    tabela:{cols:['Contrato','Cliente',...meses.map(mesRot)],linhas:LM.map((c,i)=>[c.num,c.cli,...MX[i].map(x=>x==null?'—':fmtBRL(x))])}});
+  const sC=meses.map(m=>somar(OS.filter(o=>o.mes===m&&osCtr.has(o)&&o.faturado),o=>o.vNum)), sA=meses.map(m=>somar(OS.filter(o=>o.mes===m&&!osCtr.has(o)&&o.faturado),o=>o.vNum)), sG=meses.map(m=>somar(OS.filter(o=>o.mes===m&&!o.faturado),o=>o.vNum));
+  agendar('ctr-f',{type:'bar',data:{labels:meses.map(mesRot),datasets:[
+      {label:'Contratos — faturado',data:sC,stack:'s',backgroundColor:CORDIV.SPV(),borderRadius:2,maxBarThickness:46},
+      {label:'OS avulsas — faturado',data:sA,stack:'s',backgroundColor:alfa(CORDIV.SPV(),.45),borderRadius:2,maxBarThickness:46},
+      {label:'Aguardando faturamento',data:sG,stack:'s',backgroundColor:corV('--ale'),borderRadius:2,maxBarThickness:46}]},
+    options:{scales:{x:{stacked:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:0}},y:{stacked:true,beginAtZero:true,grid:{color:COR().linha},ticks:{callback:x=>fmtCompacto(x)}}},
+      plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
+  h+=card('Faturamento de serviços por mês','OS pelo mês da previsão de faturamento — contratos, avulsas e o que ainda aguarda faturamento',graf('ctr-f','alt'));
+  /* renovação */
+  const RN=L.filter(c=>c.renovar).sort((a,b)=>a.diasFim-b.diasFim);
+  h+=sec('Renovação','Contratos que vencem em até 180 dias (ou venceram há até 60): o que o Ploomes mostra do cliente. O vínculo é pelo nome do cliente.','ctr-renov');
+  h+=card('','',RN.length?tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Fim',n:1},{t:'Dias',n:1},{t:'Negócios abertos no Ploomes',f:1},{t:'Última interação',n:1},{t:'Dono da conta'},{t:'Situação da renovação',f:1}],
+    RN.map(c=>{ const p=c.pl, sp=p.abSPV.length?p.abSPV:p.ab, ui=p.ultInter;
+      return [esc(c.num),esc(String(c.cli).slice(0,36)),fmtData(c.fim),`<b style="color:${c.diasFim<0?'var(--err)':c.diasFim<=90?'var(--ale)':'inherit'}">${fmtN(c.diasFim)}</b>`,
+        sp.length?sp.slice(0,3).map(n=>`${esc(n.div||'')} · ${esc(String(n.etapa||n.est).slice(0,26))} · ${fmtCompacto(n.vNum)}${n.dtPrev?' · prev. '+fmtData(n.dtPrev):''}`).join('<br>')+(sp.length>3?`<br><small>+${sp.length-3}</small>`:''):'<span class="nd">nenhum</span>',
+        ui?`${fmtData(ui.dt)} <small>(${fmtN(diasEntre(ui.dt,R))} d)</small>`:'—',esc(c.dono?nomeCurto(c.dono)||c.dono:'—'),
+        p.abSPV.length?'<span class="tag t-ok">negócio SPV aberto</span>':p.ab.length?'<span class="tag t-ale">só negócio de outra divisão</span>':'<span class="tag t-err">abrir negócio de renovação</span>']; })):'<div class="vazio">Nenhum contrato vencendo nos próximos 180 dias.</div>');
+  /* OS */
+  h+=sec('OS aguardando faturamento','Todas as OS ainda não faturadas, da previsão mais antiga para a mais recente. Previsão já passada fica em vermelho.','ctr-ag');
+  h+=card('','',tab(OS_COLS,AG.map(o=>{ const l=osLinha(o); if(o.dt&&o.dt<R)l[1]=`<b style="color:var(--err)">${fmtData(o.dt)}</b>`; return l; }),420));
+  h+=sec('OS sem número de contrato','OS sem "Nº do Contrato de Venda" no Omie. Serviço pontual não precisa de contrato; manutenção recorrente sim — vincule no Omie para entrar no acompanhamento.','ctr-sn');
+  const sn=agrupar(SN,o=>o.cli);
+  h+=card('','',tab([{t:'Cliente',f:1},{t:'OS',n:1},{t:'Valor',n:1},{t:'Meses com OS',n:1},{t:'Última',n:1},{t:'Leitura',f:1}],
+    [...sn.entries()].sort((a,b)=>v(b[1])-v(a[1])).map(([cli,a])=>{ const ms=new Set(a.map(o=>o.mes).filter(Boolean)); return [esc(String(cli).slice(0,40)),fmtN(a.length),fmtBRL(v(a)),fmtN(ms.size),fmtData(a.map(o=>o.dt).filter(Boolean).sort((x,y)=>y-x)[0]),
+      ms.size>=3?'<span class="tag t-ale">recorrente: parece contrato</span>':'pontual']; }),380));
+  h+=`<div class="pl-bar so-tela"><button class="btn sec" onclick="contratosExcel()">↓ Excel do acompanhamento</button></div>`;
+  return h; };
+function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_new();
+  const add=(nome,cab,lin)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cab,...lin]),nome);
+  const L=ctrRecorte(C.L,c=>[c.resp,c.dono]), meses=[...new Set(C.os.map(o=>o.mes).filter(Boolean))].sort();
+  add('Contratos',['Contrato','Cliente','UF','Início','Fim','Vigência deduzida','Origem da vigência','Situação','Dias para vencer','Parcela (contrato)','Média por mês (OS)','Faturado','Aguardando faturamento','Nº de OS','Primeiro mês','Último mês','Cadência (meses)','Meses sem OS desde a última','Vendedor (última OS)','Dono da conta (Ploomes)','Negócios abertos no Ploomes','Última interação','Atenção'],
+    L.map(c=>[c.num,c.cli,c.uf,c.ini?isoD(c.ini):'',c.fim?isoD(c.fim):'',c.aprox?'sim':'',c.fonteVig,c.status,c.diasFim,c.parcela,c.mensal?Math.round(c.mensal*100)/100:null,c.fat,c.aguard,c.os.length,c.mesIni||'',c.mesFim||'',c.cadencia,c.mesesSemOS,c.resp,c.dono||'',c.pl.ab.length,c.pl.ultInter?isoD(c.pl.ultInter.dt):'',c.alertas.join(' · ')]));
+  add('Mês a mês',['Contrato','Cliente',...meses],L.map(c=>[c.num,c.cli,...meses.map(m=>c.porMes[m]||null)]));
+  const ctrDe=new Map(); C.L.forEach(c=>c.os.forEach(o=>ctrDe.set(o,c.num)));
+  add('OS',['OS','Previsão de faturamento','Cliente','Nº do contrato (Omie)','Contrato no acompanhamento','Vigência (OS)','Situação','Total do serviço','Total líquido','Vendedor','Categoria','UF','Cidade','Parcelas','Pedido do cliente'],
+    ctrRecorte(C.os,o=>[o.resp]).map(o=>[o.nOS,o.dt?isoD(o.dt):'',o.cli,o.numOrig,ctrDe.get(o)||'',o.vig||'',o.sit,o.vNum,o.vLiq,o.resp+(o.inativo?' (inativo)':''),o.cat||'',o.uf||'',o.cidade||'',o.parcelas||'',o.pedCli==null?'':String(o.pedCli)]));
+  add('Renovação',['Contrato','Cliente','Fim','Dias','Negócios abertos (todos)','Negócios abertos SPV','Valor aberto SPV','Última interação','Dono da conta'],
+    L.filter(c=>c.renovar).map(c=>[c.num,c.cli,isoD(c.fim),c.diasFim,c.pl.ab.length,c.pl.abSPV.length,somar(c.pl.abSPV,n=>n.vNum||0),c.pl.ultInter?isoD(c.pl.ultInter.dt):'',c.dono||'']));
+  add('Leia-me',['Item','Descrição'],[['Gerado em',fmtDH(new Date())],['Referência',fmtData(R)],['Recorte',EST.vend||'todos'],
+    ['Fontes','Omie: Contratos por Cliente e OS por Cliente. Ploomes: negócios, empresas e interações (vínculo pelo nome do cliente).'],
+    ['Contrato','Número que aparece na base de contratos ou em OS que trazem a vigência. OS sem número ou com número sem vigência são avulsas.'],
+    ['Vigência deduzida','O Omie às vezes exporta a vigência sem o ano (ex.: "05/01 ~ 04/01/27"); o ano é deduzido pela primeira OS do contrato.'],
+    ['Sem OS no mês esperado','Contrato vigente cuja última OS é anterior ao mês esperado pela cadência observada (mensal = todo mês). O mês corrente não conta como falta.']]);
+  XLSX.writeFile(wb,`LS-Fire-Contratos-${isoD(R)}.xlsx`); }
+
 /* =============== 5–7. PROPOSTAS, ENGENHARIA (composição) =============== */
 VISTA.propostas=function(){ return propostasCorpo()+sec('Conversão e perdas','Win rate dos negócios decididos e por que se perde. Perdas do Ploomes não trazem a data do desfecho: entram pela última atualização do negócio, como aproximação.','prop-conv')+perdasCorpo(); };
 VISTA.engenharia=function(){ return secEngSup()+analistasCorpo()+secCotAnalistas(); };
@@ -5002,7 +5242,7 @@ VISTA.dados=function(){
           const cob={pedidos:'livro de pedidos: completo até o último pedido lançado',vendasOmie:'pedidos recebidos no Ploomes: a partir de jul/2026',
             negocios:'Ploomes desde jul/2026; situação = a do export',propostas:'Ploomes desde jul/2026',propCab:'Ploomes desde jul/2026',
             historico:'OMIE: oportunidades até a migração para o Ploomes',interacoes:'Ploomes desde mai/2026',carteira:'posição do financeiro na data do arquivo',notas:'notas emitidas nos meses importados (um arquivo por mês; reimportar o mês substitui as mesmas notas)',
-            empresas:'cadastro (sem data de corte)',omie:'itens de venda do ERP',contratos:'contratos de serviço vigentes'}[k]||'—';
+            empresas:'cadastro (sem data de corte)',omie:'itens de venda do ERP',contratos:'Omie: contratos na situação exportada (exporte sem filtro)',os:'Omie: ordens de serviço na situação exportada'}[k]||'—';
           return [esc(NOMES_BASE[k]),b&&b.rows?fmtN(b.rows.length):'<span class="nd">vazia</span>',im&&!isNaN(im)?fmtDH(im):'—',esc((imp[k]||{}).arq||'—'),u?fmtData(u):'—',esc(cob)]; })));
     const vd=VALIDACAO.datas, vn=VALIDACAO.numeros;
     h+=card('Validação da importação',`Datas impossíveis (ex.: 31/02) não são aceitas: o campo fica vazio, não vira outra data. "1.234" sem vírgula é lido como milhar (1.234 = mil duzentos e trinta e quatro).`,
@@ -5892,9 +6132,9 @@ const REL_MODELOS=[
  {k:'rC',nome:'Reunião individual do vendedor',per:'estaSemana',pessoa:true,desc:'Ficha do vendedor, negócios em risco, compromisso de previsão e ações.',telas:{desempenho:['des-ficha'],pipeline:['pipe-comp'],reunioes:['reu-ant','plano']}},
  {k:'rD',nome:'Acompanhamento semanal da engenharia',per:'semAnt',desc:'Fila, propostas entregues, tempo até a proposta, revisões e carga por analista.',telas:{engenharia:'*'}},
  {k:'rE',nome:'Fechamento mensal comercial',per:'mesAnt',desc:'Resultado × meta, evolução semanal, equipes, conversão, perdas, carteira, previsão e recuperação dos desvios.',
-   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
+   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],contratos:['kpi:contratos','ctr-lista','ctr-renov','ctr-ag'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
  {k:'rF',nome:'Revisão trimestral',per:'triAnt',desc:'Tendências, comparativos, qualidade do pipeline, previsibilidade, gargalos e prioridades seguintes.',
-   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
+   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],contratos:['kpi:contratos','ctr-vig','ctr-mes','ctr-renov'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
  {k:'rG',nome:'Consolidado anual',per:'esteAno',desc:'Resultado consolidado, evolução mensal e trimestral, equipes, clientes, mix, perdas, carteira e planejamento.',
    telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-cat','q:v-cat','q:v-vend'],clientes:'*',desempenho:['des-vend','des-meta'],propostas:['perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat'],pipeline:['pipe-conf2'],reunioes:['plano']}}];
 const ATALHOS=[['hoje','Hoje'],['estaSemana','Esta semana'],['semAnt','Semana anterior'],['u7','Últimos 7 dias'],['esteMes','Este mês'],['mesAnt','Mês anterior'],['esteTri','Este trimestre'],['triAnt','Trimestre anterior'],['esteAno','Este ano'],['anoAnt','Ano anterior'],['atual','Período atual do painel']];
@@ -5903,7 +6143,7 @@ const SEC_NOMES={'*':'Todas as seções','sup-exec':'Execução e resultado (8 s
  'atv-kpi':'Execução no período','atv-pessoa':'Interações vinculadas à carteira','atv-sem':'Interações por semana','atv-passos':'Próximos passos','pipe-insp':'Inspeção das oportunidades','pipe-mud':'Mudanças entre fotografias','pipe-comp':'Previsão e compromisso','pipe-conf2':'Confiabilidade das previsões','kpi:pipeline':'Indicadores do pipeline',
  'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria (tabela)','q:v-cat':'Mix por categoria (gráficos)','q:c-top':'Top 10 clientes','q:v-cli':'Top 10 clientes','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
  'prop-conv':'Conversão e perdas','perd-wr':'Win rate','perd-mot':'Motivos de perda','prop-vel':'Velocidade das propostas','eng-sup':'Supervisão da engenharia','kpi:executiva':'Indicadores principais','exec-alertas':'Alertas de consistência','exec-div':'SEQ × SPV','exec-diag':'Destaques e riscos',
- 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
+ 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
 const nomeSec=s=>SEC_NOMES[s]||s.replace(/^kpi:/,'Indicadores — ');
 const nomeTelaRel=t=>(TELAS.find(x=>x.id===t)||{nome:t==='engenharia'?'Engenharia de aplicação':t}).nome;
 VISTA.relatorios=function(){ const m=REL_MODELOS.find(x=>x.k===RELC.modelo)||REL_MODELOS[0], pref=(CFG.relPrefs||{})[m.k]||{};
@@ -6687,12 +6927,12 @@ REL_PAG.uW=REL_PAG.W-2*REL_PAG.padX;
 REL_PAG.uH=REL_PAG.H-REL_PAG.padT-REL_PAG.padB-REL_PAG.cab-REL_PAG.rod-10;   /* 10 = respiro abaixo do cabeçalho */
 const REL_LIM_LINHAS=18, REL_ANEXO_MAX=80;
 const REL_CAPS=[['sintese','Síntese executiva'],['supervisao','Supervisão e pendências'],['execucao','Execução e atividades'],['resultados','Resultados e metas'],['desvios','Desvios e causas'],['pipeline','Pipeline e previsão de pedidos'],
-  ['carteira','Carteira a faturar'],['equipes','Desempenho das equipes'],['clientes','Clientes e concentração'],['decisoes','Decisões e plano de ação'],['metodologia','Metodologia e anexos']];
+  ['carteira','Carteira a faturar'],['contratos','Contratos de serviço'],['equipes','Desempenho das equipes'],['clientes','Clientes e concentração'],['decisoes','Decisões e plano de ação'],['metodologia','Metodologia e anexos']];
 /* em que capítulo cai cada seção (tela, sid) — o primeiro que casar */
 const REL_SEC_CAP=[['supervisao','*','supervisao'],['atividades','*','execucao'],['reunioes','*','decisoes'],['resultados','res-ind','resultados'],['resultados','res-evo','resultados'],['resultados','res-rec','decisoes'],
   ['pipeline','pipe-comp','pipeline'],['pipeline','pipe-conf2','pipeline'],['desempenho','des-ficha','sintese'],['executiva','plano-res','decisoes'],['executiva','kpi:executiva','sintese'],['executiva','exec-alertas','sintese'],['executiva','exec-meta','resultados'],['executiva','exec-div','resultados'],['executiva','exec-diag','desvios'],['executiva','plano','decisoes'],
   ['resultados','res-yoy','desvios'],['resultados','q:v-vend','desvios'],['resultados','res-cat','desvios'],['resultados','*','resultados'],
-  ['propostas','perd-mot','desvios'],['propostas','*','pipeline'],['pipeline','*','pipeline'],['carteira','*','carteira'],
+  ['propostas','perd-mot','desvios'],['propostas','*','pipeline'],['pipeline','*','pipeline'],['carteira','*','carteira'],['contratos','*','contratos'],
   ['desempenho','*','equipes'],['engenharia','*','equipes'],['clientes','*','clientes']];
 const capDe=(tela,sid)=>{ const x=REL_SEC_CAP.find(([t,s])=>t===tela&&(s==='*'||s===sid)); return x?x[2]:'metodologia'; };
 /* o que cada público recebe: tela → IDs de seção, ou '*' (todas) */
@@ -6702,13 +6942,13 @@ const REL_PUB={
     telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div','exec-diag'],reunioes:['plano'],resultados:['kpi:resultados','res-mes','res-yoy','q:v-vend','res-cat'],
       pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob','pipe-estagios'],carteira:['kpi:carteira','cart-fat','cart-mes'],
       propostas:['kpi:propostas','prop-funil','prop-vel','perd-wr','perd-mot'],desempenho:['kpi:desempenho','des-vend','des-meta'],
-      engenharia:['eng-cap'],clientes:['kpi:clientes','cli-abc','q:c-top']}},
+      engenharia:['eng-cap'],clientes:['kpi:clientes','cli-abc','q:c-top'],contratos:['kpi:contratos','ctr-renov']}},
   equipe:{nome:'Equipe',tit:'Relatório Comercial — Equipe',lim:null,
     desc:'Para a reunião comercial: riscos e plano, pipeline com as listas para agir, propostas, desempenho de vendedores e analistas.',
     telas:{supervisao:'*',executiva:['kpi:executiva','exec-alertas','exec-diag'],atividades:'*',reunioes:['reu-ant','plano'],pipeline:'*',propostas:'*',desempenho:'*',engenharia:'*',carteira:['kpi:carteira','cart-lista']}},
   financeiro:{nome:'Financeiro',tit:'Previsão de Pedidos e Faturamento',lim:REL_LIM_LINHAS,
     desc:'Pedidos recebidos e meta, faturamento realizado, previsão de pedidos pela política de probabilidade e carteira a faturar pelo mês de entrega.',
-    telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div'],resultados:['kpi:resultados','res-mes'],pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob'],carteira:'*'}},
+    telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div'],resultados:['kpi:resultados','res-mes'],pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob'],carteira:'*',contratos:['kpi:contratos','ctr-mes','ctr-ag']}},
   completo:{nome:'Completo',tit:'Relatório Comercial — Completo',lim:null,desc:'Todas as seções das abas marcadas, sem limite de linhas.',telas:null}};
 const TELAS_REL=()=>TELAS.filter(t=>!['busca','dados','relatorios'].includes(t.id));
 function relMarcarTelas(pub){
@@ -7034,7 +7274,7 @@ addEventListener('afterprint',()=>{ if(document.body.classList.contains('rel-on'
 const HTML_ORIG=document.documentElement.outerHTML;
 const NOMES_BASE={negocios:'Negócios (CRM)',propostas:'Propostas — itens',propCab:'Propostas — cabeçalho',interacoes:'Interações',
   empresas:'Empresas',historico:'Histórico OMIE',pedidos:'Controle de Pedidos',
-  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)'};
+  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)'};
 
 function abrirModal(id){ document.getElementById(id).classList.add('aberto');
   if(id==='m-dados')listarBases(); if(id==='m-cfg')montarCfg(); if(id==='m-glos')montarGlossario(); }
@@ -7142,7 +7382,7 @@ function marcarRot(){ const b=document.getElementById('bt-rot');
 /* ---------- carregar planilhas ---------- */
 /* data mais recente DENTRO de cada base — é ela que diz até quando os dados vão,
    não a hora da importação (um export antigo importado hoje continua antigo) */
-const DATA_BASE={notas:'dt',carteira:'dt',pedidos:'dt',negocios:'dtAtu',vendasOmie:'dt',propostas:'dt',propCab:'dt',omie:'dt',interacoes:'dt',historico:'dtVenda',contratos:'dt'};
+const DATA_BASE={notas:'dt',carteira:'dt',pedidos:'dt',negocios:'dtAtu',vendasOmie:'dt',propostas:'dt',propCab:'dt',omie:'dt',interacoes:'dt',historico:'dtVenda',os:'dtI'};
 function ultimaData(base){ const f=DATA_BASE[base], a=(typeof M!=='undefined'&&M[base])||[]; if(!f)return null;
   let mx=0; a.forEach(x=>{ const d=x&&x[f]; if(d instanceof Date&&!isNaN(d)&&+d<=+HOJE+864e5&&+d>mx)mx=+d; }); return mx?new Date(mx):null; }
 const fmtDH=d=>`${fmtData(d)} às ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -7530,7 +7770,7 @@ function comCarregando(nome){ const f=window[nome]; if(typeof f!=='function'||f.
       .catch(e=>{ console.error(e); aviso('Não consegui gerar a planilha: '+(e&&e.message||'erro')); })
       .finally(()=>{ bt.classList.remove('carregando'); bt.removeAttribute('aria-busy'); bt.disabled=false; }); };
   g._cc=1; window[nome]=g; }
-['relcPlanilha','fechamentoPlanilha','pqExcel','xlsVendPrev','gbCSV','baixarLista'].forEach(comCarregando);
+['relcPlanilha','fechamentoPlanilha','pqExcel','xlsVendPrev','gbCSV','baixarLista','contratosExcel'].forEach(comCarregando);
 /* ---------- arranque ---------- */
 function arrancar(){ lerSeed().then(iniciar).catch(e=>{ console.error(e);
   document.getElementById('tela').innerHTML=`<div class="nota">Não consegui abrir a base embutida (${esc(e.message)}).
