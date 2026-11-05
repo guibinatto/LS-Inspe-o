@@ -96,3 +96,8 @@ O app continua sendo um único HTML que funciona offline. As camadas estão sepa
 - **Alertas**: sem OS no mês esperado (cadência observada; o mês corrente não conta), meses sem OS nos últimos 12, vencimento em até 90 dias, renovação sem negócio aberto no Ploomes (vencimento em até 180 dias).
 - **Ploomes**: vínculo pelo nome do cliente (exato; senão 12 primeiras letras) — o número do contrato do Omie não existe no Ploomes.
 - **Tela** `contratos`, capítulo "Contratos de serviço" nos relatórios (mensal, trimestral, diretoria, financeiro), Excel `contratosExcel()`.
+- **Controle de Pedidos (ITM)**: pedido da família ITM é contrato vendido. Liga ao contrato do Omie do mesmo cliente com início até 150 dias do pedido (traz valor vendido e consumo); sem ele vira contrato presumido (`PV <nº>`), vigência de 12 meses a partir do pedido — ou o nº de parcelas, quando a OS foi faturada de uma vez e parcelada (6+), caso em que não se espera OS todo mês — com as OS de serviço do cliente na vigência. OS parcelada 6+ vezes sem pedido também vira contrato (`OS <nº>`). Renovação e encerrados: janela de 120 dias.
+
+## Relatórios por tema (05/11/2026)
+
+`REL_TEMAS` (tPIP, tRES, tPRO, tCAR, tCTR, tCLI, tVEN, tATV) entram em `REL_MODELOS` com `tema:true`: seções explícitas (desmarcáveis), `off` = seções longas fora por padrão (inspeção das oportunidades), sem narrativa de abertura e com um capítulo por tela em vez da ordem editorial de `REL_CAPS`.

@@ -36,14 +36,23 @@ const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
   const m = await p.evaluate(() => { const C = contratosModelo(), g = n => C.L.find(c => c.num === n) || {};
     const soma = C.L.reduce((s, c) => s + c.total, 0) + C.avulsas.reduce((s, o) => s + o.vNum, 0), tot = C.os.reduce((s, o) => s + o.vNum, 0);
     return { n: C.L.length, os: C.os.length, soma, tot, sepac: [g('2025/08302').fat, g('2025/08302').status, g('2025/08302').mesesVazios], cm: [g('2026/00005').status, g('2026/00005').semRenov],
-      leg: [g('2026/00004').status, g('2026/00004').fonteVig], vig: C.L.filter(c => c.vigente).length, ori: g('2025/08304').os && g('2025/08304').os.length }; });
+      leg: [g('2026/00004').status, g('2026/00004').fonteVig], vig: C.L.filter(c => c.vigente).length, ori: g('2025/08304').os && g('2025/08304').os.length,
+      fa: (c => c.num && [c.status, c.unico, c.parcelas, c.os.length, Math.round(c.total), c.valorPed, c.semRenov, c.atrasado, isoD(c.fim)])(g('PV 2026/09390')),
+      sep: [g('2025/08302').valorPed, g('2025/08302').origem], leg6: g('2026/00006').ped && g('2026/00006').ped.ptc, gl: g('PV 8132').status,
+      bepe: ['PV 8370', 'PV 8371'].map(n => g(n).status + '/' + g(n).renovar), ntn: (g('PV s/nº').os || []).every(o => !/venda de/i.test(o.cat || '')) }; });
   if (m.os) {
     t(Math.abs(m.soma - m.tot) < 0.01, `toda OS entra uma vez: contratos + avulsas = total das OS (${m.tot.toFixed(2)})`);
     t(Math.round(m.sepac[0]) === 118911 && m.sepac[1] === 'Vigente', 'SEPAC 2025/08302: R$ 118.911 faturado, vigente');
     t(JSON.stringify(m.sepac[2]) === '["2026-02","2026-03"]', 'SEPAC: meses sem OS (fev e mar/26) apontados');
     t(m.cm[0] === 'A vencer' && m.cm[1] === true, 'CM Hospitalar vence em até 90 dias e não tem negócio aberto no Ploomes');
     t(m.leg[0] === 'Cancelado' && /Contratos/.test(m.leg[1]), 'Legrand 2026/00004: situação e vigência vêm do Contratos por Cliente');
-    t(m.vig === 6, '6 contratos vigentes');
+    t(m.vig === 10, '10 contratos vigentes (6 do Omie + 4 presumidos pelo Controle de Pedidos)');
+    t(JSON.stringify(m.fa) === '["Vigente",true,12,2,94020,94020,true,false,"2027-02-09"]', 'FA Maringá: pedido ITM 2026/09390 vira contrato de 12 parcelas até 09/02/2027, com as 2 OS, sem negócio de renovação, sem alerta de OS mensal');
+    t(Math.round(m.sep[0]) === 356732 && /Controle/.test(m.sep[1]), 'SEPAC: pedido ITM do Controle liga ao contrato do Omie (valor vendido R$ 356.732)');
+    t(String(m.leg6) === '10149', 'Legrand: pedido 10149 liga ao contrato 2026/00006 (o mais próximo da data), não ao cancelado');
+    t(m.gl === 'Encerrado', 'Legrand GL (outro cliente, 2025): contrato presumido próprio, encerrado');
+    t(m.bepe.join(',') === 'Encerrado/true,Encerrado/true', 'BEPE Garuva e Clif: encerrados há menos de 120 dias, entram na renovação');
+    t(m.ntn, 'contrato presumido só leva OS de serviço (venda de produto do cliente fica fora)');
     /* referência no passado: OS posteriores ficam fora */
     const ref = await p.evaluate(() => { setRef('2026-06-30'); const C = contratosModelo(), o = C.os.every(x => !x.dtI || x.dtI <= C.R), s = C.L.find(c => c.num === '2026/00004'); return { o, n: C.os.length, st: s && s.status }; });
     t(ref.o && ref.n < m.os, `referência 30/06: OS incluídas depois ficam fora (${ref.n} de ${m.os})`);
@@ -69,12 +78,19 @@ const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
     const dl = p.waitForEvent('download'); await p.locator('button', { hasText: 'Excel do acompanhamento' }).click();
     const d = await dl, f = await d.path(), XL = await p.evaluate(async () => 1);
     const abas = await p.evaluate(async b64 => { const wb = XLSX.read(Uint8Array.from(atob(b64), c => c.charCodeAt(0)), { type: 'array' }); return wb.SheetNames.map(n => n + ':' + (XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1 }).length - 1)); }, fs.readFileSync(f).toString('base64'));
-    t(/^LS-Fire-Contratos-\d{4}-\d{2}-\d{2}\.xlsx$/.test(d.suggestedFilename()) && abas.join(',').startsWith('Contratos:8,Mês a mês:8,OS:118,Renovação:'), `Excel com abas ${abas.join(' · ')}`);
+    t(/^LS-Fire-Contratos-\d{4}-\d{2}-\d{2}\.xlsx$/.test(d.suggestedFilename()) && abas.join(',').startsWith('Contratos:15,Mês a mês:15,OS:118,Renovação:'), `Excel com abas ${abas.join(' · ')}`);
     /* relatórios */
     for (const [mod, sids] of [['rE', ['6. contratos de serviço', 'contratos vigentes', 'renovação', 'os aguardando faturamento']], ['rF', ['contratos de serviço', 'vigência dos contratos', 'faturamento mês a mês', 'renovação']]]) {
       const rel = await p.evaluate(async mod => { irTela('relatorios'); RELC.modelo = mod; render(); await relcGerar(); const txt = document.querySelector('#rel-view').innerText; fecharRelatorio(); return txt; }, mod);
       t(sids.every(s => rel.toLowerCase().includes(s)), `relatório ${mod === 'rE' ? 'mensal' : 'trimestral'} traz o capítulo de contratos`);
     }
+    /* relatórios por tema: título, um capítulo com o nome do tema, nada fora da margem, seção longa fora por padrão */
+    const tm = await p.evaluate(async () => { const R = []; for (const m of REL_MODELOS.filter(x => x.tema)) { irTela('relatorios'); RELC.modelo = m.k; render();
+        const off = [...document.querySelectorAll('.relc-sec')].filter(c => !c.checked).map(c => c.value); await relcGerar();
+        const v = document.querySelector('#rel-view'), pg = [...v.querySelectorAll('.rel-pag')], txt = v.innerText;
+        R.push({ k: m.k, ok: txt.includes('Relatório — ' + m.nome) && txt.includes('1. ' + m.nome), fora: pg.filter(x => x.scrollWidth > x.clientWidth + 2 || x.scrollHeight > x.clientHeight + 2).length, n: pg.length, off }); fecharRelatorio(); } return R; });
+    t(tm.length === 8 && tm.every(r => r.ok && !r.fora), `8 relatórios por tema com título e capítulo do tema, sem nada fora da margem (${tm.map(r => r.k + ' ' + r.n + 'p').join(', ')})`);
+    t(JSON.stringify(tm.find(r => r.k === 'tPIP').off) === '["pipe-insp"]', 'Pipeline: inspeção das oportunidades (33 páginas) vem desmarcada por padrão');
   } else { const tx = await p.evaluate(() => document.getElementById('tela').innerText); t(/nenhuma base de contratos/i.test(tx) || (tela.kpis === 8 && /base incompleta/i.test(tx)), 'sem OS: a tela explica o que falta importar'); }
   /* celular */
   await p.setViewportSize({ width: 390, height: 844 }); await p.evaluate(() => { irTela('contratos'); }); await p.waitForTimeout(500);
