@@ -1650,9 +1650,10 @@ const TELAS=[
  {id:'contratos',bloco:'Análise',ic:'⟳',nome:'Contratos de serviço',tit:'Contratos de serviço',sub:'Vigência, faturamento mês a mês pelas OS, vencimentos e renovação no Ploomes',fase:''},
  {id:'clientes',bloco:'Análise',ic:'◍',nome:'Clientes e mercado',tit:'Clientes e mercado',sub:'Quem compra, quem volta, concentração e regiões',fase:''},
  {id:'relatorios',bloco:'Apoio',ic:'▣',nome:'Relatórios prontos',tit:'Relatórios prontos',sub:'Diário, semanal, individual, engenharia, mensal, trimestral e anual',fase:''},
+ {id:'apresentacao',bloco:'Apoio',ic:'▶',nome:'Apresentação',tit:'Apresentação',sub:'A história do período em capítulos, para projetar ou enviar — com o período e os filtros do painel',fase:''},
  {id:'busca',bloco:'Apoio',ic:'⌕',nome:'Consulta detalhada',tit:'Consulta detalhada',sub:'Qualquer cliente, vendedor, analista, cidade ou estado, em todas as bases',fase:''},
  {id:'dados',bloco:'Apoio',ic:'⚙',nome:'Dados e configurações',tit:'Dados e configurações',sub:'Importação, bases, metas, critérios, histórico, fontes, dicionário e arquitetura',fase:''}];
-const TELA_ALIAS={contrato:'contratos',os:'contratos',central:'supervisao',resumo:'executiva',equipe:'desempenho',vendas:'resultados',previsao:'pipeline',perdas:'propostas',equipe:'desempenho',analistas:'engenharia',pesquisa:'busca'};
+const TELA_ALIAS={apres:'apresentacao',slides:'apresentacao',contrato:'contratos',os:'contratos',central:'supervisao',resumo:'executiva',equipe:'desempenho',vendas:'resultados',previsao:'pipeline',perdas:'propostas',equipe:'desempenho',analistas:'engenharia',pesquisa:'busca'};
 const telaId=id=>TELA_ALIAS[id]||id;
 /* onde cada tela fica na linha do tempo comercial — é o que separa Pipeline
    (antes do pedido) de Produção & Entrega (depois dele) */
@@ -5251,6 +5252,218 @@ function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_
     ['Sem OS no mês esperado','Contrato vigente cuja última OS é anterior ao mês esperado pela cadência observada (mensal = todo mês). O mês corrente não conta como falta.']]);
   XLSX.writeFile(wb,`LS-Fire-Contratos-${isoD(R)}.xlsx`); }
 
+
+/* =============== APRESENTAÇÃO (história em capítulos, para projetar ou enviar) ===============
+   Documento próprio (HTML completo, CSS e script isolados) montado com o
+   período, a referência e os filtros do painel. Abre num iframe na aba
+   "Apresentação", em tela cheia, ou é baixado como arquivo único. */
+function apresDados(){
+  const R=hoje(), P=PER, X=indicadoresPeriodo(P)||{}, val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
+  /* SEQ e SPV pelo mesmo motor (meta de cada divisão). aplicar() redesenha a
+     tela no fim; aqui o redesenho fica suspenso — sem isso, a aba se
+     redesenhava e pedia a apresentação de novo, num ciclo sem fim */
+  const div={}, e0=EST.div, r0=render; render=()=>{};
+  try{ for(const d of ['SEQ','SPV']){ EST.div=d; aplicar(); const Y=indicadoresPeriodo(P)||{}; div[d]={ped:Y.ped||0,meta:Y.meta&&Y.meta.valor,n:Y.nPed||0}; } }
+  finally{ EST.div=e0; aplicar(); render=r0; }
+  const Vp=F.vendas.filter(v=>noPer(v.dt));
+  const vend=[...agrupar(Vp,v=>v.resp).entries()].map(([k,a])=>({k:nomeCurto(k)||k,v:somar(a,val),n:a.length})).sort((a,b)=>b.v-a.v);
+  const a=anoRef(), Va=vendasDoAno(a), Vb=vendasDoAno(a-1), ult=a===HOJE.getFullYear()?HOJE.getMonth():11;
+  const pulso=KMESN.slice(0,ult+1).map((k,m)=>({k,a:somar(Va.filter(v=>v.dt.getMonth()===m),val),b:somar(Vb.filter(v=>v.dt.getMonth()===m),val),parc:a===HOJE.getFullYear()&&m===ult}));
+  const etapas=[...agrupar(F.ab,n=>n.etapa).entries()].map(([k,a])=>({k:String(k),v:somar(a,n=>n.vNum||0),n:a.length})).sort((x,y)=>x.k.localeCompare(y.k,'pt',{numeric:true}));
+  const perd=(typeof noAnoPerda==='function'?F.perd.filter(noAnoPerda):F.perd.filter(n=>noPer(n.dtAtu||n.dtCri)));
+  const mot=[...agrupar(perd,x=>{ const s=String(x.motivoTxt||x.motivoPerda||x.motivo||'').trim(); return s&&s!=='N/D'?s.replace(/^[GPC]\s*-\s*/i,'').trim().slice(0,44):'(sem motivo)'; }).entries()]
+    .map(([k,a])=>({k,n:a.length,v:somar(a,x=>x.vNum||0)})).sort((x,y)=>y.v-x.v).slice(0,6);
+  const sf=saldoFaturar();
+  const C=contratosModelo(), V=C.L.filter(c=>c.vigente), renov=C.L.filter(c=>c.renovar).sort((x,y)=>x.diasFim-y.diasFim);
+  const recMensal=somar(V,c=>c.parcela||(c.unico?(c.valorPed||c.total)/(c.parcelas||12):c.mensal)||0);
+  const cli=[...agrupar(Vp,v=>v.nCli).entries()].map(([k,a])=>({k:a[0].cli,v:somar(a,val)})).sort((x,y)=>y.v-x.v), totCli=somar(cli,c=>c.v);
+  const ab=F.ab, pipeV=somar(ab,n=>n.vNum||0);
+  return {R,P,X,div,vend,a,pulso,etapas,perd,mot,sf,C,V,renov,recMensal,cli,totCli,pipeV,ab,
+    recorte:[EST.vend,EST.div].filter(Boolean).join(' · ')||'Time inteiro · SEQ + SPV',logo:(document.querySelector('.rail .marca img')||{}).src||''}; }
+
+function apresentacaoHTML(op){ op=op||{};
+  const D=apresDados(), X=D.X, R=D.R, e=esc, mi=v=>fmtCompacto(v||0), pc=(v,d)=>v==null||!isFinite(v)?'—':fmtPct(v,d||0);
+  const num=(v,f,txt)=>`<span class="n" data-v="${Number(v)||0}" data-f="${f}">${e(txt)}</span>`;
+  const big=(v,f,txt)=>`<span class="big${String(txt).length>9?' l':''}">${num(v,f,txt)}</span>`;
+  const meta=X.meta&&X.meta.valor, at=meta?X.ped/meta:null;
+  const capitulos=[['capa','Capa'],['resultado','Resultado'],['pulso','Mês a mês'],['divisoes','SEQ × SPV'],['equipe','Equipe'],['pipeline','Pipeline'],['propostas','Propostas'],['carteira','Carteira'],['contratos','Contratos'],['clientes','Clientes'],['agora','O que fazer'],['metodo','Método']];
+  /* ---- gráficos ---- */
+  const pulsoSVG=(()=>{ const L=D.pulso, W=1000, H=330, pb=34, pt=28, n=L.length||1, gw=W/n, bw=Math.min(30,gw*.32), mx=Math.max(1,...L.map(m=>Math.max(m.a,m.b)))*1.1, Y=v=>H-pb-(H-pb-pt)*(v/mx);
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pedidos por mês: ${D.a} contra ${D.a-1}">${[.25,.5,.75,1].map(f=>`<line x1="0" x2="${W}" y1="${Y(mx/1.1*f)}" y2="${Y(mx/1.1*f)}" class="grid"/>`).join('')}
+      ${L.map((m,i)=>{ const x=i*gw+gw/2; return `<g><title>${e(m.k)}: ${e(fmtBRL(m.a))} em ${D.a} · ${e(fmtBRL(m.b))} em ${D.a-1}${m.parc?' (mês em curso)':''}</title>
+        <rect class="gr" x="${x-bw-2}" y="${Y(m.b)}" width="${bw}" height="${H-pb-Y(m.b)}" rx="4" fill="var(--prev)" style="--d:${i*40}ms"/>
+        <rect class="gr" x="${x+2}" y="${Y(m.a)}" width="${bw}" height="${H-pb-Y(m.a)}" rx="4" fill="url(#gv)" opacity="${m.parc?.6:1}" style="--d:${i*40+60}ms"/>
+        <text x="${x+2+bw/2}" y="${Y(m.a)-8}" text-anchor="middle" class="lbl">${e(m.a?fmtCompacto(m.a).replace('R$ ',''):'')}</text>
+        <text x="${x}" y="${H-10}" text-anchor="middle" class="ax">${e(m.k)}${m.parc?'*':''}</text></g>`; }).join('')}
+      <defs><linearGradient id="gv" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#C21B22"/><stop offset="1" stop-color="#FF6600"/></linearGradient></defs></svg>`; })();
+  const barras=(L,f,o)=>{ o=o||{}; const mx=Math.max(1,...L.map(x=>x.v)); return `<div class="bars">${L.map((x,i)=>`<div class="bar-r"><div class="bar-n">${e(x.k)}${x.s?`<small>${e(x.s)}</small>`:''}</div>
+      <div class="bar-t"><i class="${i===0&&o.top!==false?'top':''}" style="--w:${(100*x.v/mx).toFixed(1)}%;--d:${i*70}ms"></i></div><div class="bar-v">${e(f(x.v))}</div></div>`).join('')}</div>`; };
+  const divRow=(d)=>{ const v=D.div[d]||{}, m=v.meta||0, esc_=Math.max(m,v.ped||0)||1, a=m?v.ped/m:null;
+    return `<div class="dv"><div class="dv-h"><b>${d}</b><span>${num(v.ped,'mi',mi(v.ped))} <em>de ${e(m?mi(m):'sem meta')}</em></span><strong class="${a!=null&&a>=1?'ok':a!=null&&a<.85?'mau':''}">${pc(a)}</strong></div>
+      <div class="dv-t"><i style="--w:${(100*(v.ped||0)/esc_).toFixed(1)}%"></i>${m?`<u style="left:${(100*m/esc_).toFixed(1)}%" title="meta"></u>`:''}</div><small>${fmtN(v.n)} pedidos</small></div>`; };
+  const sDiv=(D.div.SEQ||{}).ped||0, sSpv=(D.div.SPV||{}).ped||0, sT=sDiv+sSpv||1;
+  const waf=Math.round((X.conv||0)*100);
+  const fatT=(X.fat||0)+(D.sf.valor||0)||1;
+  const top10=somar(D.cli.slice(0,10),c=>c.v), shareTop=D.totCli?top10/D.totCli:0;
+  const agAt=D.C.aguard.filter(o=>o.dt&&o.dt<R);
+  const acoes=[
+    X.prevVenc?[fmtN(X.prevVenc),'negócios com previsão de fechamento vencida','atualizar a data ou encerrar no Ploomes']:null,
+    X.semPasso?[fmtN(X.semPasso),'negócios abertos sem próximo passo registrado',`${mi(X.semPassoV)} sem atividade agendada`]:null,
+    D.renov.filter(c=>c.semRenov).length?[fmtN(D.renov.filter(c=>c.semRenov).length),'contratos a renovar sem negócio aberto',D.renov.filter(c=>c.semRenov).map(c=>String(c.cli).replace(/\s+-\s+/g,' ').split(/\s+/).slice(0,2).join(' ')).join(' · ')]:null,
+    agAt.length?[mi(somar(agAt,o=>o.vNum)),'em OS de serviço com faturamento previsto já passado',`${fmtN(agAt.length)} OS aguardando faturamento`]:null,
+    D.sf.atrasado&&D.sf.atrasado.length?[mi(somar(D.sf.atrasado,c=>c.vNum||0)),'em pedidos com entrega vencida na carteira',`${fmtN(D.sf.atrasado.length)} pedidos`]:null].filter(Boolean);
+  const faixa=`<div class="faixa" aria-hidden="true"><div class="faixa-t">${Array(2).fill(`<span>A FORÇA DA ÁGUA É A <b>NOSSA FORÇA</b> · ${e(D.P.rot.toUpperCase())} · ${e(mi(X.ped)).toUpperCase()} EM PEDIDOS · ${fmtN(X.nPed)} PEDIDOS · ${e(mi(D.pipeV)).toUpperCase()} EM PIPELINE · ${fmtN(D.V.length)} CONTRATOS VIGENTES · </span>`).join('')}</div></div>`;
+  const css=`:root{--bg:#121212;--surface:#1c1a19;--line:#2f2a27;--fg:#f4f2f0;--muted:#a9a19b;--lar:#FF6600;--red:#C21B22;--prev:#4a4441;--grad:linear-gradient(90deg,#C21B22 0%,#E8461A 50%,#FF6600 100%);
+    --s0:clamp(1rem,.96rem + .2vw,1.1rem);--s1:clamp(1.2rem,1.05rem + .7vw,1.6rem);--s2:clamp(1.6rem,1.2rem + 1.9vw,2.6rem);--s3:clamp(2.2rem,1.4rem + 4vw,4.6rem);--s4:clamp(3rem,1.8rem + 7vw,8rem);color-scheme:dark}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--bg)}body{margin:0;background:var(--bg);color:var(--fg);font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:var(--s0);line-height:1.55;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+    h1,h2,p{margin:0}.wrap{max-width:1180px;margin-inline:auto;padding-left:max(16px,4vw,env(safe-area-inset-left,0px));padding-right:max(16px,4vw,env(safe-area-inset-right,0px))}
+    body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+    .nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .nav-in{display:flex;align-items:center;gap:16px;padding-block:9px}.nav img{height:22px;display:block}.nav-l{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-left:auto;min-width:0}
+    .nav-l a{color:var(--muted);text-decoration:none;font-size:.78rem;font-weight:600;padding:6px 10px;border-radius:999px;white-space:nowrap}.nav-l a.on{background:var(--fg);color:var(--bg)}
+    .prog{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:var(--grad);transform-origin:0 50%;transform:scaleX(0)}
+    .cover{min-height:min(92svh,860px);display:grid;align-items:center;position:relative;overflow:hidden;background:radial-gradient(55% 65% at 88% 8%,rgba(255,102,0,.30),transparent 60%),radial-gradient(60% 70% at 4% 100%,rgba(194,27,34,.34),transparent 60%),#121212}
+    .cover-in{display:grid;gap:clamp(18px,3vw,30px);justify-items:center;text-align:center;padding-block:80px}.cover img{height:clamp(56px,9vw,104px)}
+    .k{font-weight:600;letter-spacing:.5em;text-transform:uppercase;font-size:clamp(.72rem,.65rem + .4vw,.95rem);padding-left:.5em;color:var(--muted)}
+    .vaz{font-style:italic;font-weight:900;text-transform:uppercase;letter-spacing:.03em;font-size:clamp(1.8rem,1rem + 4.6vw,4.8rem);line-height:1;color:transparent;-webkit-text-stroke:1.6px #fff}
+    .vaz span{-webkit-text-stroke:0;background:var(--grad);-webkit-background-clip:text;background-clip:text}
+    .cue{display:grid;justify-items:center;gap:8px;font-size:.8rem;color:var(--muted)}.cue i{width:2px;height:34px;background:var(--grad);animation:desce 1.8s ease-in-out infinite}
+    @keyframes desce{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+    .faixa{overflow:hidden;background:var(--grad);color:rgba(255,255,255,.8)}.faixa-t{display:flex;width:max-content;animation:corre 46s linear infinite}.faixa span{white-space:nowrap;padding:12px 0;font-weight:500;letter-spacing:.06em;font-size:clamp(.85rem,.75rem + .4vw,1.15rem)}.faixa b{color:#fff;font-weight:800}
+    @keyframes corre{to{transform:translateX(-50%)}}
+    .band{scroll-margin-top:52px;background:var(--bb,var(--bg))}.light{--bb:#fff;--fg:#141414;--muted:#5e5752;--line:#e1dbd6;color:#141414}.orange{--bb:#FF6600;--fg:#141414;--muted:#3a2412;--line:rgba(20,20,20,.22);color:#141414}.grafite{--bb:#1f1c1a}
+    .ch{padding-block:clamp(64px,9vw,120px);display:grid;gap:clamp(24px,4vw,44px)}.head{display:grid;gap:14px}@media(min-width:900px){.head.split{grid-template-columns:1.15fr 1fr;align-items:end;gap:48px}}
+    .kick{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}.kick:before{content:"";width:22px;height:4px;border-radius:2px;background:var(--grad)}
+    .orange .kick:before{background:#141414}
+    h2{font-weight:800;font-size:var(--s3);line-height:.98;letter-spacing:-.02em;text-wrap:balance}h2 .big{white-space:nowrap;display:block;font-size:var(--s4);line-height:.9;letter-spacing:-.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;width:fit-content;max-width:100%;padding-right:.05em}
+    .orange h2 .big{background:none;color:#141414}h2 .big.l{font-size:calc(var(--s4)*.74)}
+    .lede{font-size:var(--s1);line-height:1.45;font-weight:500;max-width:40ch}.lede b{font-weight:800}.mut{color:var(--muted)}
+    .stage{background:var(--surface);border:1px solid #2f2a27;border-radius:18px;padding:clamp(16px,3vw,30px);color:#f4f2f0;--fg:#f4f2f0;--muted:#a9a19b;--line:#2f2a27}.light .stage,.orange .stage{box-shadow:0 18px 40px rgba(20,20,20,.18);border-color:transparent}
+    .st-t{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 18px;align-items:baseline;margin-bottom:14px;font-weight:700}.st-t span{font-weight:500;color:var(--muted);font-size:.82rem}
+    svg{display:block;width:100%;height:auto;overflow:visible}.sc{overflow-x:auto;-webkit-overflow-scrolling:touch}.ch>*,.stage,.head>*{min-width:0}@media(max-width:700px){.sc svg{min-width:720px}}.grid{stroke:#2f2a27}.ax{fill:#a9a19b;font-size:15px}.lbl{fill:#f4f2f0;font-size:13px;font-weight:700}
+    .js .gr{transform:scaleY(0);transform-box:fill-box;transform-origin:50% 100%;transition:transform .9s cubic-bezier(.2,.7,.1,1) var(--d,0ms)}.js .in .gr{transform:none}
+    .leg{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;font-size:.82rem;color:var(--muted)}.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+    .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:26px}.fact{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:4px}
+    .fact b{font-weight:800;font-size:var(--s2);line-height:1;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;width:fit-content}.orange .fact b{background:none;color:#141414}.fact span{color:var(--muted);font-size:.86rem;line-height:1.45}
+    .bars{display:grid;gap:10px}.bar-r{display:grid;grid-template-columns:minmax(90px,200px) minmax(0,1fr) 116px;gap:14px;align-items:center}@media(max-width:560px){.bar-r{grid-template-columns:96px minmax(0,1fr) 84px;gap:8px}.bar-v{font-size:.84rem}}
+    .bar-n{font-size:.86rem;line-height:1.25}.bar-n small{display:block;color:var(--muted);font-size:.74rem}.bar-t{height:24px;background:#252220;border-radius:6px;overflow:hidden}
+    .bar-t i{display:block;height:100%;width:var(--w);background:#8d857f;border-radius:6px}.bar-t i.top{background:var(--grad)}.js .bar-t i{width:0;transition:width .9s cubic-bezier(.2,.7,.1,1) var(--d,0ms)}.js .in .bar-t i{width:var(--w)}
+    .bar-v{text-align:right;font-weight:800;white-space:nowrap}
+    .dv{display:grid;gap:8px;margin-bottom:22px}.dv-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.dv-h b{font-weight:800;font-size:var(--s2)}.dv-h span{font-weight:700}.dv-h em{font-style:normal;color:var(--muted);font-weight:500}
+    .dv-h strong{margin-left:auto;font-size:var(--s1)}.ok{color:#3ecf8e}.mau{color:#ff6b5b}.dv-t{position:relative;height:30px;background:#252220;border-radius:8px}.dv-t i{position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--grad);border-radius:8px}
+    .js .dv-t i{width:0;transition:width 1.1s cubic-bezier(.2,.7,.1,1)}.js .in .dv-t i{width:var(--w)}.dv-t u{position:absolute;top:-6px;bottom:-6px;width:3px;background:#fff;border-radius:2px}.dv small{color:var(--muted)}
+    .rib{display:flex;height:clamp(56px,8vw,96px);border-radius:12px;overflow:hidden;gap:3px}.rib div{min-width:6px}.js .rib div{transform:scaleX(0);transform-origin:0 50%;transition:transform 1s cubic-bezier(.2,.7,.1,1) var(--d,0ms)}.js .in .rib div{transform:none}
+    .rib-l{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:16px 24px;margin-top:18px}.rib-l b{display:block;font-weight:800;font-size:var(--s2);line-height:1}.rib-l span{color:var(--muted);font-size:.84rem}
+    .waf-g{display:grid;gap:clamp(22px,4vw,52px);align-items:center}@media(min-width:860px){.waf-g{grid-template-columns:minmax(0,320px) minmax(0,1fr)}}
+    .waf{display:grid;grid-template-columns:repeat(10,1fr);gap:5px;max-width:320px}.waf i{aspect-ratio:1;border-radius:4px;background:#2c2826;display:block;transition:background .4s var(--d,0ms)}.in .waf i.on,.waf:not(.js *) i.on{background:#FF6600}
+    .tl{display:grid;gap:10px}.tl-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;border-top:1px solid var(--line);padding-top:10px}.tl-r b{font-weight:700}.tl-r span{color:var(--muted);font-size:.84rem}
+    .tag{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid currentColor}.tag.mau{color:#ff6b5b}.tag.ok{color:#3ecf8e}.tag.ale{color:#ffb020}
+    .acoes{display:grid;gap:14px;counter-reset:a}.acao{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 18px;align-items:baseline;border-top:1px solid var(--line);padding-top:14px}
+    .acao b{font-weight:800;font-size:var(--s2);line-height:1;grid-row:span 2;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;min-width:4ch}.acao span{font-weight:700}.acao small{color:var(--muted)}
+    .fim{padding-block:clamp(72px,11vw,140px);display:grid;gap:20px;justify-items:center;text-align:center}.fim img{height:60px}
+    .met dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr));gap:22px 32px;margin:0}.met dl>div{border-top:1px solid var(--line);padding-top:12px}.met dt{font-weight:700;font-size:.9rem}.met dd{margin:4px 0 0;color:var(--muted);font-size:.84rem;line-height:1.55}
+    
+    @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.faixa-t,.cue i{animation:none}.js .gr,.js .bar-t i,.js .dv-t i,.js .rib div}}
+    @media print{.nav{display:none}.band{break-inside:avoid}}`;
+  const js=`(function(){var d=document,h=d.documentElement;h.classList.add('js');var red=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function f(v,k){if(k==='mi'){var a=Math.abs(v);return 'R$ '+(a>=1e6?(v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' mi':a>=1e3?Math.round(v/1e3).toLocaleString('pt-BR')+' mil':Math.round(v).toLocaleString('pt-BR'))}
+      if(k==='pct')return Math.round(v*100)+'%';return Math.round(v).toLocaleString('pt-BR')}
+    function conta(el){if(el.dataset.ok)return;el.dataset.ok=1;var v=+el.dataset.v,k=el.dataset.f,fim=el.textContent;if(red||!v){return}var t0=performance.now(),dur=1100;
+      (function p(t){var x=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-x,3);el.textContent=x<1?f(v*e,k):fim;if(x<1)requestAnimationFrame(p)})(t0)}
+    var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');en.target.querySelectorAll('.n').forEach(conta)}})},{threshold:.18});
+    d.querySelectorAll('section').forEach(function(s){io.observe(s)});
+    var links=[].slice.call(d.querySelectorAll('.nav-l a')),pr=d.querySelector('.prog');
+    var io2=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id)})}})},{rootMargin:'-45% 0px -50% 0px'});
+    d.querySelectorAll('section[id]').forEach(function(s){io2.observe(s)});
+    addEventListener('scroll',function(){var m=h.scrollHeight-innerHeight;pr.style.transform='scaleX('+(m>0?scrollY/m:0)+')'},{passive:true});
+    d.addEventListener('click',function(ev){var a=ev.target.closest('a[href^="#"]');if(!a)return;var s=d.getElementById(a.getAttribute('href').slice(1));if(s){ev.preventDefault();s.scrollIntoView({behavior:red?'auto':'smooth'})}});
+    addEventListener('keydown',function(ev){if(ev.key==='Escape'){try{if(parent!==window&&parent.apresFechar)parent.apresFechar()}catch(e){}return}if(['ArrowDown','PageDown','ArrowUp','PageUp',' '].indexOf(ev.key)<0)return;var ss=[].slice.call(d.querySelectorAll('section[id]')),y=scrollY+60,i=ss.findIndex(function(s){return s.offsetTop>y})-1;if(i<-1)i=ss.length-1;
+      var alvo=/Up/.test(ev.key)?ss[Math.max(0,i-(ss[i]&&ss[i].offsetTop>=scrollY-5?1:0))]:ss[Math.min(ss.length-1,i+1)];if(alvo){ev.preventDefault();alvo.scrollIntoView({behavior:red?'auto':'smooth'})}});
+  })();`;
+  const sec=(id,cls,corpo)=>`<section class="band ${cls}" id="${id}"><div class="wrap ch">${corpo}</div></section>`;
+  const logo=D.logo?`<img src="${D.logo}" alt="LS Fire">`:'<b>LS FIRE</b>';
+  const corpo=`
+  <header class="nav"><div class="wrap nav-in">${logo}<nav class="nav-l" aria-label="Capítulos">${capitulos.map(([id,n])=>`<a href="#${id}">${n}</a>`).join('')}</nav></div><div class="prog"></div></header>
+  <section class="cover" id="capa" aria-label="Capa"><div class="wrap cover-in">
+    <div class="k">LS Fire · Comercial</div>${D.logo?`<img src="${D.logo}" alt="LS Fire">`:''}
+    <h1 class="vaz">Resultados <span>${e(D.P.ano||D.a)}</span></h1>
+    <div class="k" style="letter-spacing:.18em">${e(D.P.rot)}</div>
+    <div class="cue">Role para ver a história<i></i></div></div></section>
+  ${faixa}
+  ${sec('resultado','',`<div class="head split rv"><div><div class="kick">Pedidos recebidos</div><h2>${big(X.ped,'mi',mi(X.ped))}em ${fmtN(X.nPed)} pedidos.</h2></div>
+     <p class="lede">${meta?`<b>${pc(at)}</b> da meta do período (${e(mi(meta))}). `:''}Ticket médio de <b>${e(mi(X.ticket))}</b> e <b>${e(mi(X.fat))}</b> faturados no mesmo intervalo.</p></div>
+     <div class="facts rv">${[[mi(X.ped),'pedidos recebidos'],[meta?mi(meta-X.ped>0?meta-X.ped:0):'—',meta&&meta>X.ped?'faltam para a meta do período':'acima da meta'],[fmtN(X.novas),'novas oportunidades abertas'],[mi(X.fat),'faturamento realizado']].map(([b,s])=>`<div class="fact"><b>${e(b)}</b><span>${e(s)}</span></div>`).join('')}</div>`)}
+  ${sec('pulso','light',`<div class="head split rv"><div><div class="kick">O pulso do ano</div><h2>Mês a mês, ${D.a} contra ${D.a-1}.</h2></div>
+     <p class="lede mut">Cada par de colunas é um mês: cinza é ${D.a-1}, laranja é ${D.a}.${D.pulso.some(m=>m.parc)?' O asterisco marca o mês ainda em curso.':''}</p></div>
+     <div class="stage"><div class="st-t">Pedidos recebidos por mês <span>valores em R$ · passe o mouse para ver o valor exato</span></div><div class="sc">${pulsoSVG}</div>
+       <div class="leg"><span><i style="background:#4a4441"></i>${D.a-1}</span><span><i style="background:linear-gradient(#FF6600,#C21B22)"></i>${D.a}</span></div></div>`)}
+  ${sec('divisoes','',`<div class="head split rv"><div><div class="kick">Divisões</div><h2>SEQ e SPV contra a meta.</h2></div>
+     <p class="lede">A SEQ responde por <b>${pc(sDiv/sT)}</b> do vendido; a SPV, por <b>${pc(sSpv/sT)}</b>. A linha branca marca a meta do período.</p></div>
+     <div class="stage">${divRow('SEQ')}${divRow('SPV')}
+       <div class="rib" style="margin-top:8px"><div style="flex:${sDiv};background:var(--grad);--d:0ms"></div><div style="flex:${sSpv};background:#8d857f;--d:120ms"></div></div>
+       <div class="rib-l"><div><b>${pc(sDiv/sT)}</b><span>SEQ · ${e(mi(sDiv))}</span></div><div><b>${pc(sSpv/sT)}</b><span>SPV · ${e(mi(sSpv))}</span></div></div></div>`)}
+  ${sec('equipe','grafite',`<div class="head split rv"><div><div class="kick">Equipe</div><h2>Quem trouxe os pedidos.</h2></div>
+     <p class="lede mut">Pedidos recebidos no período por vendedor responsável. ${D.vend[0]?`${e(D.vend[0].k)} lidera com ${e(mi(D.vend[0].v))}.`:''}</p></div>
+     <div class="stage">${D.vend.length?barras(D.vend.slice(0,10).map(v=>({k:v.k,s:fmtN(v.n)+' pedidos',v:v.v})),mi):'<p class="mut">Sem pedidos no período.</p>'}</div>`)}
+  ${sec('pipeline','light',`<div class="head split rv"><div><div class="kick">Pipeline</div><h2>${big(D.pipeV,'mi',mi(D.pipeV))}em ${fmtN(D.ab.length)} negócios abertos.</h2></div>
+     <p class="lede">Previsão ponderada de <b>${e(mi(X.previsao))}</b> sobre ${e(mi(X.elegivel))} elegíveis no horizonte. ${X.prevVenc?`<b>${fmtN(X.prevVenc)}</b> negócios estão com a previsão vencida.`:''}</p></div>
+     <div class="stage"><div class="st-t">Valor em aberto por etapa <span>Ploomes · posição em ${e(fmtData(R))}</span></div>${barras(D.etapas.map(x=>({k:x.k.replace(/^\d+\.\s*/,''),s:fmtN(x.n)+' negócios',v:x.v})),mi,{top:false})}</div>`)}
+  ${sec('propostas','',`<div class="head split rv"><div><div class="kick">Propostas e conversão</div><h2>${big(X.props,'int',fmtN(X.props))}propostas, ${e(mi(X.propsV))} propostos.</h2></div>
+     <p class="lede">De cada 100 negócios decididos, <b>${waf}</b> viraram pedido (${fmtN(X.gan)} ganhos e ${fmtN(X.per)} perdidos).</p></div>
+     <div class="stage waf-g"><div><div class="waf">${Array.from({length:100},(_,i)=>`<i class="${i<waf?'on':''}" style="--d:${i*12}ms"></i>`).join('')}</div><p class="mut" style="margin-top:12px;font-size:.84rem">Cada quadrado é 1% dos decididos · laranja = ganho</p></div>
+       <div><div class="st-t">Por que se perde <span>valor perdido por motivo</span></div>${D.mot.length?barras(D.mot.map(m=>({k:m.k,s:fmtN(m.n)+' negócios',v:m.v})),mi):'<p class="mut">Sem perdas com motivo no período.</p>'}</div></div>`)}
+  ${sec('carteira','orange',`<div class="head split rv"><div><div class="kick">Carteira e faturamento</div><h2>${big(X.fat,'mi',mi(X.fat))}faturados; ${e(mi(D.sf.valor))} ainda a faturar.</h2></div>
+     <p class="lede">${D.sf.atrasado&&D.sf.atrasado.length?`${fmtN(D.sf.atrasado.length)} pedidos da carteira estão com a entrega vencida (${e(mi(somar(D.sf.atrasado,c=>c.vNum||0)))}).`:'Nenhum pedido da carteira com entrega vencida.'}</p></div>
+     <div class="stage"><div class="rib"><div style="flex:${X.fat||0};background:var(--grad)"></div><div style="flex:${D.sf.valor||0};background:#8d857f;--d:120ms"></div></div>
+       <div class="rib-l"><div><b>${pc((X.fat||0)/fatT)}</b><span>faturado no período · ${e(mi(X.fat))}</span></div><div><b>${pc((D.sf.valor||0)/fatT)}</b><span>saldo a faturar · ${e(mi(D.sf.valor))}</span></div></div></div>`)}
+  ${sec('contratos','grafite',`<div class="head split rv"><div><div class="kick">Contratos de serviço</div><h2>${big(D.V.length,'int',fmtN(D.V.length))}contratos vigentes, ~${e(mi(D.recMensal))} por mês.</h2></div>
+     <p class="lede mut">Omie (contratos e OS) e pedidos ITM do Controle de Pedidos, cruzados com o Ploomes pelo cliente.</p></div>
+     <div class="facts rv">${[[fmtN(D.V.filter(c=>c.status==='A vencer').length),'vencem em até 90 dias'],[fmtN(D.renov.filter(c=>c.semRenov).length),'a renovar sem negócio aberto no Ploomes'],[mi(somar(D.C.aguard,o=>o.vNum)),`aguardando faturamento em ${fmtN(D.C.aguard.length)} OS`],[fmtN(D.C.semNum.length),'OS sem número de contrato no Omie']].map(([b,s])=>`<div class="fact"><b>${e(b)}</b><span>${e(s)}</span></div>`).join('')}</div>
+     ${D.renov.length?`<div class="stage"><div class="st-t">Próximos vencimentos <span>e o que o Ploomes mostra do cliente</span></div><div class="tl">${D.renov.slice(0,8).map(c=>`<div class="tl-r"><div><b>${e(String(c.cli).slice(0,46))}</b><br><span>${e(c.num)} · fim ${e(fmtData(c.fim))}${c.implic?' (presumido)':''}</span></div>
+       <div style="text-align:right"><b>${c.diasFim<0?'venceu há '+fmtN(-c.diasFim)+' d':fmtN(c.diasFim)+' dias'}</b><br><span class="tag ${c.pl.abSPV.length?'ok':c.pl.ab.length?'ale':'mau'}">${c.pl.abSPV.length?'negócio SPV aberto':c.pl.ab.length?'só outra divisão':'sem negócio de renovação'}</span></div></div>`).join('')}</div></div>`:''}`)}
+  ${sec('clientes','light',`<div class="head split rv"><div><div class="kick">Clientes</div><h2>${big(D.cli.length,'int',fmtN(D.cli.length))}clientes compraram no período.</h2></div>
+     <p class="lede">Os 10 maiores somam <b>${pc(shareTop)}</b> do vendido${shareTop>.5?' — concentração alta':''}. ${fmtN(X.cli)} clientes tiveram interação registrada.</p></div>
+     <div class="stage"><div class="st-t">Os 10 maiores clientes <span>pedidos recebidos no período</span></div>${D.cli.length?barras(D.cli.slice(0,10).map(c=>({k:String(c.k).slice(0,34),v:c.v})),mi):'<p class="mut">Sem pedidos no período.</p>'}</div>`)}
+  ${sec('agora','',`<div class="head rv"><div class="kick">O que fazer agora</div><h2>Onde a equipe ganha mais <span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">agindo já.</span></h2></div>
+     <div class="acoes rv">${acoes.length?acoes.map(([b,t,s])=>`<div class="acao"><b>${e(b)}</b><span>${e(t)}</span><small>${e(s)}</small></div>`).join(''):'<p class="mut">Nenhuma pendência crítica nas bases carregadas.</p>'}</div>
+     <div class="fim">${logo}<p class="vaz" style="font-size:clamp(1.4rem,.8rem + 3vw,3.2rem)">A força da água é a <span>nossa força</span></p></div>`)}
+  ${sec('metodo','grafite met',`<h2 style="font-size:var(--s2)">Como os números foram feitos</h2><dl>
+     <div><dt>Período</dt><dd>${e(D.P.rot)} · referência ${e(fmtData(R))}${REF_DATA?' (fixada no painel)':''}. Recorte: ${e(D.recorte)}.</dd></div>
+     <div><dt>Pedidos e meta</dt><dd>Pedidos recebidos pela referência oficial quando carregada (Comparativo/Controle de Pedidos); divisões, vendedores e clientes pelos registros de pedidos. Meta: ${e(X.meta&&X.meta.metodo||'cadastrada no painel')}.</dd></div>
+     <div><dt>Pipeline e propostas</dt><dd>Ploomes: negócios abertos na posição da última carga; previsão ponderada pela política de probabilidade do painel; conversão = ganhos ÷ decididos.</dd></div>
+     <div><dt>Carteira e faturamento</dt><dd>${e(D.sf.fonte||'Carteira de faturamento')}; faturamento realizado pelas notas fiscais/Comparativo do período.</dd></div>
+     <div><dt>Contratos</dt><dd>Omie (Contratos por Cliente e OS por Cliente) e pedidos ITM do Controle de Pedidos; vínculo com o Ploomes pelo nome do cliente.</dd></div>
+     <div><dt>Gerado em</dt><dd>${e(fmtDH(new Date()))} pelo Painel Executivo LS Fire. Números arredondados; o detalhe está no painel.</dd></div></dl>`)}`;
+  const fonte='<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,900&display=swap">';
+  /* para publicar como página do Claude: só o conteúdo (o publicador põe o cabeçalho) */
+  if(op.fragmento)return `<title>Apresentação Comercial LS Fire</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n${fonte}\n<style>${css}</style>\n${corpo}\n<script>${js}<\/script>\n`;
+  return `<!DOCTYPE html>\n<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Apresentação Comercial LS Fire</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,900&display=swap">
+<style>${css}</style></head><body>${corpo}<script>${js}<\/script></body></html>`; }
+
+let _APRES_HTML='';
+VISTA.apresentacao=function(){
+  setTimeout(apresMontar,0);
+  return `<div class="pl-bar apres-bar"><button class="btn" onclick="apresTelaCheia()">⛶ Tela cheia</button><button class="btn sec" onclick="apresBaixar()">↓ Baixar apresentação (HTML)</button><button class="btn sec" onclick="apresMontar(true)">↻ Atualizar com o período e os filtros</button>
+    <span class="apres-info">${esc(PER.rot)} · ${esc([EST.vend,EST.div].filter(Boolean).join(' · ')||'time inteiro')} · ref. ${fmtData(hoje())}</span></div>
+    <div class="apres-cx"><iframe id="apres-fr" title="Apresentação comercial" loading="eager"></iframe></div>
+    <p class="nota so-tela">Mude o período, a divisão ou o vendedor no topo e clique em <b>Atualizar</b>. O arquivo baixado abre em qualquer navegador, sem o painel: dá para enviar por e-mail ou projetar. Setas ↑ ↓ e Page Up/Down passam de capítulo.</p>`; };
+function apresMontar(forcar){ const fr=document.getElementById('apres-fr'); if(!fr)return;
+  _APRES_HTML=apresentacaoHTML(); fr.srcdoc=_APRES_HTML; if(forcar)aviso('Apresentação atualizada: '+PER.rot+'.'); }
+function apresTelaCheia(){ const h=_APRES_HTML||apresentacaoHTML(); let v=document.getElementById('apres-view');
+  if(!v){ v=document.createElement('div'); v.id='apres-view'; v.innerHTML=`<button class="apres-x" onclick="apresFechar()" aria-label="Fechar a apresentação">✕ Fechar</button><iframe title="Apresentação comercial em tela cheia"></iframe>`; document.body.appendChild(v); }
+  v.querySelector('iframe').srcdoc=h; v.classList.add('aberto'); document.body.classList.add('apres-on');
+  try{ if(v.requestFullscreen&&!document.fullscreenElement)v.requestFullscreen().catch(()=>{}); }catch(e){}
+  setTimeout(()=>{ try{ v.querySelector('iframe').focus(); }catch(e){} },300); }
+function apresFechar(){ const v=document.getElementById('apres-view'); if(!v)return; v.classList.remove('aberto'); document.body.classList.remove('apres-on');
+  try{ if(document.fullscreenElement)document.exitFullscreen(); }catch(e){} }
+addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&document.body.classList.contains('apres-on'))apresFechar(); });
+/* o navegador consome o Esc para sair da tela cheia: sair dela (por qualquer caminho) fecha a apresentação */
+document.addEventListener('fullscreenchange',()=>{ if(!document.fullscreenElement&&document.body.classList.contains('apres-on'))apresFechar(); });
+function apresBaixar(){ const h=_APRES_HTML||apresentacaoHTML();
+  baixar(h,`Apresentacao-Comercial-LS-Fire-${isoD(hoje())}.html`,'text/html;charset=utf-8'); }
+
 /* =============== 5–7. PROPOSTAS, ENGENHARIA (composição) =============== */
 VISTA.propostas=function(){ return propostasCorpo()+sec('Conversão e perdas','Win rate dos negócios decididos e por que se perde. Perdas do Ploomes não trazem a data do desfecho: entram pela última atualização do negócio, como aproximação.','prop-conv')+perdasCorpo(); };
 VISTA.engenharia=function(){ return secEngSup()+analistasCorpo()+secCotAnalistas(); };
@@ -7011,7 +7224,7 @@ const REL_PUB={
     desc:'Pedidos recebidos e meta, faturamento realizado, previsão de pedidos pela política de probabilidade e carteira a faturar pelo mês de entrega.',
     telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div'],resultados:['kpi:resultados','res-mes'],pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob'],carteira:'*',contratos:['kpi:contratos','ctr-mes','ctr-ag']}},
   completo:{nome:'Completo',tit:'Relatório Comercial — Completo',lim:null,desc:'Todas as seções das abas marcadas, sem limite de linhas.',telas:null}};
-const TELAS_REL=()=>TELAS.filter(t=>!['busca','dados','relatorios'].includes(t.id));
+const TELAS_REL=()=>TELAS.filter(t=>!['busca','dados','relatorios','apresentacao'].includes(t.id));
 function relMarcarTelas(pub){
   const P=REL_PUB[pub], cx=document.getElementById('rel-telas');
   cx.innerHTML=TELAS_REL().map(t=>`<label><input type="checkbox" value="${t.id}" ${!P.telas||P.telas[t.id]?'checked':''}> ${t.nome}</label>`).join('')

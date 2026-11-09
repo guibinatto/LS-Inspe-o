@@ -15,7 +15,7 @@ const {chromium}=require('playwright');
  if(tema==='escuro')await p.evaluate(()=>{ document.documentElement.dataset.t='escuro'; render(); });
  const baixoContraste=[];
  const telas=await p.evaluate(()=>TELAS.map(t=>t.id)); let total=0; const porTela={};
- const fecha=async()=>p.evaluate(()=>{ document.querySelectorAll('.modal.aberto').forEach(m=>m.classList.remove('aberto')); try{ if(document.getElementById('rel-view').classList.contains('aberto'))fecharRelatorio(); }catch(e){} const mm=document.getElementById('mais-m'); if(mm)mm.classList.remove('aberto'); });
+ const fecha=async()=>p.evaluate(()=>{ document.querySelectorAll('.modal.aberto').forEach(m=>m.classList.remove('aberto')); try{ if(document.getElementById('rel-view').classList.contains('aberto'))fecharRelatorio(); }catch(e){} const mm=document.getElementById('mais-m'); if(mm)mm.classList.remove('aberto'); try{ if(typeof apresFechar==='function')apresFechar(); }catch(e){} });
  for(const t of telas){ atual=t;
    await p.evaluate(x=>irTela(x),t); await p.waitForTimeout(300);
    /* alvos: tudo que tem onclick ou role=button dentro da página, visível */

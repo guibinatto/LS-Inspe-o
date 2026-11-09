@@ -101,3 +101,7 @@ O app continua sendo um único HTML que funciona offline. As camadas estão sepa
 ## Relatórios por tema (05/11/2026)
 
 `REL_TEMAS` (tPIP, tRES, tPRO, tCAR, tCTR, tCLI, tVEN, tATV) entram em `REL_MODELOS` com `tema:true`: seções explícitas (desmarcáveis), `off` = seções longas fora por padrão (inspeção das oportunidades), sem narrativa de abertura e com um capítulo por tela em vez da ordem editorial de `REL_CAPS`.
+
+## Apresentação (09/11/2026)
+
+Aba `apresentacao` (Apoio). `apresDados()` reúne os números do período e dos filtros (SEQ e SPV pelo próprio motor, com `render` suspenso para não entrar em ciclo); `apresentacaoHTML(op)` monta um documento próprio — capa, 10 capítulos e metodologia, CSS e script isolados — mostrado num iframe (`srcdoc`), em tela cheia (`apresTelaCheia`, fecha com Esc ou saindo da tela cheia) ou baixado (`apresBaixar`). `op.fragmento` gera a versão para publicar como página do Claude.
