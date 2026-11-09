@@ -47,7 +47,7 @@ const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
     t(m.cm[0] === 'A vencer' && m.cm[1] === true, 'CM Hospitalar vence em até 90 dias e não tem negócio aberto no Ploomes');
     t(m.leg[0] === 'Cancelado' && /Contratos/.test(m.leg[1]), 'Legrand 2026/00004: situação e vigência vêm do Contratos por Cliente');
     t(m.vig === 10, '10 contratos vigentes (6 do Omie + 4 presumidos pelo Controle de Pedidos)');
-    t(JSON.stringify(m.fa) === '["Vigente",true,12,2,94020,94020,true,false,"2027-02-09"]', 'FA Maringá: pedido ITM 2026/09390 vira contrato de 12 parcelas até 09/02/2027, com as 2 OS, sem negócio de renovação, sem alerta de OS mensal');
+    t(JSON.stringify(m.fa) === '["Vigente",true,12,2,94020,94020,false,false,"2027-02-09"]', 'FA Maringá: pedido ITM 2026/09390 vira contrato de 12 parcelas até 09/02/2027, com as 2 OS; vence em fevereiro, fora da janela de renovação de 60 dias; sem alerta de OS mensal');
     t(Math.round(m.sep[0]) === 356732 && /Controle/.test(m.sep[1]), 'SEPAC: pedido ITM do Controle liga ao contrato do Omie (valor vendido R$ 356.732)');
     t(String(m.leg6) === '10149', 'Legrand: pedido 10149 liga ao contrato 2026/00006 (o mais próximo da data), não ao cancelado');
     t(m.gl === 'Encerrado', 'Legrand GL (outro cliente, 2025): contrato presumido próprio, encerrado');
