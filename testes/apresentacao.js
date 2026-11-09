@@ -51,6 +51,13 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   t(cel.larg <= cel.vw, 'celular: sem rolagem lateral');
   t(cel.anim >= 5 && eq.length === 0, `sem internet e no celular: abre, anima os capítulos e não dá erro (${cel.anim} capítulos vistos)`);
   t(cel.fim[0] === r.ped, `contador termina no valor exato (${cel.fim[0]})`);
+  /* número grande não invade o texto ao lado, mesmo com fonte larga (Arial Black no Windows) */
+  const sobre = [];
+  for (const w of [1920, 1400, 1100, 900, 390]) { const z = await b.newPage({ viewport: { width: w, height: 900 } }); await z.route(/^https?:/, r => r.abort()); await z.goto('file://' + out);
+    await z.addStyleTag({ content: '.big,.fact b,.head h2{font-family:"DejaVu Sans",sans-serif!important;font-weight:900!important;letter-spacing:.01em!important}' }); await z.waitForTimeout(150);
+    sobre.push(...await z.evaluate(w => [...document.querySelectorAll('.dest')].map(d => { const n = d.querySelector('.big .n'); if (!n) return null; const nb = n.getBoundingClientRect(), cb = d.children[0].getBoundingClientRect();
+      return nb.right > cb.right + 1 ? `${w}px ${d.closest('section').id}` : null; }).filter(Boolean), w)); await z.close(); }
+  t(!sobre.length, 'número grande cabe na própria coluna em 5 larguras com fonte larga' + (sobre.length ? ': ' + sobre.join(', ') : ''));
   t(erros.length === 0, 'sem erros de JavaScript no painel' + (erros.length ? ': ' + erros.slice(0, 2).join(' | ') : ''));
   console.log(ok.map(m => '✓ ' + m).join('\n')); if (falhas.length) console.log(falhas.map(m => '✗ ' + m).join('\n'));
   console.log(`\n${ok.length}/${ok.length + falhas.length} verificações`); await b.close(); process.exit(falhas.length ? 1 : 0);

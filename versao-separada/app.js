@@ -5351,7 +5351,7 @@ function apresentacaoHTML(op){ op=op||{};
     .head{display:grid;gap:10px}.head h2{font-family:var(--tit);font-weight:900;text-transform:uppercase;font-size:var(--s3);line-height:1;letter-spacing:-.01em;text-wrap:balance}
     .head .sub{color:var(--mut);font-size:var(--s0);max-width:70ch}
     .dest{display:grid;gap:clamp(18px,3vw,40px);align-items:end}@media(min-width:900px){.dest{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}}
-    .big{display:block;font-family:var(--tit);font-weight:900;color:var(--lar);font-size:var(--s4);line-height:.95;letter-spacing:-.02em;white-space:nowrap}.big.l{font-size:calc(var(--s4)*.74)}
+    .dest>div:first-child{container-type:inline-size}.big{display:block;font-family:var(--tit);font-weight:900;color:var(--lar);font-size:min(var(--s4),24cqi);line-height:.95;letter-spacing:-.02em;white-space:nowrap}.big.l{font-size:min(calc(var(--s4)*.8),12.5cqi)}
     .big-c{font-weight:700;font-size:var(--s1);margin-top:6px}
     .lede{font-size:var(--s1);line-height:1.45;max-width:40ch}.lede b{color:var(--lar);font-weight:700}.esc .lede b{color:var(--lar-cla)}.mut{color:var(--mut)}
     .stage{background:var(--fundo);border:1px solid var(--linha);border-top:4px solid var(--lar);border-radius:6px;padding:clamp(16px,3vw,28px);min-width:0}
