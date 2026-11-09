@@ -5165,7 +5165,7 @@ function perdasCorpo(){
      ${kpi('Até perder · histórico OMIE',st(C.omP),`${md(C.omP)} perdas<span class="l2">o Ploomes não exporta a data da perda</span>`,'err')}
      ${kpi('Perder × ganhar',rz==null?'—':`${fD(rz)}x`,rz==null?'':rz>=1.2?`perder leva ${fD(rz)} vezes o tempo de ganhar, no OMIE<span class="l2">negócio que se arrasta tende a ser perdido: encerrar antes libera o time</span>`:rz<=0.8?`as perdas saem mais rápido que os ganhos, no OMIE`:`ganhar e perder levam tempo parecido, no OMIE<span class="l2">${fmtN(C.omP.length)} perdas com data: base pequena</span>`,rz!=null&&rz>1.2?'ale':'neutro')}
     </div>`; }
-  const motivo=x=>{ const m=x.motivoTxt||x.motivoPerda||x.motivo; const s=String(m||'').trim();
+  const motivo=x=>motivoPerda(x), _motivoAntigo=x=>{ const m=x.motivoTxt||x.motivoPerda||x.motivo; const s=String(m||'').trim();
     /* o histórico prefixa o motivo com G-/P-/C- (ganho/perda/cancelamento);
        aqui só há perdas, então o prefixo é ruído */
     return s&&s!=='N/D'?s.replace(/^[GPC]\s*-\s*/i,'').trim().slice(0,40):'(sem motivo)'; };
@@ -5187,7 +5187,7 @@ function perdasCorpo(){
   /* data da perda: o Ploomes não exporta; vale a última atualização do negócio (aproximada).
      Por isso perdas antigas caem no mês em que o negócio foi editado pela última vez. */
   const aprox=perd.filter(x=>dataPerda(x).aprox).length, ondeAprox=()=>{ const m=new Map(); F.perd.filter(x=>dataPerda(x).aprox).forEach(x=>{ const d=dataPerda(x).dt; if(!d)return; const k=KMESN[d.getMonth()]+'/'+String(d.getFullYear()).slice(2); m.set(k,(m.get(k)||0)+1); }); return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,n])=>`${n} em ${k}`).join(', '); };
-  h+=sec('Motivos de perda','Por que a proposta caiu — no histórico OMIE e no CRM. Barra pelo valor perdido; ao lado, quantas oportunidades.','perd-mot');
+  h+=sec('Motivos de perda','Por que a proposta caiu, com os motivos do histórico OMIE e do Ploomes unificados (ex.: "P-Preço" e "Preço – concorrente mais barato" = Preço). Barra pelo valor perdido; ao lado, quantas oportunidades. O texto original de cada sistema aparece em Maiores perdas.','perd-mot');
   if(!mot.length)h+=card('','',`<p class="pl-vazio"><b>Nenhuma perda com data em ${esc(PER.rot)}.</b> Atenção: o Ploomes não exporta a data da perda — o painel usa a última atualização do negócio, então perdas do CRM aparecem no mês em que o negócio foi editado pela última vez (${esc(ondeAprox()||'—')}). Para perdas no mês certo, o export precisa trazer a data da perda.</p>`);
   else { h+=ranking('l-mot',mot.slice(0,10),'oport.',COR().err);
     if(aprox)h+=`<div class="nota">${fmtN(aprox)} de ${fmtN(perd.length)} perdas com data APROXIMADA (última atualização do negócio no Ploomes). A distribuição por mês pode estar deslocada.</div>`; }
@@ -5198,7 +5198,7 @@ function perdasCorpo(){
   h+=card('Maiores perdas','As 15 maiores em valor, com a norma e o item principal da proposta (o de maior valor).',
     tab([{t:'Cliente',f:1},{t:'Norma'},{t:'Item perdido',f:1},{t:'Motivo'},{t:'Vendedor'},{t:'Div.'},{t:'Data'},{t:'Valor',n:1}],
       [...perd].sort((a,b)=>(b.vNum||0)-(a.vNum||0)).slice(0,15).map(x=>{ const pd=perdaDetalhe(x); return [esc(x.cli).slice(0,34),esc(pd.norma||'—'),pd.item?esc(pd.item)+(pd.nItens>1?` <small>+${pd.nItens-1} itens</small>`:''):'—',
-        esc(motivo(x)),esc(nomeCurto(x.resp)),esc(x.div||'—'),fmtData(x.dtFim||x.dtVenda||x.dtCri),fmtBRL(x.vNum)]; })));
+        esc(motivo(x))+(motivoPerdaOrig(x)&&norm(motivoPerdaOrig(x))!==norm(motivo(x))?`<br><small>${esc(motivoPerdaOrig(x))} · ${esc(x.fonte==='Ploomes'?'Ploomes':'OMIE')}</small>`:''),esc(nomeCurto(x.resp)),esc(x.div||'—'),fmtData(x.dtFim||x.dtVenda||x.dtCri),fmtBRL(x.vNum)]; })));
   return h;
 };
 
@@ -6475,6 +6475,24 @@ function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_
    Documento próprio (HTML completo, CSS e script isolados) montado com o
    período, a referência e os filtros do painel. Abre num iframe na aba
    "Apresentação", em tela cheia, ou é baixado como arquivo único. */
+/* ---------- motivo de perda unificado (Ploomes + histórico OMIE) ----------
+   O OMIE prefixa o motivo (P-perda, C-cancelamento, G-, S-situação) e usa nomes
+   curtos ("P-Preço"); o Ploomes usa frases ("Preço – concorrente mais barato").
+   Para o estudo de perdas os dois viram a mesma categoria; o texto original
+   continua disponível em motivoPerdaOrig(). A primeira regra que casa vale. */
+const MOTIVO_CANON=[
+ ['Preço',/preco|concorrente mais barato/],
+ ['Sem retorno do cliente',/sem retorno|nao respondeu|inativo/],
+ ['Escopo',/escopo/],
+ ['Técnica / especificação',/tecnic|especifica|solucao/],
+ ['Fornecedor não homologado',/fornecedor|homolog/],
+ ['Projeto parado ou sem verba',/paralis|projeto declinado|sem orcamento|inviavel/],
+ ['Prazo de entrega',/prazo/],
+ ['Relacionamento',/relacionamento/],
+ ['Registro duplicado',/duplicad/]];
+function motivoPerdaOrig(x){ const s=String((x&&(x.motivoTxt||x.motivoPerda||x.motivo))||'').trim(); return s&&!/^n\/?d$/i.test(s)?s:''; }
+function motivoPerda(x){ const o=motivoPerdaOrig(x); if(!o)return '(sem motivo)'; const t=norm(o.replace(/^[GPCS]\s*-\s*/i,''));
+  const c=MOTIVO_CANON.find(([,re])=>re.test(t)); return c?c[0]:o.replace(/^[GPCS]\s*-\s*/i,'').trim().slice(0,44); }
 /* norma e item principal de um negócio perdido: a norma do negócio (ou da proposta);
    o item é o de maior valor na proposta (categoria + descrição); sem proposta, os
    produtos/solução/título do próprio negócio */
@@ -6499,7 +6517,7 @@ function apresDados(){
   const pulso=KMESN.slice(0,ult+1).map((k,m)=>({k,a:somar(Va.filter(v=>v.dt.getMonth()===m),val),b:somar(Vb.filter(v=>v.dt.getMonth()===m),val),parc:a===HOJE.getFullYear()&&m===ult}));
   const etapas=[...agrupar(F.ab,n=>n.etapa).entries()].map(([k,a])=>({k:String(k),v:somar(a,n=>n.vNum||0),n:a.length})).sort((x,y)=>x.k.localeCompare(y.k,'pt',{numeric:true}));
   const perd=(typeof noAnoPerda==='function'?F.perd.filter(noAnoPerda):F.perd.filter(n=>noPer(n.dtAtu||n.dtCri)));
-  const mot=[...agrupar(perd,x=>{ const s=String(x.motivoTxt||x.motivoPerda||x.motivo||'').trim(); return s&&s!=='N/D'?s.replace(/^[GPC]\s*-\s*/i,'').trim().slice(0,44):'(sem motivo)'; }).entries()]
+  const mot=[...agrupar(perd,motivoPerda).entries()]
     .map(([k,a])=>({k,n:a.length,v:somar(a,x=>x.vNum||0),neg:a.slice().sort((p,q)=>(q.vNum||0)-(p.vNum||0)).map(x=>Object.assign({cli:x.cli,v:x.vNum||0},perdaDetalhe(x)))})).sort((x,y)=>y.v-x.v).slice(0,6);
   const sf=saldoFaturar();
   const C=contratosModelo(), V=C.L.filter(c=>c.vigente), renov=C.L.filter(c=>c.renovar).sort((x,y)=>x.diasFim-y.diasFim);
@@ -8456,8 +8474,7 @@ function relDestaques(pub){
     +`; ${fmtCompacto(somar(par,n=>n.vNum||0))} (${fmtN(par.length)} negócios) parados há mais de ${CFG.parParado} dias.`);
   const perd=F.perd.filter(noAnoPerda), gan=F.neg.filter(n=>n.ganho&&noAno({dt:n.dtVenda||n.dtCri})).concat(F.hist.filter(o=>o.ganho&&noAno({dt:o.dtVenda})));
   if(gan.length+perd.length){
-    const mot=[...agrupa(perd,x=>{const s=String(x.motivoTxt||x.motivoPerda||x.motivo||'').trim();
-      return s&&s!=='N/D'?s.replace(/^[GPC]\s*-\s*/i,'').trim().slice(0,40):'(sem motivo)';}).entries()]
+    const mot=[...agrupa(perd,motivoPerda).entries()]
       .map(([k,v])=>({k,n:v.length,t:somar(v,x=>x.vNum||0)})).sort((a,b)=>b.t-a.t);
     L.push(`Win rate de <b>${fmtPct(gan.length/(gan.length+perd.length),0)}</b> em quantidade (${fmtN(gan.length)} ganhos de ${fmtN(gan.length+perd.length)} decididos)`
       +(mot.length?`; perdido ${fmtCompacto(somar(perd,x=>x.vNum||0))}, a maior parte por <b>${esc(mot[0].k)}</b> (${fmtCompacto(mot[0].t)}, ${fmtN(mot[0].n)}).`:'.'));
