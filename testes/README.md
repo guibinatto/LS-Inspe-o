@@ -1,6 +1,8 @@
 # Testes automatizados (Playwright + Chromium)
 
-Rodar com: `node testes/<arquivo>.js "$PWD/Painel-Executivo-LS-Fire-2026-10-26.html"`
+Rodar com: `node testes/<arquivo>.js <painel.html>`
+
+**Base de teste.** `regras-criticas`, `graficos-interface`, `totais`, `central` e `contratos` conferem números da base de 26/10/2026. Depois de importar planilhas novas, rode-os na base de teste (código atual + dados de 26/10): `python3 -I ferramentas/base-de-teste.py /tmp/base.html` e `node testes/<arquivo>.js /tmp/base.html`. `apresentacao`, `clica-tudo` e `versao-separada` rodam também no arquivo com os dados do dia.
 
 | Arquivo | O que verifica | Resultado em 31/10/2026 |
 |---|---|---|

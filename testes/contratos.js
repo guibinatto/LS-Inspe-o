@@ -66,7 +66,7 @@ const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
   if (m.os) {
     t(tela.kpis === 8, '8 indicadores no topo');
     t(['ctr-lista', 'ctr-vig', 'ctr-mes', 'ctr-renov', 'ctr-ag', 'ctr-sn'].every(s => tela.secs.includes(s)), 'seções: lista, vigência, mês a mês, renovação, aguardando, sem número');
-    t(tela.svg === 2 && tela.ch === 1, 'gráficos: vigência e mapa de calor (SVG) + faturamento por mês');
+    t(tela.svg === 3 && tela.ch === 1, 'gráficos: receita mensal, vigência e mapa de calor (SVG) + faturamento por mês');
     /* clique: número do contrato abre as OS; célula do mapa abre as OS do mês */
     await p.locator('#tela a.td-link', { hasText: '2025/08302' }).first().click(); await p.waitForTimeout(300);
     t(await p.evaluate(() => { const x = document.querySelector('#m-form.aberto, .modal.aberto'); return !!x && /2025\/08302/.test(x.textContent) && x.querySelectorAll('tbody tr').length === 12; }), 'clicar no contrato abre as 12 OS da SEPAC');

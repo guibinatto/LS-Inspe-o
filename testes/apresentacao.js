@@ -12,7 +12,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   const fr = p.frameLocator('#apres-fr');
   const r = await p.evaluate(() => { const X = indicadoresPeriodo(PER); return { ped: fmtCompacto(X.ped), n: fmtN(X.nPed), renders: 0, srcdoc: document.getElementById('apres-fr').srcdoc.length }; });
   const nSec = await fr.locator('section[id]').count(), h1 = await fr.locator('#resultado .dest').innerText();
-  t(r.srcdoc > 1000 && nSec === 13, `prévia na aba (modelo Anual): 13 capítulos com a previsão de vendas (${nSec})`);
+  t(r.srcdoc > 1000 && nSec === 14, `prévia na aba (modelo Anual): 14 capítulos, com previsão de vendas e follow-up (${nSec})`);
   t(h1.includes(r.ped) && h1.includes(r.n + ' pedidos'), `capítulo Resultado com os números do motor (${r.ped}, ${r.n} pedidos)`);
   /* não entra em ciclo de redesenho: o HTML fica estável */
   const estavel = await p.evaluate(async () => { let n = 0; const orig = apresentacaoHTML; window.apresentacaoHTML = function () { n++; return orig.apply(this, arguments); }; await new Promise(r => setTimeout(r, 1500)); window.apresentacaoHTML = orig; return n; });
