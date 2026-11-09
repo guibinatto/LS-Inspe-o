@@ -6511,25 +6511,33 @@ function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_
    período depois do marco é proporcional aos dias corridos. Pedidos grandes
    (acima de R$ 500 mil) distorcem a média de valor: a leitura sem eles vem junto. */
 const SPV_GRANDE=500000;
+/* clientes fora do estudo da Amanda (entraram na SPV sem esforço comercial da área);
+   editável em CFG.spvForaEstudo. Saem de pedidos, propostas e negócios do antes × depois. */
+const SPV_FORA_PADRAO=[{cli:'braskem',motivo:'entrou na SPV sem esforço comercial da área nem participação da Amanda'}];
+const spvFora=()=>Array.isArray(CFG.spvForaEstudo)?CFG.spvForaEstudo:SPV_FORA_PADRAO;
+const spvForaDe=x=>spvFora().find(f=>norm(x&&x.cli).includes(norm(f.cli)))||null;
 function spvDados(){ const R=hoje(), marco=data(CFG.spvMarco||'2026-10-01'), am=x=>/amanda/i.test(String(x||'')), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
   const ano=R.getFullYear(), meses=[...Array(R.getMonth()+1).keys()].map(m=>mesKey(new Date(ano,m,1)));
-  const ped=F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt<=R&&(!EST.vend||v.resp===EST.vend));
+  const ped=F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt<=R&&(!EST.vend||v.resp===EST.vend)&&!spvForaDe(v));
   const pedAm=v=>am(v.orcNome||v.orc)||am(v.reg&&v.reg.orc);
   const serie=meses.map(k=>{ const a=ped.filter(v=>mesKey(v.dt)===k), b=ped.filter(v=>mesKey(v.dt)===String(ano-1)+k.slice(4));
     return {k,rot:mesRot(k),n:a.length,v:somar(a,val),nAm:a.filter(pedAm).length,vAm:somar(a.filter(pedAm),val),nAnt:b.length,vAnt:somar(b,val),grande:a.filter(v=>val(v)>=SPV_GRANDE)}; });
-  const props=propostasRecorte().filter(x=>x.div==='SPV'&&x.dt&&x.dt<=R);
+  const propsTodas=propostasRecorte().filter(x=>x.div==='SPV'&&x.dt&&x.dt<=R), props=propsTodas.filter(x=>!spvForaDe(x));
   const propM=meses.map(k=>{ const a=props.filter(x=>mesKey(x.dt)===k); return {k,n:a.length,nAm:a.filter(x=>am(x.resp)||am(x.respProp)||am(x.orc)).length}; });
-  const negM=meses.map(k=>(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&mesKey(n.dtCri)===k).length);
+  const negSPV=(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&!spvForaDe(n)), negM=meses.map(k=>negSPV.filter(n=>mesKey(n.dtCri)===k).length);
   /* janelas: 3 meses cheios antes do marco × do marco até a referência (proporcional) */
   const ini=new Date(marco.getFullYear(),marco.getMonth()-3,1), dias=(a,b)=>Math.max(1,(b-a)/864e5+1), mesesDepois=dias(marco,R)/30.44;
   const antes=x=>x>=ini&&x<marco, depois=x=>x>=marco&&x<=R;
   const pA=ped.filter(v=>antes(v.dt)), pD=ped.filter(v=>depois(v.dt)), semG=a=>a.filter(v=>val(v)<SPV_GRANDE);
   const prA=props.filter(x=>antes(x.dt)), prD=props.filter(x=>depois(x.dt));
-  const ngA=(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&antes(n.dtCri)), ngD=(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&depois(n.dtCri));
+  const ngA=negSPV.filter(n=>antes(n.dtCri)), ngD=negSPV.filter(n=>depois(n.dtCri));
   const comp=[['Pedidos por mês',pA.length/3,pD.length/mesesDepois,'int'],['Propostas por mês',prA.length/3,prD.length/mesesDepois,'int'],['Negócios novos por mês',ngA.length/3,ngD.length/mesesDepois,'int'],
     ['Valor em pedidos por mês',somar(pA,val)/3,somar(pD,val)/mesesDepois,'mi'],['Valor por mês, sem pedidos acima de R$ 500 mil',somar(semG(pA),val)/3,somar(semG(pD),val)/mesesDepois,'mi']];
   const amPed=pD.filter(pedAm), ytd=somar(ped.filter(v=>v.dt.getFullYear()===ano),val), ytdAnt=somar(F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt.getFullYear()===ano-1&&v.dt<=new Date(ano-1,R.getMonth(),R.getDate())),val);
-  return {marco,ini,R,serie,propM,negM,comp,amPed,amVal:somar(amPed,val),pD,shareAm:pD.length?amPed.length/pD.length:null,amProp:prD.filter(x=>am(x.resp)||am(x.respProp)||am(x.orc)).length,prD,mesesDepois,ytd,ytdAnt,
+  const foraItens=[...F.todas.filter(v=>v.dt&&v.dt>=ini&&v.dt<=R&&spvForaDe(v)&&(v.div==='SPV')).map(v=>({t:'pedido',cli:v.cli,v:val(v),f:spvForaDe(v)})),
+    ...propsTodas.filter(x=>x.dt>=ini&&spvForaDe(x)).map(x=>({t:'proposta '+x.cod,cli:x.cli,v:x.val||0,f:spvForaDe(x)})),
+    ...(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&n.dtCri>=ini&&n.dtCri<=R&&spvForaDe(n)).map(n=>({t:'negócio',cli:n.cli,v:n.vNum||0,f:spvForaDe(n)}))];
+  return {foraItens,marco,ini,R,serie,propM,negM,comp,amPed,amVal:somar(amPed,val),pD,shareAm:pD.length?amPed.length/pD.length:null,amProp:prD.filter(x=>am(x.resp)||am(x.respProp)||am(x.orc)).length,prD,mesesDepois,ytd,ytdAnt,
     grandes:pA.filter(v=>val(v)>=SPV_GRANDE).map(v=>({cli:v.cli,v:val(v),dt:v.dt}))}; }
 
 /* seção da SPV no painel (Resultados e metas) */
@@ -6544,6 +6552,7 @@ function secSpv(){ if(EST.div==='SEQ')return ''; const Q=spvDados(); if(!Q.serie
       corpo:svgColunas(lab,Q.serie.map(m=>m.n),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Pedidos','Com a Amanda','Valor','Ano anterior'],linhas:Q.serie.map(m=>[m.rot,m.n,m.nAm,fmtBRL(m.v),m.nAnt])},nota:`<a class="td-link" onclick="abrirLista('spv-p')">ver pedidos com a Amanda</a>`})}
     ${blocoGraf({id:'spv-pr',tit:'Propostas da SPV por mês',perg:'O volume de propostas acompanhou?',per:String(Q.R.getFullYear()),unid:'propostas',fonte:'Ploomes (desde jul/2026)',
       corpo:svgColunas(lab,Q.propM.map(m=>m.n||null),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Propostas','Da Amanda'],linhas:Q.propM.map(m=>[mesRot(m.k),m.n,m.nAm])}})}</div>`;
+  if(Q.foraItens.length)h+=`<div class="nota"><b>Fora do estudo:</b> ${[...new Set(Q.foraItens.map(x=>x.f.cli))].map(c=>{ const it=Q.foraItens.filter(x=>x.f.cli===c); return `${esc(it[0].cli)}: ${it.map(x=>esc(x.t)+' '+fmtBRL(x.v)).join(', ')} — ${esc(it[0].f.motivo)}`; }).join('; ')}.</div>`;
   if(Q.grandes.length)h+=`<div class="nota">Antes do marco: ${Q.grandes.map(g=>`${esc(g.cli)} ${fmtBRL(g.v)} (${fmtData(g.dt)})`).join('; ')} — pedidos acima de R$ 500 mil. O período depois do marco ainda é curto (${fmtD(Q.mesesDepois,1)} mês): a leitura fica mais firme a cada mês.</div>`;
   return h; }
 /* ---------- valor do negócio aberto pela proposta atual ----------
@@ -6899,6 +6908,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
        <p class="lede">A SPV passou de <b>${fmtD(Q.comp[0][1],1)}</b> para <b>${fmtD(Q.comp[0][2],1)}</b> pedidos por mês. A Amanda participa de <b>${fmtN(Q.amPed.length)}</b> deles (${pc(Q.shareAm)}, ${e(mi(Q.amVal))}) e de <b>${fmtN(Q.amProp)}</b> das ${fmtN(Q.prD.length)} propostas da SPV no período.</p></div>
      <div class="aps">${Q.comp.map(([t,a,b,f],i)=>{ const [cl,tx]=seta(a,b), F_=v=>f==='mi'?mi(v):fmtD(v,1); return `<div class="ap" style="--d:${i*120}ms"><span class="ap-t">${e(t)}</span><div class="ap-v"><span class="ap-a">${e(F_(a))}</span><i>→</i><b>${e(F_(b))}</b></div><strong class="${cl}">${tx}</strong></div>`; }).join('')}</div>
      ${Q.grandes.length?`<p class="mut como">Antes do marco houve ${fmtN(Q.grandes.length)} pedido(s) acima de R$ 500 mil (${Q.grandes.map(g=>e(String(g.cli).split(/\s+/).slice(0,2).join(' '))+' '+e(mi(g.v))).join(', ')}): por isso o valor por mês sem eles aparece à parte. O período depois do marco ainda é curto (${fmtD(Q.mesesDepois,1)} mês).</p>`:''}
+     ${Q.foraItens.length?`<p class="mut como"><b>Fora do estudo:</b> ${[...new Set(Q.foraItens.map(x=>x.f.cli))].map(c=>{ const it=Q.foraItens.filter(x=>x.f.cli===c); return `${e(String(it[0].cli).split(/\s+/)[0])} (${it.map(x=>e(x.t)).join(', ')}) — ${e(it[0].f.motivo)}`; }).join('; ')}.</p>`:''}
      <div class="stage"><div class="st-t">Pedidos da SPV por mês <span>quantidade · laranja escuro = com a Amanda · cinza = ${D.a-1}</span></div><div class="sc">${svg}</div>
        <div class="leg"><span><i style="background:#C8C8C8"></i>${D.a-1}</span><span><i style="background:#FFB27F"></i>${D.a}</span><span><i style="background:#FF6600"></i>${D.a} com a Amanda</span></div></div>
      <div class="stage"><div class="st-t">Propostas da SPV por mês <span>Ploomes, desde jul/2026 · embaixo do mês, quantas são da Amanda</span></div>${barras(Q.propM.filter(m=>m.n).map(m=>({k:mesRot(m.k),s:m.nAm?fmtN(m.nAm)+' da Amanda':'',v:m.n})),v=>fmtN(v)+' propostas',{top:false})}</div>`; })())}
