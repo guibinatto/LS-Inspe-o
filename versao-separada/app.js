@@ -5301,8 +5301,8 @@ function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_
    período, a referência e os filtros do painel. Abre num iframe na aba
    "Apresentação", em tela cheia, ou é baixado como arquivo único. */
 /* ---------- divisão de serviços (SPV): antes × depois da chegada da Amanda ----------
-   Amanda Rohte é a engenharia de aplicação da SPV: no Controle de Pedidos ela
-   está em "Eng. de Aplicação", no Ploomes é responsável/colaboradora dos negócios
+   Amanda Rohte é do comercial da SPV: no Controle de Pedidos ela aparece na
+   coluna "Eng. de Aplicação", no Ploomes é responsável/colaboradora dos negócios
    e responsável das propostas. O marco (CFG.spvMarco, padrão 01/10/2026) é o mês
    do primeiro negócio e do primeiro pedido dela. A comparação é com os 3 meses
    cheios anteriores (jul–set: a base de propostas do Ploomes começa em julho); o
@@ -5333,11 +5333,11 @@ function spvDados(){ const R=hoje(), marco=data(CFG.spvMarco||'2026-10-01'), am=
 /* seção da SPV no painel (Resultados e metas) */
 function secSpv(){ if(EST.div==='SEQ')return ''; const Q=spvDados(); if(!Q.serie.some(m=>m.n))return '';
   const seta=(a,b)=>a?`${b>=a?'▲':'▼'} ${fmtPct(Math.abs(b/a-1),0)}`:'—', cls=(a,b)=>!a?'':b/a-1>=.05?'ok':b/a-1<=-.05?'err':'';
-  let h=sec('Serviços (SPV): antes e depois da Amanda',`Marco ${fmtData(Q.marco)}: chegada da Amanda Rohte na engenharia de aplicação da SPV (primeiro negócio e primeiro pedido dela). Antes = os 3 meses cheios anteriores; depois = do marco até ${fmtData(Q.R)}, proporcional aos dias. Pedidos acima de R$ 500 mil aparecem à parte porque distorcem a média.`,'res-spv');
+  let h=sec('Serviços (SPV): antes e depois da Amanda',`Marco ${fmtData(Q.marco)}: chegada da Amanda Rohte no comercial da SPV (primeiro negócio e primeiro pedido dela). Antes = os 3 meses cheios anteriores; depois = do marco até ${fmtData(Q.R)}, proporcional aos dias. Pedidos acima de R$ 500 mil aparecem à parte porque distorcem a média.`,'res-spv');
   h+=`<div class="g g4 kpis-2">${Q.comp.map(([t,a,b,f])=>cardG({rot:t,val:f==='mi'?fmtCompacto(b):fmtD(b,1),per:`depois de ${fmtData(Q.marco)}`,cls:cls(a,b),sub:`antes: ${f==='mi'?fmtCompacto(a):fmtD(a,1)} · <b>${seta(a,b)}</b>`,tipo:'mov',fonte:t.startsWith('Propostas')||t.startsWith('Negócios')?'Ploomes':'Pedidos'})).join('')}
-    ${cardG({rot:'Pedidos com a Amanda',val:fmtN(Q.amPed.length),per:`desde ${fmtData(Q.marco)}`,cls:'lar',sub:`${Q.shareAm==null?'—':fmtPct(Q.shareAm,0)} dos pedidos da SPV · ${fmtCompacto(Q.amVal)}`,tipo:'mov',fonte:'Controle de Pedidos (Eng. de Aplicação)'})}</div>`;
+    ${cardG({rot:'Pedidos com a Amanda',val:fmtN(Q.amPed.length),per:`desde ${fmtData(Q.marco)}`,cls:'lar',sub:`${Q.shareAm==null?'—':fmtPct(Q.shareAm,0)} dos pedidos da SPV · ${fmtCompacto(Q.amVal)}`,tipo:'mov',fonte:'Controle de Pedidos'})}</div>`;
   const lab=Q.serie.map(m=>m.rot);
-  regLista('spv-p','Pedidos da SPV com a Amanda (engenharia de aplicação)',Q.amPed.map(v=>[fmtData(v.dt),esc(String(v.cli).slice(0,40)),esc(nomeCurto(v.resp)),fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),[{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Valor',n:1}]);
+  regLista('spv-p','Pedidos da SPV com a Amanda',Q.amPed.map(v=>[fmtData(v.dt),esc(String(v.cli).slice(0,40)),esc(nomeCurto(v.resp)),fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),[{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Valor',n:1}]);
   h+=`<div class="dupla">${blocoGraf({id:'spv-n',tit:'Pedidos da SPV por mês',perg:'A quantidade de pedidos cresceu depois do marco?',per:String(Q.R.getFullYear()),unid:'pedidos',fonte:'Controle de Pedidos e Ploomes',
       corpo:svgColunas(lab,Q.serie.map(m=>m.n),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Pedidos','Com a Amanda','Valor','Ano anterior'],linhas:Q.serie.map(m=>[m.rot,m.n,m.nAm,fmtBRL(m.v),m.nAnt])},nota:`<a class="td-link" onclick="abrirLista('spv-p')">ver pedidos com a Amanda</a>`})}
     ${blocoGraf({id:'spv-pr',tit:'Propostas da SPV por mês',perg:'O volume de propostas acompanhou?',per:String(Q.R.getFullYear()),unid:'propostas',fonte:'Ploomes (desde jul/2026)',
@@ -5593,6 +5593,11 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     .fup-t .cl{background:repeating-linear-gradient(135deg,#E0E0E0 0 6px,#CFCFCF 6px 12px)!important}
     .sit-r.fora .sit-t .cl{background:repeating-linear-gradient(135deg,#E0E0E0 0 6px,#CFCFCF 6px 12px)}.sit-r.fora .sit-v b{color:var(--mut)}
     .sit-l{margin:2px 0 6px}.sit-r.fora+.sit-l{opacity:.8}.sit{gap:8px}
+.calc{border:1px solid var(--linha);border-left:6px solid var(--lar);border-radius:4px;padding:14px 18px;background:var(--fundo);display:grid;gap:8px;font-size:.92rem}.calc-t{font-size:1rem}
+    .calc-f{font-family:var(--tit);font-weight:900;font-size:var(--s1);color:var(--lar);padding:4px 0}
+    .calc-p{display:flex;flex-wrap:wrap;gap:8px}.calc-p span{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--linha);border-radius:3px;padding:4px 10px;font-size:.84rem}.calc-p b{font-family:var(--tit);color:var(--lar)}.calc-p .z{color:var(--mut)}.calc-p .z b{color:var(--mut)}
+    .calc-ex{background:var(--lar-suave);padding:8px 12px;border-radius:3px}
+    .venc{margin-top:18px;border:1px dashed #C62828;border-radius:4px;padding:12px 14px;background:#FFF6F6}.venc-h{display:grid;gap:2px;margin-bottom:4px}.venc-h b{color:#C62828;font-size:.92rem}.venc-h span{font-size:.82rem;color:var(--mut)}.venc .pm-l{border-left-color:#E8A0A0}
     .sit-tot{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--txt);margin-top:14px;padding-top:10px;font-weight:700}.sit-tot b{font-family:var(--tit);font-size:var(--s1);color:var(--lar)}
     .meta-frase{margin:0 0 18px}.meta-b{position:relative;display:flex;height:44px;border-radius:4px;background:var(--trilho);overflow:visible;margin-top:26px}
     .meta-b i{display:block;height:100%;width:var(--w);flex:none}.meta-b .v{background:var(--lar);border-radius:4px 0 0 4px}.meta-b .p{background:var(--lar-cla)}.meta-b .d{background:repeating-linear-gradient(135deg,#D6D6D6 0 7px,#BDBDBD 7px 14px)}
@@ -5677,12 +5682,12 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <text x="${x+2+bw/2}" y="${Y(m.n)-8}" text-anchor="middle" class="lbl" style="--d:${i*40+760}ms">${m.n||''}</text>
          <text x="${x}" y="${H-10}" text-anchor="middle" class="ax">${e(m.rot)}</text></g>`; }).join('')}</svg>`;
      const seta=(a,b)=>{ if(!a)return ['','—']; const r=b/a-1; return [r>=.05?'ok':r<=-.05?'mau':'',`${r>=0?'▲':'▼'} ${pc(Math.abs(r))}`]; };
-     return `${tit('Serviços','(SPV)',`Pedidos, propostas e negócios da divisão de serviços. Marco: ${e(fmtData(Q.marco))}, chegada da Amanda Rohte na engenharia de aplicação da SPV. Antes = ${e(mesRot(mesKey(Q.ini)))} a ${e(mesRot(mesKey(new Date(Q.marco.getFullYear(),Q.marco.getMonth()-1,1))))}; depois = ${e(fmtData(Q.marco))} a ${e(fmtData(Q.R))}, proporcional aos dias.`)}
+     return `${tit('Serviços','(SPV)',`Pedidos, propostas e negócios da divisão de serviços. Marco: ${e(fmtData(Q.marco))}, chegada da Amanda Rohte no comercial da SPV. Antes = ${e(mesRot(mesKey(Q.ini)))} a ${e(mesRot(mesKey(new Date(Q.marco.getFullYear(),Q.marco.getMonth()-1,1))))}; depois = ${e(fmtData(Q.marco))} a ${e(fmtData(Q.R))}, proporcional aos dias.`)}
      <div class="dest"><div>${(c=>big(Math.round((c[2]/c[1]-1)*100),'int',c[1]?(c[2]>=c[1]?'+':'−')+pc(Math.abs(c[2]/c[1]-1)):'—'))(Q.comp[0])}<div class="big-c">de pedidos por mês desde a chegada da Amanda</div></div>
        <p class="lede">A SPV passou de <b>${fmtD(Q.comp[0][1],1)}</b> para <b>${fmtD(Q.comp[0][2],1)}</b> pedidos por mês. A Amanda participa de <b>${fmtN(Q.amPed.length)}</b> deles (${pc(Q.shareAm)}, ${e(mi(Q.amVal))}) e de <b>${fmtN(Q.amProp)}</b> das ${fmtN(Q.prD.length)} propostas da SPV no período.</p></div>
      <div class="aps">${Q.comp.map(([t,a,b,f],i)=>{ const [cl,tx]=seta(a,b), F_=v=>f==='mi'?mi(v):fmtD(v,1); return `<div class="ap" style="--d:${i*120}ms"><span class="ap-t">${e(t)}</span><div class="ap-v"><span class="ap-a">${e(F_(a))}</span><i>→</i><b>${e(F_(b))}</b></div><strong class="${cl}">${tx}</strong></div>`; }).join('')}</div>
      ${Q.grandes.length?`<p class="mut como">Antes do marco houve ${fmtN(Q.grandes.length)} pedido(s) acima de R$ 500 mil (${Q.grandes.map(g=>e(String(g.cli).split(/\s+/).slice(0,2).join(' '))+' '+e(mi(g.v))).join(', ')}): por isso o valor por mês sem eles aparece à parte. O período depois do marco ainda é curto (${fmtD(Q.mesesDepois,1)} mês).</p>`:''}
-     <div class="stage"><div class="st-t">Pedidos da SPV por mês <span>quantidade · laranja escuro = com a Amanda na engenharia de aplicação · cinza = ${D.a-1}</span></div><div class="sc">${svg}</div>
+     <div class="stage"><div class="st-t">Pedidos da SPV por mês <span>quantidade · laranja escuro = com a Amanda · cinza = ${D.a-1}</span></div><div class="sc">${svg}</div>
        <div class="leg"><span><i style="background:#C8C8C8"></i>${D.a-1}</span><span><i style="background:#FFB27F"></i>${D.a}</span><span><i style="background:#FF6600"></i>${D.a} com a Amanda</span></div></div>
      <div class="stage"><div class="st-t">Propostas da SPV por mês <span>Ploomes, desde jul/2026 · embaixo do mês, quantas são da Amanda</span></div>${barras(Q.propM.filter(m=>m.n).map(m=>({k:mesRot(m.k),s:m.nAm?fmtN(m.nAm)+' da Amanda':'',v:m.n})),v=>fmtN(v)+' propostas',{top:false})}</div>`; })())}
   ${sec('equipe','alt',`${tit('Vendedor','responsável',`Pedidos recebidos no período, pelo vendedor responsável pelo pedido.${D.vend[0]?` ${e(D.vend[0].k)} lidera com ${e(mi(D.vend[0].v))}.`:''}`)}
@@ -5714,6 +5719,14 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
      return `${tit('Previsão de','vendas',`Negócios abertos no Ploomes com data de fechamento, ponderados pela política de probabilidade do painel · horizonte ${e(PP.J.rot)}`)}
      <div class="dest"><div>${big(PP.previsao,'mi',mi(PP.previsao))}<div class="big-c">previsão ponderada em 3 meses</div></div>
        <p class="lede">De <b>${e(mi(PP.integral))}</b> em ${fmtN(PP.eleg.length)} negócios com fechamento previsto no horizonte. ${PP.venc.length?`<b>${fmtN(PP.venc.length)}</b> estão com a previsão vencida (${e(mi(somar(PP.venc,n=>n.vNum||0)))}) e`:''} <b>${fmtN(PP.sem.length)}</b> não têm data — ficam fora da conta.</p></div>
+     ${(()=>{ const pol=POL().slice().sort((x,y)=>y.p-x.p), dentro=pol.filter(q=>q.entra), fora=pol.filter(q=>!q.entra);
+       const ex=PP.eleg.filter(n=>polDe(n.certeza).entra).sort((x,y)=>(y.vNum||0)-(x.vNum||0))[0], q=ex&&polDe(ex.certeza);
+       return `<div class="calc"><b class="calc-t">Como a previsão ponderada é calculada</b>
+         <p>É quanto do pipeline deve virar pedido no horizonte. Cada negócio aberto com fechamento previsto entre <b>${e(fmtData(PP.J.ini))}</b> e <b>${e(fmtData(PP.J.fim))}</b> entra com o seu valor multiplicado pela chance de fechar, que vem da situação dele no Ploomes:</p>
+         <div class="calc-f">Previsão ponderada = Σ (valor do negócio × peso da situação)</div>
+         <div class="calc-p">${dentro.map(q=>`<span><b>${pc(q.p)}</b>${e(q.k)}</span>`).join('')}${fora.length?`<span class="z"><b>0%</b>${fora.map(q=>e(q.k)).join(', ')} — ficam fora</span>`:''}</div>
+         ${ex?`<p class="calc-ex">Exemplo: <b>${e(String(ex.cli).split(/\s+/).slice(0,3).join(' '))}</b>, ${e(q.k.toLowerCase())}: ${e(fmtBRL(ex.vNum))} × ${pc(q.p)} = <b>${e(fmtBRL(prevNeg(ex)))}</b> na previsão.</p>`:''}
+         <p class="mut">Não entram: negócios sem data de fechamento e com a data já vencida (listados mais abaixo). Os pesos são os da política de probabilidade do painel (Dados e configurações).</p></div>`; })()}
      <div class="stage"><div class="st-t">Pedidos previstos por mês de fechamento <span>claro = valor dos negócios · laranja = previsão ponderada</span></div><div class="sc">${svg}</div>
        <div class="leg"><span><i style="background:#FFD1B3"></i>valor em negociação</span><span><i style="background:#FF6600"></i>previsão ponderada</span><span><i style="background:#9A9A9A"></i>previsão já vencida</span></div></div>
      <div class="stage"><div class="st-t">De onde vem a previsão <span>cada negócio entra com o peso da sua situação no Ploomes</span></div>
@@ -5723,7 +5736,10 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
            <div class="sit-t"><i class="cl" style="--w:${(100*x.bruto/mxS).toFixed(1)}%;--d:${i*110}ms"></i><i class="pd" style="--w:${(100*x.pond/mxS).toFixed(1)}%;--d:${i*110+350}ms"></i></div>
            <div class="sit-v"><b>${e(x.entra?mi(x.pond):'R$ 0')}</b><small>de ${e(mi(x.bruto))}</small></div></div>
            <ul class="pm-l sit-l">${x.neg.slice(0,4).map(n=>`<li><b>${e(String(n.cli).slice(0,44))}</b><span>${[String(n.titulo||'').replace(/_?\[Neg[oó]cio\.[^\]]*\]/gi,'').replace(/\|\s*null\b/gi,'').replace(/[\s|]+$/,'').replace(/\s+/g,' ').trim().slice(0,70),n.dtPrev?'fechamento '+fmtData(n.dtPrev):'',nomeCurto(n.resp)].filter(Boolean).map(e).join(' · ')}</span><em>${e(mi(n.vNum))}</em></li>`).join('')}${x.neg.length>4?`<li class="mais">+ ${fmtN(x.neg.length-4)} ${x.neg.length-4===1?'negócio':'negócios'} (${e(mi(somar(x.neg.slice(4),n=>n.vNum||0)))})</li>`:''}</ul>`; }).join('')}</div>
-       <div class="sit-tot"><span>Previsão ponderada no horizonte</span><b>${e(mi(PP.previsao))}</b></div></div>
+       <div class="sit-tot"><span>Previsão ponderada no horizonte</span><b>${e(mi(PP.previsao))}</b></div>
+       ${(()=>{ const V=PP.venc.filter(n=>polDe(n.certeza).entra).sort((x,y)=>(y.vNum||0)-(x.vNum||0)); if(!V.length)return '';
+         return `<div class="venc"><div class="venc-h"><b>Fora da previsão: data de fechamento vencida</b><span>${fmtN(V.length)} ${V.length===1?'negócio':'negócios'} · ${e(mi(somar(V,n=>n.vNum||0)))} em negociação · entrariam com <b>${e(mi(somar(V,prevNeg)))}</b> se a data for atualizada no Ploomes</span></div>
+           <ul class="pm-l">${V.slice(0,5).map(n=>`<li><b>${e(String(n.cli).slice(0,44))}</b><span>${e(n.certeza)} · fechamento previsto ${e(fmtData(n.dtPrev))} · ${e(nomeCurto(n.resp)||n.resp)}</span><em>${e(mi(n.vNum))}</em></li>`).join('')}${V.length>5?`<li class="mais">+ ${fmtN(V.length-5)} negócios (${e(mi(somar(V.slice(5),n=>n.vNum||0)))})</li>`:''}</ul></div>`; })()}</div>
      ${D.metaAno?(()=>{ const meta=D.metaAno, vend=D.pedAno, prev=D.ateDez, desc=Math.max(0,meta-vend-prev), esc_=Math.max(meta,vend+prev), w=v=>(100*v/esc_).toFixed(2), fecha=vend+prev;
        return `<div class="stage"><div class="st-t">Fecha o ano na meta? <span>meta de ${R.getFullYear()}: ${e(mi(meta))}</span></div>
        <p class="lede meta-frase">Com o que já foi vendido e a previsão até dezembro, o ano chega a <b>${e(mi(fecha))}</b> — <b>${pc(fecha/meta)}</b> da meta.${desc?` Faltam <b>${e(mi(desc))}</b> sem negócio previsto.`:' A previsão cobre a meta.'}</p>
@@ -6720,18 +6736,18 @@ const REL_MODELOS=[
  {k:'rC',nome:'Reunião individual do vendedor',per:'estaSemana',pessoa:true,desc:'Ficha do vendedor, negócios em risco, compromisso de previsão e ações.',telas:{desempenho:['des-ficha'],pipeline:['pipe-comp'],reunioes:['reu-ant','plano']}},
  {k:'rD',nome:'Acompanhamento semanal da engenharia',per:'semAnt',desc:'Fila, propostas entregues, tempo até a proposta, revisões e carga por analista.',telas:{engenharia:'*'}},
  {k:'rE',nome:'Fechamento mensal comercial',per:'mesAnt',desc:'Resultado × meta, evolução semanal, equipes, conversão, perdas, carteira, previsão e recuperação dos desvios.',
-   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],contratos:['kpi:contratos','ctr-lista','ctr-renov','ctr-ag'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
+   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend','res-spv'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],contratos:['kpi:contratos','ctr-lista','ctr-renov','ctr-ag'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
  {k:'rF',nome:'Revisão trimestral',per:'triAnt',desc:'Tendências, comparativos, qualidade do pipeline, previsibilidade, gargalos e prioridades seguintes.',
-   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],contratos:['kpi:contratos','ctr-vig','ctr-mes','ctr-renov'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
+   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-spv'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],contratos:['kpi:contratos','ctr-vig','ctr-mes','ctr-renov'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
  {k:'rG',nome:'Consolidado anual',per:'esteAno',desc:'Resultado consolidado, evolução mensal e trimestral, equipes, clientes, mix, perdas, carteira e planejamento.',
-   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-cat','q:v-cat','q:v-vend'],clientes:'*',desempenho:['des-vend','des-meta'],propostas:['perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat'],pipeline:['pipe-conf2'],reunioes:['plano']}}];
+   telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-cat','q:v-cat','q:v-vend','res-spv'],clientes:'*',desempenho:['des-vend','des-meta'],propostas:['perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat'],pipeline:['pipe-conf2'],reunioes:['plano']}}];
 /* Relatórios POR TEMA: uma tela (ou duas) inteira, com cada seção listada para
    poder desmarcar em "Personalizar seções". Capítulo = a própria tela. */
 const REL_TEMAS=[
  {k:'tPIP',ic:'⟐',nome:'Pipeline e previsão',per:'esteMes',desc:'Posição e mudanças do pipeline, etapas, envelhecimento, previsão de pedidos por mês, compromisso, confiabilidade e negócios para agir.',off:['pipe-insp'],
    telas:{pipeline:['kpi:pipeline','pipe-pos','pipe-casc','pipe-etapa','pipe-estagios','pipe-aging','pipe-prev','pipe-pol','pipe-mes','pipe-cob','pipe-comp','pipe-conf2','pipe-div','q:n-div','q:n-dono','t:origem-do-negocio','t:segmento-do-cliente','q:n-so','q:n-id','pipe-parados','pipe-conf','pipe-insp']}},
  {k:'tRES',ic:'▤',nome:'Resultados e metas',per:'esteAno',desc:'Pedidos contra a meta, evolução, mês a mês e contra o ano anterior, vendedores, categoria fiscal, natureza, estados e principais clientes.',
-   telas:{resultados:['kpi:resultados','res-bullet','res-ind','res-evo','res-rec','res-mes','res-yoy','q:v-vend','res-cat','q:v-cat','q:v-nat','m:v-mapa','q:v-uf','q:v-cli']}},
+   telas:{resultados:['kpi:resultados','res-bullet','res-ind','res-evo','res-rec','res-mes','res-yoy','q:v-vend','res-cat','q:v-cat','q:v-nat','m:v-mapa','q:v-uf','q:v-cli','res-spv']}},
  {k:'tPRO',ic:'✎',nome:'Propostas e conversão',per:'esteTri',desc:'Propostas emitidas, conversão, velocidade, situação por vendedor, win rate, ciclo de venda e motivos de perda.',
    telas:{propostas:['kpi:propostas','q:p-div','prop-funil','prop-vel','t:velocidade-por-vendedor','t:por-vendedor-e-situacao','q:p-so','q:p-mes','q:p-uf','prop-conv','q:l-div','perd-ciclo','perd-wr','perd-dec','perd-mot','q:l-vend','q:l-mes']}},
  {k:'tCAR',ic:'◷',nome:'Carteira e faturamento',per:'esteMes',desc:'Faturamento realizado, saldo a faturar, previsão de faturamento pelo mês de entrega e os pedidos da carteira.',
@@ -6751,7 +6767,7 @@ const SEC_NOMES={'*':'Todas as seções','sup-exec':'Execução e resultado (8 s
  'atv-kpi':'Execução no período','atv-pessoa':'Interações vinculadas à carteira','atv-sem':'Interações por semana','atv-passos':'Próximos passos','pipe-insp':'Inspeção das oportunidades','pipe-mud':'Mudanças entre fotografias','pipe-comp':'Previsão e compromisso','pipe-conf2':'Confiabilidade das previsões','kpi:pipeline':'Indicadores do pipeline',
  'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria (tabela)','q:v-cat':'Mix por categoria (gráficos)','q:c-top':'Top 10 clientes','q:v-cli':'Top 10 clientes','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
  'prop-conv':'Conversão e perdas','perd-wr':'Win rate','perd-mot':'Motivos de perda','prop-vel':'Velocidade das propostas','eng-sup':'Supervisão da engenharia','kpi:executiva':'Indicadores principais','exec-alertas':'Alertas de consistência','exec-div':'SEQ × SPV','exec-diag':'Destaques e riscos',
- 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
+ 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','res-spv':'Serviços (SPV): antes e depois da Amanda','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
 Object.assign(SEC_NOMES,{'kpi:pipeline':'Indicadores do pipeline','pipe-pos':'Posição do pipeline','pipe-pol':'Política de probabilidade','pipe-mes':'Previsão de pedidos por mês (política)','pipe-cob':'Cobertura da meta','pipe-div':'Pipeline por divisão',
  'q:n-div':'SEQ × SPV','pipe-estagios':'Distribuição atual por estágio','q:n-dono':'Por dono do negócio','t:origem-do-negocio':'Origem do negócio','t:segmento-do-cliente':'Segmento do cliente','q:n-so':'Por status da obra','q:n-id':'Idade dos negócios',
  'pipe-parados':'Negócios parados — para agir','pipe-conf':'Confirmação por vendedor','kpi:resultados':'Indicadores de resultados','res-mes':'Mês a mês','q:v-nat':'Natureza do pedido','m:v-mapa':'Mapa de vendas','q:v-uf':'Por estado',
@@ -7546,7 +7562,7 @@ const REL_LIM_LINHAS=18, REL_ANEXO_MAX=80;
 const REL_CAPS=[['sintese','Síntese executiva'],['supervisao','Supervisão e pendências'],['execucao','Execução e atividades'],['resultados','Resultados e metas'],['desvios','Desvios e causas'],['pipeline','Pipeline e previsão de pedidos'],
   ['carteira','Carteira a faturar'],['contratos','Contratos de serviço'],['equipes','Desempenho das equipes'],['clientes','Clientes e concentração'],['decisoes','Decisões e plano de ação'],['metodologia','Metodologia e anexos']];
 /* em que capítulo cai cada seção (tela, sid) — o primeiro que casar */
-const REL_SEC_CAP=[['supervisao','*','supervisao'],['atividades','*','execucao'],['reunioes','*','decisoes'],['resultados','res-ind','resultados'],['resultados','res-evo','resultados'],['resultados','res-rec','decisoes'],
+const REL_SEC_CAP=[['supervisao','*','supervisao'],['atividades','*','execucao'],['reunioes','*','decisoes'],['resultados','res-ind','resultados'],['resultados','res-spv','resultados'],['resultados','res-evo','resultados'],['resultados','res-rec','decisoes'],
   ['pipeline','pipe-comp','pipeline'],['pipeline','pipe-conf2','pipeline'],['desempenho','des-ficha','sintese'],['executiva','plano-res','decisoes'],['executiva','kpi:executiva','sintese'],['executiva','exec-alertas','sintese'],['executiva','exec-meta','resultados'],['executiva','exec-div','resultados'],['executiva','exec-diag','desvios'],['executiva','plano','decisoes'],
   ['resultados','res-yoy','desvios'],['resultados','q:v-vend','desvios'],['resultados','res-cat','desvios'],['resultados','*','resultados'],
   ['propostas','perd-mot','desvios'],['propostas','*','pipeline'],['pipeline','*','pipeline'],['carteira','*','carteira'],['contratos','*','contratos'],
@@ -7556,7 +7572,7 @@ const capDe=(tela,sid)=>{ const x=REL_SEC_CAP.find(([t,s])=>t===tela&&(s==='*'||
 const REL_PUB={
   diretoria:{nome:'Diretoria',tit:'Relatório Gerencial Comercial — Diretoria',lim:REL_LIM_LINHAS,
     desc:'Seleção editorial: síntese, resultados e metas, desvios, pipeline, carteira, equipes, clientes, plano de ação e metodologia. Tabelas longas em síntese, completas no anexo.',
-    telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div','exec-diag'],reunioes:['plano'],resultados:['kpi:resultados','res-mes','res-yoy','q:v-vend','res-cat'],
+    telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div','exec-diag'],reunioes:['plano'],resultados:['kpi:resultados','res-mes','res-yoy','q:v-vend','res-cat','res-spv'],
       pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob','pipe-estagios'],carteira:['kpi:carteira','cart-fat','cart-mes'],
       propostas:['kpi:propostas','prop-funil','prop-vel','perd-wr','perd-mot'],desempenho:['kpi:desempenho','des-vend','des-meta'],
       engenharia:['eng-cap'],clientes:['kpi:clientes','cli-abc','q:c-top'],contratos:['kpi:contratos','ctr-renov']}},
