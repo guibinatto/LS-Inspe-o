@@ -5750,7 +5750,9 @@ function previsaoPedidos(ab,h){ ab=ab||F.ab; const J=janelaHorizonte(h), R=hoje(
   const vS=a=>somar(a,n=>n.vNum||0);
   return {J,eleg,sem,venc,par:ab.filter(estaParado),
     bruto:vS(ab),nBruto:ab.length,integral:vS(eleg),ponderadoTotal:somar(ab,pondNeg),
-    ponderadoHoriz:somar(eleg,pondNeg),previsao:somar(eleg,prevNeg),
+    /* previsão = negócios com fechamento no horizonte + os de data VENCIDA, que entram pela
+       situação (sinalizados: previsaoVenc / venc) — a data passou, o negócio continua vivo */
+    ponderadoHoriz:somar(eleg,pondNeg),previsao:somar(eleg,prevNeg)+somar(venc,prevNeg),previsaoHoriz:somar(eleg,prevNeg),previsaoVenc:somar(venc,prevNeg),
     altaConf:eleg.filter(n=>camadaNeg(n)==='Alta confiança'),semValor:ab.filter(n=>!n.vNum)}; }
 
 /* ---------- carteira a faturar ---------- */
@@ -6089,9 +6091,9 @@ VISTA.pipeline=function(){
   h+=`<div class="g g3 kpis-2">
     ${cardG({rot:'Pipeline bruto',val:fmtCompacto(pv.bruto),per:pos,cls:'lar',sub:`${fmtN(pv.nBruto)} negócios abertos${pv.semValor.length?`<span class="l2">${fmtN(pv.semValor.length)} sem valor no CRM</span>`:''}`})}
     ${cardG({rot:'No horizonte',val:fmtCompacto(pv.integral),per:J.rot,sub:`${fmtN(pv.eleg.length)} negócios com previsão de fechamento no horizonte · valor integral`})}
-    ${cardG({rot:'Previsão de pedidos',val:fmtCompacto(pv.previsao),per:J.rot,cls:'az',sub:`ponderada; só classes que entram na previsão<span class="l2">ponderado de todo o horizonte: ${fmtCompacto(pv.ponderadoHoriz)} · de todo o pipeline: ${fmtCompacto(pv.ponderadoTotal)}</span>`,cond:'probabilidade convencional',condCls:'neutro'})}
+    ${cardG({rot:'Previsão de pedidos',val:fmtCompacto(pv.previsao),per:J.rot,cls:'az',sub:`ponderada; só classes que entram na previsão${pv.previsaoVenc?` · inclui ${fmtCompacto(pv.previsaoVenc)} de negócios com data vencida (⚠)`:''}<span class="l2">ponderado de todo o horizonte: ${fmtCompacto(pv.ponderadoHoriz)} · de todo o pipeline: ${fmtCompacto(pv.ponderadoTotal)}</span>`,cond:'probabilidade convencional',condCls:'neutro'})}
     ${cardG({rot:'Sem previsão',val:fmtCompacto(vS(pv.sem)),per:pos,cls:'err',sub:`${fmtN(pv.sem.length)} negócios sem data de fechamento — fora de qualquer horizonte`})}
-    ${cardG({rot:'Previsão vencida',val:fmtCompacto(vS(pv.venc)),per:pos,cls:'ale',sub:`${fmtN(pv.venc.length)} negócios com data anterior a ${fmtData(R)} — fora do horizonte até ganharem data nova`})}
+    ${cardG({rot:'Previsão vencida',val:fmtCompacto(vS(pv.venc)),per:pos,cls:'ale',sub:`${fmtN(pv.venc.length)} negócios com data anterior a ${fmtData(R)} — entram na previsão pela situação (${fmtCompacto(pv.previsaoVenc)}); atualize a data no Ploomes`})}
     ${cardG({rot:`Parados há mais de ${num(CFG.parParado)||30} dias`,val:fmtCompacto(vS(pv.par)),per:pos,cls:'err',sub:`${fmtN(pv.par.length)} negócios no mesmo estágio`})}
   </div>`;
   /* política de probabilidade — uma só, explícita */
@@ -6641,10 +6643,11 @@ function apresDados(){
      com data de fechamento, ponderados pela política de probabilidade */
   const PP=previsaoPedidos(ab,3), BM=baldesMes(ab,n=>n.dtPrev,6).filter(b=>b.k!=='depois'&&b.k!=='sem');   /* sem data: citado no texto, fora do gráfico */
   const prevMes=BM.map(b=>({k:b.k,rot:b.rot,pond:somar(b.itens,prevNeg),bruto:somar(b.itens,n=>n.vNum||0),n:b.itens.length}));
-  const camadas=CAMADAS.map(c=>{ const a=PP.eleg.filter(n=>camadaNeg(n)===c); return {c,pond:somar(a,prevNeg),bruto:somar(a,n=>n.vNum||0),n:a.length}; });
+  const camadas=CAMADAS.map(c=>{ const a=PP.eleg.concat(PP.venc.filter(n=>polDe(n.certeza).entra)).filter(n=>camadaNeg(n)===c); return {c,pond:somar(a,prevNeg),bruto:somar(a,n=>n.vNum||0),n:a.length}; });
   /* uma linha por situação do negócio no Ploomes, com o peso que a política dá a ela */
-  const porSit=POL().map(q=>{ const a=PP.eleg.filter(n=>polDe(n.certeza).k===q.k); return {k:q.k,p:q.p,entra:q.entra,camada:q.camada,n:a.length,bruto:somar(a,n=>n.vNum||0),pond:somar(a,prevNeg),neg:a.slice().sort((x,y)=>(y.vNum||0)-(x.vNum||0))}; }).filter(x=>x.n).sort((a,b)=>(b.entra-a.entra)||(b.p-a.p));
-  const fimAno=new Date(R.getFullYear(),11,31), ateDez=somar(ab.filter(n=>n.dtPrev&&n.dtPrev>=R&&n.dtPrev<=fimAno),prevNeg);
+  const vencEntra=PP.venc.filter(n=>polDe(n.certeza).entra); PP.vencEntra=vencEntra; PP.previsaoComVenc=PP.previsao;   /* o motor já soma as de data vencida */ PP.integralComVenc=PP.integral+somar(vencEntra,n=>n.vNum||0);
+  const porSit=POL().map(q=>{ const a=PP.eleg.concat(vencEntra).filter(n=>polDe(n.certeza).k===q.k); return {k:q.k,p:q.p,entra:q.entra,camada:q.camada,n:a.length,bruto:somar(a,n=>n.vNum||0),pond:somar(a,prevNeg),neg:a.slice().sort((x,y)=>(y.vNum||0)-(x.vNum||0))}; }).filter(x=>x.n).sort((a,b)=>(b.entra-a.entra)||(b.p-a.p));
+  const fimAno=new Date(R.getFullYear(),11,31), ateDez=somar(ab.filter(n=>n.dtPrev&&n.dtPrev>=R&&n.dtPrev<=fimAno),prevNeg)+somar(vencEntra,prevNeg);   /* vencidas entram pela situação */
   const pedAno=somar(vendasDoAno(R.getFullYear(),R),v=>v.valorDet!==undefined?v.valorDet:v.valor), metaAno=EST.vend?null:((EST.div==='SPV'?0:metaTotalSeq())+(EST.div==='SEQ'?0:metaTotalSpv()))||null;
   /* follow-up: a mesma régua da seção FUP do painel (interação dentro do negócio;
      cobrança sobre os negócios em Apresentação da cotação / Follow-Up) */
@@ -6797,6 +6800,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     .calc-f{font-family:var(--tit);font-weight:900;font-size:var(--s1);color:var(--lar);padding:4px 0}
     .calc-p{display:flex;flex-wrap:wrap;gap:8px}.calc-p span{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--linha);border-radius:3px;padding:4px 10px;font-size:.84rem}.calc-p b{font-family:var(--tit);color:var(--lar)}.calc-p .z{color:var(--mut)}.calc-p .z b{color:var(--mut)}
     .calc-ex{background:var(--lar-suave);padding:8px 12px;border-radius:3px}
+    .pm-l li .tag-v,.tag-v{display:inline-block;margin-left:6px;font-size:.68rem;font-weight:700;color:#fff;background:#C62828;border-radius:3px;padding:1px 6px;vertical-align:1px}
     .venc{margin-top:18px;border:1px dashed #C62828;border-radius:4px;padding:12px 14px;background:#FFF6F6}.venc-h{display:grid;gap:2px;margin-bottom:4px}.venc-h b{color:#C62828;font-size:.92rem}.venc-h span{font-size:.82rem;color:var(--mut)}.venc .pm-l{border-left-color:#E8A0A0}
     .sit-tot{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--txt);margin-top:14px;padding-top:10px;font-weight:700}.sit-tot b{font-family:var(--tit);font-size:var(--s1);color:var(--lar)}
     .meta-frase{margin:0 0 18px}.meta-b{position:relative;display:flex;height:44px;border-radius:4px;background:var(--trilho);overflow:visible;margin-top:26px}
@@ -6841,9 +6845,17 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');en.target.querySelectorAll(NUMS).forEach(function(el,i){conta(el,el.tagName==='text'?700+i*40:120+i*60)})}})},{threshold:.18});
     d.querySelectorAll('section').forEach(function(s){io.observe(s)});
     var links=[].slice.call(d.querySelectorAll('.nav-l a')),pr=d.querySelector('.prog');
-    var io2=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id)})}})},{rootMargin:'-45% 0px -50% 0px'});
-    d.querySelectorAll('section[id]').forEach(function(s){io2.observe(s)});
-    addEventListener('scroll',function(){var m=h.scrollHeight-innerHeight;pr.style.transform='scaleX('+(m>0?scrollY/m:0)+')'},{passive:true});
+    /* capítulo atual = o último cujo topo já passou de 35% da tela (sob a barra do menu);
+       no fim da página, o último. Recalcula a cada rolagem, sem depender da ordem
+       em que o navegador avisa as seções (que marcava o capítulo errado) */
+    var secs=[].slice.call(d.querySelectorAll('section[id]')),atual='',navl=d.querySelector('.nav-l'),pend=0;
+    function marca(){pend=0;var lim=innerHeight*.35,id=secs.length?secs[0].id:'';
+      for(var i=0;i<secs.length;i++){if(secs[i].getBoundingClientRect().top<=lim)id=secs[i].id;else break}
+      if(innerHeight+scrollY>=h.scrollHeight-4&&secs.length)id=secs[secs.length-1].id;
+      if(id===atual)return;atual=id;links.forEach(function(a){var on=a.getAttribute('href')==='#'+id;a.classList.toggle('on',on);
+        if(on&&navl){var l=a.offsetLeft,r=l+a.offsetWidth;if(l<navl.scrollLeft||r>navl.scrollLeft+navl.clientWidth)navl.scrollTo({left:l-navl.clientWidth/2+a.offsetWidth/2,behavior:red?'auto':'smooth'})}})}
+    addEventListener('scroll',function(){var m=h.scrollHeight-innerHeight;pr.style.transform='scaleX('+(m>0?scrollY/m:0)+')';if(!pend){pend=1;requestAnimationFrame(marca)}},{passive:true});
+    addEventListener('resize',marca);marca();
     d.addEventListener('click',function(ev){var a=ev.target.closest('a[href^="#"]');if(!a)return;var s=d.getElementById(a.getAttribute('href').slice(1));if(s){ev.preventDefault();s.scrollIntoView({behavior:red?'auto':'smooth'})}});
     addEventListener('keydown',function(ev){if(ev.key==='Escape'){try{if(parent!==window&&parent.apresFechar)parent.apresFechar()}catch(e){}return}if(['ArrowDown','PageDown','ArrowUp','PageUp',' '].indexOf(ev.key)<0)return;var ss=[].slice.call(d.querySelectorAll('section[id]')),y=scrollY+60,i=ss.findIndex(function(s){return s.offsetTop>y})-1;if(i<-1)i=ss.length-1;
       var alvo=/Up/.test(ev.key)?ss[Math.max(0,i-(ss[i]&&ss[i].offsetTop>=scrollY-5?1:0))]:ss[Math.min(ss.length-1,i+1)];if(alvo){ev.preventDefault();alvo.scrollIntoView({behavior:red?'auto':'smooth'})}});
@@ -6917,8 +6929,8 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <text x="${x}" y="${H-10}" text-anchor="middle" class="ax">${e(m.rot)}</text></g>`; }).join('')}</svg>`;
      const cT=somar(D.camadas,c=>c.pond)||1, corC={'Alta confiança':'#FF6600','Provável':'#FFB27F','Possível':'#9A9A9A'}, falta=D.metaAno?Math.max(0,D.metaAno-D.pedAno):null;
      return `${tit('Previsão de','vendas',`Negócios abertos no Ploomes com data de fechamento, ponderados pela política de probabilidade do painel · horizonte ${e(PP.J.rot)}`)}
-     <div class="dest"><div>${big(PP.previsao,'mi',mi(PP.previsao))}<div class="big-c">previsão ponderada em 3 meses</div></div>
-       <p class="lede">De <b>${e(mi(PP.integral))}</b> em ${fmtN(PP.eleg.length)} negócios com fechamento previsto no horizonte. ${PP.venc.length?`<b>${fmtN(PP.venc.length)}</b> estão com a previsão vencida (${e(mi(somar(PP.venc,n=>n.vNum||0)))}) e`:''} <b>${fmtN(PP.sem.length)}</b> não têm data — ficam fora da conta.</p></div>
+     <div class="dest"><div>${big(PP.previsaoComVenc,'mi',mi(PP.previsaoComVenc))}<div class="big-c">previsão ponderada em 3 meses</div></div>
+       <p class="lede">De <b>${e(mi(PP.integralComVenc))}</b> em ${fmtN(PP.eleg.length+PP.vencEntra.length)} negócios. ${PP.vencEntra.length?`Inclui <b>${fmtN(PP.vencEntra.length)}</b> com a data de fechamento <b>vencida</b> (${e(mi(somar(PP.vencEntra,prevNeg)))} ponderados), que entram pela situação e ficam sinalizados com ⚠.`:''} <b>${fmtN(PP.sem.length)}</b> sem data ficam fora da conta.</p></div>
      ${(()=>{ const pol=POL().slice().sort((x,y)=>y.p-x.p), dentro=pol.filter(q=>q.entra), fora=pol.filter(q=>!q.entra);
        const ex=PP.eleg.filter(n=>polDe(n.certeza).entra).sort((x,y)=>(y.vNum||0)-(x.vNum||0))[0], q=ex&&polDe(ex.certeza);
        return `<div class="calc"><b class="calc-t">Como a previsão ponderada é calculada</b>
@@ -6926,19 +6938,19 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <div class="calc-f">Previsão ponderada = Σ (valor do negócio × peso da situação)</div>
          <div class="calc-p">${dentro.map(q=>`<span><b>${pc(q.p)}</b>${e(q.k)}</span>`).join('')}${fora.length?`<span class="z"><b>0%</b>${fora.map(q=>e(q.k)).join(', ')} — ficam fora</span>`:''}</div>
          ${ex?`<p class="calc-ex">Exemplo: <b>${e(String(ex.cli).split(/\s+/).slice(0,3).join(' '))}</b>, ${e(q.k.toLowerCase())}: ${e(fmtBRL(ex.vNum))} × ${pc(q.p)} = <b>${e(fmtBRL(prevNeg(ex)))}</b> na previsão.</p>`:''}
-         <p class="mut">Não entram: negócios sem data de fechamento e com a data já vencida (listados mais abaixo). Os pesos são os da política de probabilidade do painel (Dados e configurações).</p></div>`; })()}
+         <p class="mut">Negócio com a data de fechamento <b>vencida</b> entra pela situação e fica sinalizado com ⚠ (atualize a data no Ploomes). Negócio <b>sem data</b> não entra. Os pesos são os da política de probabilidade do painel (Dados e configurações).</p></div>`; })()}
      <div class="stage"><div class="st-t">Pedidos previstos por mês de fechamento <span>claro = valor dos negócios · laranja = previsão ponderada</span></div><div class="sc">${svg}</div>
-       <div class="leg"><span><i style="background:#FFD1B3"></i>valor em negociação</span><span><i style="background:#FF6600"></i>previsão ponderada</span><span><i style="background:#9A9A9A"></i>previsão já vencida</span></div></div>
+       <div class="leg"><span><i style="background:#FFD1B3"></i>valor em negociação</span><span><i style="background:#FF6600"></i>previsão ponderada</span><span><i style="background:#9A9A9A"></i>data vencida (entra pela situação)</span></div></div>
      <div class="stage"><div class="st-t">De onde vem a previsão <span>cada negócio entra com o peso da sua situação no Ploomes</span></div>
        <p class="mut como">Barra clara = valor em negociação no horizonte · laranja = quanto entra na previsão. Situações sem chance firme (em disputa, estudo, não classificado) ficam de fora.</p>
        <div class="sit">${D.porSit.map((x,i)=>{ const mxS=Math.max(1,...D.porSit.map(y=>y.bruto));
          return `<div class="sit-r${x.entra?'':' fora'}"><div class="sit-n"><b>${e(x.k)}</b><small>${fmtN(x.n)} ${x.n===1?'negócio':'negócios'} · ${x.entra?'peso '+pc(x.p):'fica fora da previsão'}</small></div>
            <div class="sit-t"><i class="cl" style="--w:${(100*x.bruto/mxS).toFixed(1)}%;--d:${i*110}ms"></i><i class="pd" style="--w:${(100*x.pond/mxS).toFixed(1)}%;--d:${i*110+350}ms"></i></div>
            <div class="sit-v"><b>${e(x.entra?mi(x.pond):'R$ 0')}</b><small>de ${e(mi(x.bruto))}</small></div></div>
-           <ul class="pm-l sit-l">${x.neg.slice(0,4).map(n=>`<li><b>${e(String(n.cli).slice(0,44))}</b><span>${[String(n.titulo||'').replace(/_?\[Neg[oó]cio\.[^\]]*\]/gi,'').replace(/\|\s*null\b/gi,'').replace(/[\s|]+$/,'').replace(/\s+/g,' ').trim().slice(0,70),n.dtPrev?'fechamento '+fmtData(n.dtPrev):'',nomeCurto(n.resp)].filter(Boolean).map(e).join(' · ')}</span><em>${e(mi(n.vNum))}</em></li>`).join('')}${x.neg.length>4?`<li class="mais">+ ${fmtN(x.neg.length-4)} ${x.neg.length-4===1?'negócio':'negócios'} (${e(mi(somar(x.neg.slice(4),n=>n.vNum||0)))})</li>`:''}</ul>`; }).join('')}</div>
-       <div class="sit-tot"><span>Previsão ponderada no horizonte</span><b>${e(mi(PP.previsao))}</b></div>
-       ${(()=>{ const V=PP.venc.filter(n=>polDe(n.certeza).entra).sort((x,y)=>(y.vNum||0)-(x.vNum||0)); if(!V.length)return '';
-         return `<div class="venc"><div class="venc-h"><b>Fora da previsão: data de fechamento vencida</b><span>${fmtN(V.length)} ${V.length===1?'negócio':'negócios'} · ${e(mi(somar(V,n=>n.vNum||0)))} em negociação · entrariam com <b>${e(mi(somar(V,prevNeg)))}</b> se a data for atualizada no Ploomes</span></div>
+           <ul class="pm-l sit-l">${x.neg.slice(0,4).map(n=>`<li><b>${e(String(n.cli).slice(0,44))}${n.dtPrev&&n.dtPrev<R?` <span class="tag-v">⚠ data vencida ${e(fmtData(n.dtPrev).slice(0,5))}</span>`:''}</b><span>${[String(n.titulo||'').replace(/_?\[Neg[oó]cio\.[^\]]*\]/gi,'').replace(/\|\s*null\b/gi,'').replace(/[\s|]+$/,'').replace(/\s+/g,' ').trim().slice(0,70),n.dtPrev?'fechamento '+fmtData(n.dtPrev):'',nomeCurto(n.resp)].filter(Boolean).map(e).join(' · ')}</span><em>${e(mi(n.vNum))}</em></li>`).join('')}${x.neg.length>4?`<li class="mais">+ ${fmtN(x.neg.length-4)} ${x.neg.length-4===1?'negócio':'negócios'} (${e(mi(somar(x.neg.slice(4),n=>n.vNum||0)))})</li>`:''}</ul>`; }).join('')}</div>
+       <div class="sit-tot"><span>Previsão ponderada${PP.vencEntra.length?' (com as de data vencida)':''}</span><b>${e(mi(PP.previsaoComVenc))}</b></div>
+       ${(()=>{ const V=PP.vencEntra.slice().sort((x,y)=>(y.vNum||0)-(x.vNum||0)); if(!V.length)return '';
+         return `<div class="venc"><div class="venc-h"><b>⚠ Na previsão com a data de fechamento vencida</b><span>${fmtN(V.length)} ${V.length===1?'negócio':'negócios'} · ${e(mi(somar(V,n=>n.vNum||0)))} em negociação · entram com <b>${e(mi(somar(V,prevNeg)))}</b> pela situação · atualize a data no Ploomes</span></div>
            <ul class="pm-l">${V.slice(0,5).map(n=>`<li><b>${e(String(n.cli).slice(0,44))}</b><span>${e(n.certeza)} · fechamento previsto ${e(fmtData(n.dtPrev))} · ${e(nomeCurto(n.resp)||n.resp)}</span><em>${e(mi(n.vNum))}</em></li>`).join('')}${V.length>5?`<li class="mais">+ ${fmtN(V.length-5)} negócios (${e(mi(somar(V.slice(5),n=>n.vNum||0)))})</li>`:''}</ul></div>`; })()}</div>
      ${D.metaAno?(()=>{ const meta=D.metaAno, vend=D.pedAno, prev=D.ateDez, desc=Math.max(0,meta-vend-prev), esc_=Math.max(meta,vend+prev), w=v=>(100*v/esc_).toFixed(2), fecha=vend+prev;
        return `<div class="stage"><div class="st-t">Fecha o ano na meta? <span>meta de ${R.getFullYear()}: ${e(mi(meta))}</span></div>
