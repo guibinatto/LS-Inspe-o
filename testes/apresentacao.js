@@ -12,7 +12,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   const fr = p.frameLocator('#apres-fr');
   const r = await p.evaluate(() => { const X = indicadoresPeriodo(PER); return { ped: fmtCompacto(X.ped), n: fmtN(X.nPed), renders: 0, srcdoc: document.getElementById('apres-fr').srcdoc.length }; });
   const nSec = await fr.locator('section[id]').count(), h1 = await fr.locator('#resultado .dest').innerText();
-  t(r.srcdoc > 1000 && nSec === 12, `prévia na aba: 12 capítulos (${nSec})`);
+  t(r.srcdoc > 1000 && nSec === 13, `prévia na aba (modelo Anual): 13 capítulos com a previsão de vendas (${nSec})`);
   t(h1.includes(r.ped) && h1.includes(r.n + ' pedidos'), `capítulo Resultado com os números do motor (${r.ped}, ${r.n} pedidos)`);
   /* não entra em ciclo de redesenho: o HTML fica estável */
   const estavel = await p.evaluate(async () => { let n = 0; const orig = apresentacaoHTML; window.apresentacaoHTML = function () { n++; return orig.apply(this, arguments); }; await new Promise(r => setTimeout(r, 1500)); window.apresentacaoHTML = orig; return n; });
@@ -20,6 +20,20 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   /* navegação interna */
   await fr.locator('.nav-l a[href="#contratos"]').click(); await p.waitForTimeout(1200);
   t(/^contratos$/i.test(await fr.locator('.nav-l a.on').innerText()), 'menu de capítulos leva ao capítulo e marca onde se está');
+  /* tipos de apresentação: período próprio, capítulos do modelo, painel intacto, previsão igual à do painel */
+  const mods = await p.evaluate(() => { const R = [], prevPainel = fmtCompacto(previsaoPedidos(F.ab, 3).previsao);
+    for (const m of APRES_MODELOS) { const antes = JSON.stringify([EST.ano, EST.per, PER.rot]); APRES.modelo = m.k; APRES.per = null; APRES.caps = null; const h = apresGerar(); const d = new DOMParser().parseFromString(h, 'text/html');
+      const secs = [...d.querySelectorAll('section[id]')].map(s => s.id).filter(x => x !== 'capa' && x !== 'metodo');
+      R.push({ k: m.k, ok: JSON.stringify(secs) === JSON.stringify(APRES_CAPS.map(c => c[0]).filter(c => m.caps.includes(c))), intacto: antes === JSON.stringify([EST.ano, EST.per, PER.rot]), sub: d.querySelector('.capa-sub').textContent, prev: (d.querySelector('#previsao .big') || {}).textContent === prevPainel }); }
+    APRES.modelo = 'anual'; return R; });
+  t(mods.length === 6 && mods.every(m => m.ok), 'seis tipos (anual, trimestral, mensal, semanal, previsões, personalizada) com os capítulos de cada um');
+  t(mods.every(m => m.intacto), 'gerar qualquer tipo não muda o período do painel');
+  t(new Set(mods.map(m => m.sub.split(' · ')[0])).size >= 5, 'cada tipo usa o próprio período: ' + mods.map(m => m.k + '=' + m.sub.split(' · ')[0]).join('; '));
+  t(mods.every(m => m.prev), 'previsão de vendas igual à do painel em todos os tipos');
+  /* capítulos escolhidos à mão */
+  await p.evaluate(() => { APRES.modelo = 'mes'; APRES.caps = ['resultado', 'previsao']; apresMontar(); }); await p.waitForTimeout(400);
+  t(await p.frameLocator('#apres-fr').locator('section[id]').count() === 4, 'capítulos escolhidos à mão: só Resultado e Previsão (+ capa e método)');
+  await p.evaluate(() => { APRES.modelo = 'anual'; APRES.caps = null; APRES.per = null; render(); }); await p.waitForTimeout(900);
   /* tela cheia e Esc */
   await p.locator('button', { hasText: 'Tela cheia' }).click(); await p.waitForTimeout(500);
   const aberta = await p.evaluate(() => document.getElementById('apres-view').classList.contains('aberto') && document.querySelector('#apres-view iframe').srcdoc.length > 1000);
@@ -41,7 +55,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   /* arquivo baixado: autônomo */
   const dl = p.waitForEvent('download'); await p.locator('button', { hasText: 'Baixar apresentação' }).click(); const d = await dl, f = await d.path(), html = fs.readFileSync(f, 'utf8');
   const ext = [...html.matchAll(/<(script|link)[^>]+(src|href)="(https?:[^"]+)"/g)].map(m => m[3]);
-  t(/^Apresentacao-Comercial-LS-Fire-\d{4}-\d{2}-\d{2}\.html$/.test(d.suggestedFilename()) && ext.every(u => /fonts\.googleapis/.test(u)), `arquivo único, sem dependência além da fonte opcional (${d.suggestedFilename()})`);
+  t(/^Apresentacao-[A-Za-z]+-LS-Fire-\d{4}-\d{2}-\d{2}\.html$/.test(d.suggestedFilename()) && ext.every(u => /fonts\.googleapis/.test(u)), `arquivo único, sem dependência além da fonte opcional (${d.suggestedFilename()})`);
   /* abre sozinho, offline, no celular */
   const out = path.join(path.dirname(f), 'apres-teste.html'); fs.writeFileSync(out, html);
   const q = await b.newPage({ viewport: { width: 390, height: 844 } }); const eq = []; q.on('pageerror', e => eq.push(e.message));
