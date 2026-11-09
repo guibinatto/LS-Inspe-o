@@ -72,6 +72,12 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
     sobre.push(...await z.evaluate(w => [...document.querySelectorAll('.dest')].map(d => { const n = d.querySelector('.big .n'); if (!n) return null; const nb = n.getBoundingClientRect(), cb = d.children[0].getBoundingClientRect();
       return nb.right > cb.right + 1 ? `${w}px ${d.closest('section').id}` : null; }).filter(Boolean), w)); await z.close(); }
   t(!sobre.length, 'número grande cabe na própria coluna em 5 larguras com fonte larga' + (sobre.length ? ': ' + sobre.join(', ') : ''));
+  /* celular (iPhone): rolando a apresentação inteira, todo capítulo acende (gráficos visíveis) — capítulo muito alto não acendia */
+  { const { devices } = require('playwright'); const c = await b.newContext({ ...devices['iPhone 13'] }); const z = await c.newPage(); await z.route(/^https?:/, r => r.abort()); await z.goto('file://' + out); await z.waitForTimeout(300);
+    const H = await z.evaluate(() => document.documentElement.scrollHeight); for (let y = 0; y < H; y += 300) { await z.evaluate(y => scrollTo(0, y), y); await z.waitForTimeout(40); } await z.waitForTimeout(900);
+    const apagados = await z.evaluate(() => [...document.querySelectorAll('section[id]')].filter(s => !s.classList.contains('in')).map(s => s.id + ' (' + s.offsetHeight + 'px)'));
+    const barras = await z.evaluate(() => { const g = [...document.querySelectorAll('.gr')]; return [g.filter(x => getComputedStyle(x).transform === 'none').length, g.length]; });
+    t(!apagados.length && barras[0] === barras[1], `celular: todos os capítulos acendem e as ${barras[1]} barras aparecem` + (apagados.length ? ' — apagados: ' + apagados.join(', ') : '')); await c.close(); }
   t(erros.length === 0, 'sem erros de JavaScript no painel' + (erros.length ? ': ' + erros.slice(0, 2).join(' | ') : ''));
   console.log(ok.map(m => '✓ ' + m).join('\n')); if (falhas.length) console.log(falhas.map(m => '✗ ' + m).join('\n'));
   console.log(`\n${ok.length}/${ok.length + falhas.length} verificações`); await b.close(); process.exit(falhas.length ? 1 : 0);
