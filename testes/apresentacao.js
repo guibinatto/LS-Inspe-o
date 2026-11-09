@@ -11,7 +11,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   await p.waitForTimeout(800);
   const fr = p.frameLocator('#apres-fr');
   const r = await p.evaluate(() => { const X = indicadoresPeriodo(PER); return { ped: fmtCompacto(X.ped), n: fmtN(X.nPed), renders: 0, srcdoc: document.getElementById('apres-fr').srcdoc.length }; });
-  const nSec = await fr.locator('section[id]').count(), h1 = await fr.locator('#resultado h2').innerText();
+  const nSec = await fr.locator('section[id]').count(), h1 = await fr.locator('#resultado .dest').innerText();
   t(r.srcdoc > 1000 && nSec === 12, `prévia na aba: 12 capítulos (${nSec})`);
   t(h1.includes(r.ped) && h1.includes(r.n + ' pedidos'), `capítulo Resultado com os números do motor (${r.ped}, ${r.n} pedidos)`);
   /* não entra em ciclo de redesenho: o HTML fica estável */
@@ -19,7 +19,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   t(estavel === 0, 'sem ciclo de redesenho (a apresentação não se refaz sozinha)');
   /* navegação interna */
   await fr.locator('.nav-l a[href="#contratos"]').click(); await p.waitForTimeout(1200);
-  t(await fr.locator('.nav-l a.on').innerText() === 'Contratos', 'menu de capítulos leva ao capítulo e marca onde se está');
+  t(/^contratos$/i.test(await fr.locator('.nav-l a.on').innerText()), 'menu de capítulos leva ao capítulo e marca onde se está');
   /* tela cheia e Esc */
   await p.locator('button', { hasText: 'Tela cheia' }).click(); await p.waitForTimeout(500);
   const aberta = await p.evaluate(() => document.getElementById('apres-view').classList.contains('aberto') && document.querySelector('#apres-view iframe').srcdoc.length > 1000);
@@ -34,7 +34,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   /* filtro: só SPV */
   await p.evaluate(() => { EST.div = 'SPV'; aplicar(); }); await p.waitForTimeout(900);
   const spv = await p.evaluate(() => { const X = indicadoresPeriodo(PER); return fmtCompacto(X.ped); });
-  const h1s = await p.frameLocator('#apres-fr').locator('#resultado h2').innerText();
+  const h1s = await p.frameLocator('#apres-fr').locator('#resultado .dest').innerText();
   t(h1s.includes(spv), `com o filtro SPV a apresentação mostra só a SPV (${spv})`);
   t(/SPV/.test(await p.frameLocator('#apres-fr').locator('#metodo').innerText()), 'metodologia registra o recorte');
   await p.evaluate(() => { EST.div = ''; aplicar(); }); await p.waitForTimeout(900);
