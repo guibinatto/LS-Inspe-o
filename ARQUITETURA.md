@@ -105,3 +105,12 @@ O app continua sendo um único HTML que funciona offline. As camadas estão sepa
 ## Apresentação (09/11/2026)
 
 Aba `apresentacao` (Apoio). `apresDados()` reúne os números do período e dos filtros (SEQ e SPV pelo próprio motor, com `render` suspenso para não entrar em ciclo); `apresentacaoHTML(op)` monta um documento próprio — capa, 10 capítulos e metodologia, CSS e script isolados — mostrado num iframe (`srcdoc`), em tela cheia (`apresTelaCheia`, fecha com Esc ou saindo da tela cheia) ou baixado (`apresBaixar`). `op.fragmento` gera a versão para publicar como página do Claude.
+
+## Olhar da SEQ (10/11/2026)
+`seqDados()` mede três hipóteses para a queda de pedidos da SEQ. A janela recente vai do 1º dia do mês anterior até a referência, contra as mesmas datas do ano anterior.
+
+- **Concentração:** os 5 maiores negócios abertos pesam no pipeline ≥40% (explica em parte) ou ≥60% (explica).
+- **Propostas paradas:** os negócios com proposta apresentada sem FUP há mais de `CFG.fupDias` são ≥35% (em parte) ou ≥50% (explica). A régua de FUP é a mesma da apresentação (`fupNegocios()`).
+- **Preço:** a parte do valor perdido desde o início da base de propostas é ≥25% (em parte) ou ≥40% (explica).
+
+A seção `res-seq` fica em Resultados e metas e nos relatórios que já levam `res-spv`. O capítulo `seq` da apresentação entra nos modelos Anual, Trimestral, Mensal e Personalizada e sai quando o filtro está só em SPV.
