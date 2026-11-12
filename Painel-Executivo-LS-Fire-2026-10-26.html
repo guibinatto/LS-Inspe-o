@@ -2286,6 +2286,9 @@ function vendasConsolidadas(negFiltrados,histFiltrado,pedFiltrados,vndFiltradas)
         if(FV==='ploomes')return true;
         if(n.dtVenda<cortePed0)return false;
         if(naJanela(n.dtVenda))return false;   /* na janela quem vale é o Vendas */
+        /* fora da janela (ex.: ganho no CRM um dia depois da última venda do arquivo),
+           o mesmo pedido pode já estar no Vendas: mesmo cliente, valor ±2%, até 75 dias */
+        if(cobertoPorVnd(n.nCli,n.vNum,n.dtVenda,null))return false;
         if(jaNoPed(n.nCli,n.vNum,n.dtVenda,n))return false;   /* já está no controle de pedidos */
         /* chave dura vale ANTES e DEPOIS do corte: se o negócio tem espelho PL no
            histórico, o pedido é do mês do OMIE (ex.: convertido no CRM em agosto,
@@ -8617,7 +8620,7 @@ function cascataPipeline(a,b,o){ o=o||{}; const A=snapMapa(a), B=snapMapa(b), li
    bloqueadores → pendências e ações → supervisão por pessoa. */
 var HEAT={m:'inter'};
 function situacaoBases(){ const imp=(BRUTO._meta&&BRUTO._meta.imp)||{}, R=hojeReal();
-  return [['negocios','Negócios'],['interacoes','Interações'],['pedidos','Pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
+  return [['negocios','Negócios'],['interacoes','Interações'],['vendasOmie','Pedidos Ploomes'],['pedidos','Controle de pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
     const d=em&&!isNaN(em)?diasDe(new Date(em.toDateString()),R):null, c=d==null?corV('--txt3'):d<=7?corV('--ok'):d<=14?corV('--ale'):corV('--err');
     const api=imp[k]&&/^API-Ploomes/i.test(imp[k].arq||'');   /* lida direto da API do Ploomes (ferramentas/ploomes_coletar.py) */
     return `<span class="bs" title="${esc(n)}: ${api?'lida da API do Ploomes':'importada'} ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}${api?'<b class="api">API</b>':''}</span>`; }).join(''); }
