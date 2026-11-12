@@ -7405,7 +7405,8 @@ var HEAT={m:'inter'};
 function situacaoBases(){ const imp=(BRUTO._meta&&BRUTO._meta.imp)||{}, R=hojeReal();
   return [['negocios','Negócios'],['interacoes','Interações'],['pedidos','Pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
     const d=em&&!isNaN(em)?diasDe(new Date(em.toDateString()),R):null, c=d==null?corV('--txt3'):d<=7?corV('--ok'):d<=14?corV('--ale'):corV('--err');
-    return `<span class="bs" title="${esc(n)}: importada ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}</span>`; }).join(''); }
+    const api=imp[k]&&/^API-Ploomes/i.test(imp[k].arq||'');   /* lida direto da API do Ploomes (ferramentas/ploomes_coletar.py) */
+    return `<span class="bs" title="${esc(n)}: ${api?'lida da API do Ploomes':'importada'} ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}${api?'<b class="api">API</b>':''}</span>`; }).join(''); }
 VISTA.supervisao=function(){
   const R=hoje(), K=CRITS(), P=PER, ab=F.ab, vS=a=>somar(a,n=>n.vNum||0), iv=intervencao(), sla=num(CFG.slaCot)||7, ref=refNegocios();
   const crit=iv.filter(x=>x.score>=K.limiarCritico), passosV=recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&p.prazo&&p.prazo<isoD(R));
@@ -7425,7 +7426,7 @@ VISTA.supervisao=function(){
   regLista('contas',`Filtro: contas A com negócio aberto sem interação no negócio > ${K.diasSemAtiv} dias`,contas.map(a=>[esc(a[0].cli),esc([...new Set(a.map(n=>nomeCurto(n.resp)))].join(', ')),fmtN(a.length),fmtBRL(vS(a)),(u=>u?fmtData(u.dt):'nenhuma')(ultimaInter(a[0]))]),['Conta','Responsáveis','Negócios abertos','Valor','Última interação com a conta']);
   const X=indicadoresPeriodo(P), kb=(k,r,v,s,cls)=>`<div class="kb ${cls||''}" role="button" tabindex="0" onclick="abrirLista('${k}')" aria-label="${esc(r)}: ${esc(String(v))}"><div class="r">${r}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   let h=`<div class="ctx-bar" data-sid="sup-ctx"><span>Página: <b>Central de supervisão</b></span><span>Período: <b>${esc(P.rot)}</b></span><span>Referência: <b>${fmtData(R)}</b></span>
-    <span>Pessoa: <b>${esc(EST.vend||'equipe inteira')}</b></span><span>Divisão: <b>${esc(EST.div||'SEQ + SPV')}</b></span><span>Bases: ${situacaoBases()}</span></div>`;
+    <span>Pessoa: <b>${esc(EST.vend||'equipe inteira')}</b></span><span>Divisão: <b>${esc(EST.div||'SEQ + SPV')}</b></span><span class="bases"><span style="margin-right:8px">Bases:</span>${situacaoBases()}</span></div>`;
   h+=sec('O que exige atenção agora','Seis indicadores prioritários. Cada um abre a lista de origem; a partir dela registre o próximo passo ou a ação.','sup-topo');
   regLista('pedPer',`Filtro: pedidos recebidos em ${P.rot}`,(F.vendas||[]).map(v=>[esc(refVenda(v)),fmtData(v.dt),esc(v.cli),esc(v.resp||'—'),esc(v.div||'—'),fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),['Referência','Data','Cliente','Vendedor','Div.','Valor']);
   h+=`<div class="kband">${kb('pedPer','Pedidos recebidos',X?fmtCompacto(X.ped):'—',X&&X.meta?`${fmtPct(X.ating,0)} da meta esperada até ${fmtData(P.fim).slice(0,5)}`:'sem meta compatível',X&&X.ating!=null?(X.ating>=1?'ok':X.ating>=.85?'ale':'err'):'')}

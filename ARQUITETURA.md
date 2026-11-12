@@ -114,3 +114,28 @@ Aba `apresentacao` (Apoio). `apresDados()` reúne os números do período e dos 
 - **Preço:** a parte do valor perdido desde o início da base de propostas é ≥25% (em parte) ou ≥40% (explica).
 
 A seção `res-seq` fica em Resultados e metas e nos relatórios que já levam `res-spv`. O capítulo `seq` da apresentação entra nos modelos Anual, Trimestral, Mensal e Personalizada e sai quando o filtro está só em SPV.
+
+## Ploomes pela API (12/11/2026)
+
+`ferramentas/ploomes_coletar.py` lê o Ploomes pela API, só com GET, usando um usuário de integração de perfil leitura. Ele grava as mesmas planilhas do export manual, com o prefixo `API-Ploomes_`:
+- negócios;
+- propostas: cabeçalho de todas as revisões e itens;
+- empresas;
+- interações;
+- vendas.
+
+Em seguida, `ferramentas/ploomes_importar.js` importa essas planilhas pelo importador normal do painel e fixa a referência em hoje.
+
+**Onde fica a chave:** é a User-Key do usuário de integração. Na sessão cloud, ela fica nos segredos de rede do ambiente e o proxy a injeta nas chamadas. Em outra máquina, use a variável `PLOOMES_USER_KEY`. A chave nunca entra no código nem no painel.
+
+**Diferenças em relação ao export manual:**
+- **Interações:** a planilha da API traz o ID de cada interação. A deduplicação passa a ser pelo ID, e por isso e-mails diferentes do mesmo cliente no mesmo dia não colapsam mais em um só.
+- **Usuário que registrou a interação:** não é exportado. Os e-mails sincronizados aparecem com o dono da integração como criador. A atribuição continua sendo: dono do negócio e, sem negócio, dono da conta.
+
+**Selo na tela:** a barra "Bases" mostra o selo API nas bases que vieram por esse caminho.
+
+**Uso:**
+```
+python3 -I ferramentas/ploomes_coletar.py <pasta>
+node ferramentas/ploomes_importar.js Painel-Executivo-LS-Fire-2026-10-26.html <pasta>
+```

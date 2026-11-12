@@ -994,7 +994,9 @@ table td{font-size:12.5px}
 .pnl ul{list-style:none;margin:0;padding:0} .pnl li{display:flex;gap:8px;justify-content:space-between;padding:6px 0;border-top:1px solid var(--linha);font-size:12.5px}
 .pnl li:first-child{border-top:0} .pnl li small{color:var(--txt3)} .pnl li .d{white-space:nowrap;color:var(--txt2)}
 .ctx-bar{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12.5px;color:var(--txt2);margin:0 0 12px} .ctx-bar b{color:var(--txt)}
-.ctx-bar .bs{display:inline-flex;align-items:center;gap:5px} .ctx-bar .bs i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.ctx-bar .bs{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin:0 12px 0 0} .ctx-bar .bs i{flex:0 0 8px;width:8px;height:8px;border-radius:50%;display:inline-block;position:static;margin:0}
+.ctx-bar .bs .api{font-size:9px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--lar);padding:1px 4px;border-radius:3px;margin-left:2px}
+.ctx-bar .bases{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 0}   /* cada base com o seu espaço: ponto, nome e idade não se sobrepõem */
 .kband{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
 @media(max-width:1250px){.kband{grid-template-columns:repeat(3,minmax(0,1fr))}} @media(max-width:560px){.kband{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .kb{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:10px 12px;cursor:pointer;min-width:0;text-align:left}
