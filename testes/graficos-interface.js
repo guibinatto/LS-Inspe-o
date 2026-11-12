@@ -28,7 +28,7 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
  ok('Ficha do negócio: caminho oportunidade→proposta→pedido e linha do tempo com eventos reais',fn.nos===3&&fn.tl&&fn.ev>=2,fn);
  // cores fixas de divisão e contraste
  const co=await p.evaluate(()=>({seq:cssVar('--seq'),spv:cssVar('--spv'),ok:cssVar('--ok'),err:cssVar('--err'),corSEQ:CORDIV.SEQ(),corSPV:CORDIV.SPV(),font:getComputedStyle(document.body).fontFamily,num:getComputedStyle(document.body).fontVariantNumeric,anim:Chart.defaults.animation}));
- ok('SEQ/SPV com cores fixas e distintas de verde/vermelho; fonte local com números tabulares; sem animação',co.corSEQ===co.seq&&co.corSPV===co.spv&&![co.ok,co.err].includes(co.seq)&&/Segoe UI/.test(co.font)&&/tabular/.test(co.num)&&co.anim===false,co);
+ ok('SEQ/SPV com cores fixas e distintas de verde/vermelho; fonte Arial (padrão LS Fire) com números tabulares; sem animação',co.corSEQ===co.seq&&co.corSPV===co.spv&&![co.ok,co.err].includes(co.seq)&&/^Arial/.test(co.font)&&/tabular/.test(co.num)&&co.anim===false,co);
  // menu recolhível e cabeçalho
  const mn=await p.evaluate(()=>{ recolherMenu(); const w=document.getElementById('rail').getBoundingClientRect().width; recolherMenu(); const w2=document.getElementById('rail').getBoundingClientRect().width;
    return {w,w2,botoesTopo:document.querySelectorAll('.topo .acoes > button').length,grupos:[...document.querySelectorAll('.nav-bloco')].map(x=>x.textContent)}; });
