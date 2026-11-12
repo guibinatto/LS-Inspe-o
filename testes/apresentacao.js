@@ -18,8 +18,11 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   const estavel = await p.evaluate(async () => { let n = 0; const orig = apresentacaoHTML; window.apresentacaoHTML = function () { n++; return orig.apply(this, arguments); }; await new Promise(r => setTimeout(r, 1500)); window.apresentacaoHTML = orig; return n; });
   t(estavel === 0, 'sem ciclo de redesenho (a apresentação não se refaz sozinha)');
   /* navegação interna */
-  await fr.locator('.nav-l a[href="#contratos"]').click(); await p.waitForTimeout(1200);
-  t(/^contratos$/i.test(await fr.locator('.nav-l a.on').innerText()), 'menu de capítulos leva ao capítulo e marca onde se está');
+  /* a rolagem é suave: espera ela terminar (até 5 s) antes de conferir a marcação */
+  await fr.locator('.nav-l a[href="#contratos"]').click();
+  const marcou = await p.frameLocator('#apres-fr').locator('.nav-l a.on', { hasText: /^contratos$/i }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  await p.waitForTimeout(300);
+  t(marcou && /^contratos$/i.test(await fr.locator('.nav-l a.on').innerText()), 'menu de capítulos leva ao capítulo e marca onde se está');
   /* tipos de apresentação: período próprio, capítulos do modelo, painel intacto, previsão igual à do painel */
   const mods = await p.evaluate(() => { const R = [], prevPainel = fmtCompacto(previsaoPedidos(F.ab, 3).previsao);
     for (const m of APRES_MODELOS) { const antes = JSON.stringify([EST.ano, EST.per, PER.rot]); APRES.modelo = m.k; APRES.per = null; APRES.caps = null; const h = apresGerar(); const d = new DOMParser().parseFromString(h, 'text/html');

@@ -4924,6 +4924,45 @@ function secVelocidade(){
   h+=porQuem('resp','Por vendedor');
   return h;
 }
+/* ---------- aproveitamento das propostas: ganhas ÷ emitidas ----------
+   Win rate = ganhas ÷ decididas (ganhas + perdidas): ignora as abertas.
+   Aproveitamento = ganhas ÷ TODAS as emitidas: conta as abertas como ainda não
+   ganhas, por isso sobe com o tempo. Só é comparável por SAFRA (mês de emissão):
+   safra madura = emitida há mais de 90 dias. Base: propostas do Ploomes (última
+   revisão de cada código), no recorte de divisão e vendedor. */
+const APROV_MADURA=90;
+function aprovDados(){ const R=hoje(), P=propostasRecorte().filter(p=>p.dt&&p.dt<=R); if(!P.length)return null;
+  const st=a=>{ const g=a.filter(p=>p.ganho), pe=a.filter(p=>p.perdido), v=f=>somar(f,p=>p.val||0);
+    return {n:a.length,g:g.length,pe:pe.length,ab:a.length-g.length-pe.length,vn:v(a),vg:v(g),vpe:v(pe),
+      aprov:a.length?g.length/a.length:null,aprovV:v(a)?v(g)/v(a):null,wr:g.length+pe.length?g.length/(g.length+pe.length):null,dec:a.length?(g.length+pe.length)/a.length:null}; };
+  const ks=[...new Set(P.map(p=>mesKey(p.dt)))].sort(), idade=k=>Math.max(0,Math.round((R-new Date(+k.slice(0,4),+k.slice(5,7)-1,1))/864e5));
+  const safraDe=a=>ks.map(k=>Object.assign({k,rot:mesRot(k),dias:idade(k),madura:idade(k)>APROV_MADURA+30},st(a.filter(p=>mesKey(p.dt)===k))));
+  const divs=['SEQ','SPV'].filter(d=>!EST.div||EST.div===d);
+  const vend=[...agrupa(P.filter(p=>p.resp),p=>p.resp).entries()].map(([k,a])=>Object.assign({k:nomeCurto(k)||k},st(a),{mad:st(a.filter(p=>(R-p.dt)/864e5>APROV_MADURA))})).sort((a,b)=>b.n-a.n);
+  const mad=P.filter(p=>(R-p.dt)/864e5>APROV_MADURA);
+  return {R,P,ini:new Date(Math.min(...P.map(p=>+p.dt))),tot:st(P),mad:st(mad),safra:safraDe(P),
+    div:divs.map(d=>{ const a=P.filter(p=>p.div===d), m=a.filter(p=>(R-p.dt)/864e5>APROV_MADURA); return Object.assign({k:d},st(a),{mad:st(m),safra:safraDe(a)}); }),vend}; }
+
+/* seção no painel (Propostas e conversão) */
+function secAproveitamento(){ const Q=aprovDados(); if(!Q)return '';
+  const pc=v=>v==null?'—':fmtPct(v,0), cor=COR();
+  const barra=(x,alt)=>{ const t=x.n||1; return `<div style="display:flex;height:${alt||16}px;border-radius:3px;overflow:hidden;background:var(--linha)" role="img" aria-label="${x.g} ganhas, ${x.pe} perdidas, ${x.ab} abertas de ${x.n}">
+      <i style="width:${(100*x.g/t).toFixed(1)}%;background:${cor.ok}" title="ganhas: ${x.g}"></i><i style="width:${(100*x.pe/t).toFixed(1)}%;background:${cor.err}" title="perdidas: ${x.pe}"></i><i style="width:${(100*x.ab/t).toFixed(1)}%;background:#A9B1BC" title="abertas: ${x.ab}"></i></div>`; };
+  let h=sec('Aproveitamento das propostas',`Aproveitamento = propostas ganhas ÷ todas as propostas emitidas (inclui as abertas). Win rate = ganhas ÷ decididas (ganhas + perdidas). Como as abertas ainda podem ser ganhas, o aproveitamento só se compara por safra (mês de emissão); "madura" = emitida há mais de ${APROV_MADURA} dias. Base: Ploomes desde ${fmtData(Q.ini)}.`,'prop-aprov');
+  h+=`<div class="g g4 kpis-2">${cardG({rot:'Aproveitamento (todas)',val:pc(Q.tot.aprov),per:`emitidas desde ${fmtData(Q.ini)}`,cls:'lar',sub:`${fmtN(Q.tot.g)} ganhas de ${fmtN(Q.tot.n)} · em valor ${pc(Q.tot.aprovV)} · ${fmtN(Q.tot.ab)} ainda abertas`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:`Aproveitamento (safras maduras)`,val:pc(Q.mad.aprov),per:`emitidas há mais de ${APROV_MADURA} dias`,sub:`${fmtN(Q.mad.g)} ganhas de ${fmtN(Q.mad.n)} · ${fmtN(Q.mad.ab)} ainda abertas`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Win rate das propostas',val:pc(Q.tot.wr),per:`decididas desde ${fmtData(Q.ini)}`,sub:`${fmtN(Q.tot.g)} ganhas e ${fmtN(Q.tot.pe)} perdidas`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Já decididas',val:pc(Q.tot.dec),per:'das propostas emitidas',sub:`${fmtN(Q.tot.g+Q.tot.pe)} de ${fmtN(Q.tot.n)} com resposta do cliente`,tipo:'mov',fonte:'Ploomes'})}</div>`;
+  if(Q.div.length>1)h+=`<div class="dupla">${Q.div.map(d=>card(`${d.k}: ${pc(d.aprov)} de aproveitamento`,`${fmtN(d.g)} ganhas de ${fmtN(d.n)} emitidas · win rate ${pc(d.wr)} · safras maduras ${pc(d.mad.aprov)} (${fmtN(d.mad.g)} de ${fmtN(d.mad.n)})`,barra(d,18))).join('')}</div>`;
+  h+=card('Por safra (mês de emissão)','Verde = ganhas · vermelho = perdidas · cinza = ainda abertas. Safras recentes ainda estão em decisão.',
+    `<div style="display:grid;gap:10px">${Q.safra.map(x=>`<div style="display:grid;grid-template-columns:minmax(70px,120px) minmax(0,1fr) minmax(120px,190px);gap:12px;align-items:center">
+      <div><b>${esc(x.rot)}</b><br><small class="mut">${fmtN(x.n)} propostas${x.madura?'':' · em decisão'}</small></div>${barra(x)}
+      <div style="text-align:right"><b>${pc(x.aprov)}</b> <small>aproveitamento</small><br><small class="mut">${pc(x.dec)} decididas · win rate ${pc(x.wr)}</small></div></div>`).join('')}</div>
+     <div class="leg-x" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.8rem"><span><i style="display:inline-block;width:10px;height:10px;background:${cor.ok}"></i> ganhas</span><span><i style="display:inline-block;width:10px;height:10px;background:${cor.err}"></i> perdidas</span><span><i style="display:inline-block;width:10px;height:10px;background:#A9B1BC"></i> abertas</span></div>`);
+  h+=card('Por vendedor','Vendedor responsável pela proposta. Ordenado pelo número de propostas.',tab([{t:'Vendedor'},{t:'Emitidas',n:1},{t:'Ganhas',n:1},{t:'Perdidas',n:1},{t:'Abertas',n:1},{t:'Aproveitamento',n:1},{t:`Safras maduras (+${APROV_MADURA} d)`,n:1},{t:'Win rate',n:1}],
+    Q.vend.map(x=>[esc(x.k),fmtN(x.n),fmtN(x.g),fmtN(x.pe),fmtN(x.ab),`<b>${pc(x.aprov)}</b>`,x.mad.n?`${pc(x.mad.aprov)} <small>(${x.mad.g}/${x.mad.n})</small>`:'—',pc(x.wr)])));
+  return h; }
+
 function propostasCorpo(){
   const props=propostasRecorte(); const r=resumo(props,p=>p.val);
   const ab=props.filter(p=>p.aberto), g=props.filter(p=>p.ganho), pe=props.filter(p=>p.perdido);
@@ -4950,6 +4989,7 @@ function propostasCorpo(){
     {k:'Decididas',desc:'o cliente respondeu: ganha ou perdida',n:deci.length,t:somar(deci,p=>p.val),cor:'#4A6FA5',conv:'das apresentadas',
       partes:[{k:'ganhas',n:g.length,t:somar(g,p=>p.val),cor:COR().ok},{k:'perdidas',n:pe.length,t:somar(pe,p=>p.val),cor:COR().err}]},
     {k:'Ganhas',desc:'viraram negócio ganho',n:g.length,t:somar(g,p=>p.val),cor:'#18794A',conv:'das decididas (win rate por proposta)'}]);
+  h+=secAproveitamento();
   h+=secVelocidade();
   /* por vendedor, empilhado pela situação da proposta (a fase do negócio fica na aba Negócios) */
   const vend=[...agrupa(props.filter(p=>p.resp),p=>p.resp).entries()].map(([k,v])=>({k,v,n:v.length,t:somar(v,p=>p.val)})).sort((a,b)=>b.t-a.t);
@@ -6928,6 +6968,12 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     .calc-p{display:flex;flex-wrap:wrap;gap:8px}.calc-p span{display:inline-flex;align-items:baseline;gap:6px;border:1px solid var(--linha);border-radius:3px;padding:4px 10px;font-size:.84rem}.calc-p b{font-family:var(--tit);color:var(--lar)}.calc-p .z{color:var(--mut)}.calc-p .z b{color:var(--mut)}
     .calc-ex{background:var(--lar-suave);padding:8px 12px;border-radius:3px}
     .pm-l li .tag-v,.tag-v{display:inline-block;margin-left:6px;font-size:.68rem;font-weight:700;color:#fff;background:#C62828;border-radius:3px;padding:1px 6px;vertical-align:1px}
+    .saf{display:grid;gap:8px}.saf-d{margin:14px 0 2px;font-size:1rem}.saf-d:first-child{margin-top:0}
+    .saf-r{display:grid;grid-template-columns:minmax(64px,110px) minmax(0,1fr) minmax(76px,120px);gap:12px;align-items:center}
+    .saf-m{font-weight:700;font-size:.9rem}.saf-m small,.saf-v small{display:block;font-weight:400;font-size:.72rem;color:var(--txt2)}.saf-v{text-align:right;font-variant-numeric:tabular-nums}
+    .saf-b{display:flex;height:16px;border-radius:3px;overflow:hidden;background:#EFEFEF}.saf-b i{display:block;width:var(--w);transition:width .9s cubic-bezier(.2,.7,.1,1) var(--d,0ms)}
+    .saf-b .g{background:#1E8E4E}.saf-b .p{background:#C62828}.saf-b .a{background:#D9D9D9}
+    .js section:not(.in) .saf-b i{width:0}
     .venc{margin-top:18px;border:1px dashed #C62828;border-radius:4px;padding:12px 14px;background:#FFF6F6}.venc-h{display:grid;gap:2px;margin-bottom:4px}.venc-h b{color:#C62828;font-size:.92rem}.venc-h span{font-size:.82rem;color:var(--mut)}.venc .pm-l{border-left-color:#E8A0A0}
     .sit-tot{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--txt);margin-top:14px;padding-top:10px;font-weight:700}.sit-tot b{font-family:var(--tit);font-size:var(--s1);color:var(--lar)}
     .meta-frase{margin:0 0 18px}.meta-b{position:relative;display:flex;height:44px;border-radius:4px;background:var(--trilho);overflow:visible;margin-top:26px}
@@ -7110,7 +7156,13 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
      <div class="aps">${Q.div.map((d,i)=>`<div class="ap" style="--d:${i*120}ms"><span class="ap-t">${d.d} · desde ${e(mesRot(mesKey(Q.ini)))}</span>
          <div class="ap-v"><span class="ap-a">${fmtN(d.np)} propostas</span><i>→</i><b>${fmtN(d.nv)} pedidos</b></div>
          <strong class="${d.np&&d.nv/d.np>=.2?'ok':d.np&&d.nv/d.np<.08?'mau':''}">${d.np?fmtN(Math.round(d.nv/d.np*100)):'—'} a cada 100</strong>
-         <span class="mut" style="font-size:.8rem">${e(mi(d.vp))} propostos → ${e(mi(d.vv))} em pedidos · propostas → pedidos nos últimos meses: ${d.mes.slice(-3).map(m=>`${e(mesRot(m.k))}: ${m.np} → ${m.nv}`).join(' · ')}</span></div>`).join('')}</div>`; })())}
+         <span class="mut" style="font-size:.8rem">${e(mi(d.vp))} propostos → ${e(mi(d.vv))} em pedidos · propostas → pedidos nos últimos meses: ${d.mes.slice(-3).map(m=>`${e(mesRot(m.k))}: ${m.np} → ${m.nv}`).join(' · ')}</span></div>`).join('')}</div>
+     ${(()=>{ const A=aprovDados(); if(!A)return ''; const pa=x=>x.aprov==null?'—':fmtPct(x.aprov,0), bar=(x,i)=>{ const t=x.n||1; return `<div class="saf-b" role="img" aria-label="${x.g} ganhas, ${x.pe} perdidas, ${x.ab} abertas de ${x.n}"><i class="g" style="--w:${(100*x.g/t).toFixed(1)}%;--d:${i*90}ms"></i><i class="p" style="--w:${(100*x.pe/t).toFixed(1)}%;--d:${i*90+120}ms"></i><i class="a" style="--w:${(100*x.ab/t).toFixed(1)}%;--d:${i*90+240}ms"></i></div>`; };
+       return `<div class="stage"><div class="st-t">Aproveitamento das propostas por safra <span>ganhas ÷ todas as emitidas, pelo mês de emissão · madura = mais de ${APROV_MADURA} dias</span></div>
+       <p class="mut" style="margin:0 0 14px">Win rate conta só as decididas; o aproveitamento conta todas, inclusive as abertas. No total, <b>${pa(A.tot)}</b> de aproveitamento (${fmtN(A.tot.g)} de ${fmtN(A.tot.n)}) e <b>${fmtPct(A.tot.wr||0,0)}</b> de win rate. Nas safras maduras: <b>${pa(A.mad)}</b>.</p>
+       <div class="saf">${A.div.map(d=>`<div class="saf-d"><b>${d.k}</b> <span class="mut">${pa(d)} de aproveitamento · ${fmtN(d.g)} de ${fmtN(d.n)} · win rate ${d.wr==null?'—':fmtPct(d.wr,0)}</span></div>
+         ${d.safra.filter(x=>x.n).map((x,i)=>`<div class="saf-r"><span class="saf-m">${e(x.rot)}<small>${fmtN(x.n)} prop.${x.madura?'':' · em decisão'}</small></span>${bar(x,i)}<span class="saf-v"><b>${pa(x)}</b><small>${x.dec==null?'':fmtPct(x.dec,0)+' decididas'}</small></span></div>`).join('')}`).join('')}</div>
+       <div class="leg"><span><i style="background:#1E8E4E"></i>ganhas</span><span><i style="background:#C62828"></i>perdidas</span><span><i style="background:#D9D9D9"></i>ainda abertas</span></div></div>`; })()}`; })())}
   ${sec('seq','',(()=>{ const Q=seqDados(); if(!Q)return `${tit('Olhar da','SEQ','')}<p class="mut">Sem base de propostas da SEQ.</p>`;
      const L=Q.mes, mx=Math.max(1,...L.map(m=>Math.max(m.n,m.nAnt))), W=1000, H=300, pb=34, pt=30, n=L.length||1, gw=W/n, bw=Math.min(40,gw*.3), Y=v=>H-pb-(H-pb-pt)*(v/mx);
      const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pedidos da SEQ por mês contra o ano anterior">${[.25,.5,.75,1].map(f=>`<line x1="0" x2="${W}" y1="${Y(mx*f)}" y2="${Y(mx*f)}" class="grid"/>`).join('')}
@@ -8133,7 +8185,7 @@ const REL_MODELOS=[
  {k:'rC',nome:'Reunião individual do vendedor',per:'estaSemana',pessoa:true,desc:'Ficha do vendedor, negócios em risco, compromisso de previsão e ações.',telas:{desempenho:['des-ficha'],pipeline:['pipe-comp'],reunioes:['reu-ant','plano']}},
  {k:'rD',nome:'Acompanhamento semanal da engenharia',per:'semAnt',desc:'Fila, propostas entregues, tempo até a proposta, revisões e carga por analista.',telas:{engenharia:'*'}},
  {k:'rE',nome:'Fechamento mensal comercial',per:'mesAnt',desc:'Resultado × meta, evolução semanal, equipes, conversão, perdas, carteira, previsão e recuperação dos desvios.',
-   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend','res-spv','res-seq'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],contratos:['kpi:contratos','ctr-lista','ctr-renov','ctr-ag'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
+   telas:{executiva:['kpi:executiva','exec-alertas','exec-div','exec-diag'],resultados:['res-bullet','res-ind','res-evo','res-rec','q:v-vend','res-spv','res-seq'],desempenho:['des-vend','des-meta'],propostas:['prop-conv','prop-aprov','perd-wr','perd-mot'],carteira:['kpi:carteira','cart-fat','cart-mes'],contratos:['kpi:contratos','ctr-lista','ctr-renov','ctr-ag'],pipeline:['pipe-prev','pipe-comp','pipe-conf2'],reunioes:['plano']}},
  {k:'rF',nome:'Revisão trimestral',per:'triAnt',desc:'Tendências, comparativos, qualidade do pipeline, previsibilidade, gargalos e prioridades seguintes.',
    telas:{resultados:['res-bullet','res-ind','res-evo','res-yoy','res-spv','res-seq'],pipeline:['pipe-casc','pipe-etapa','pipe-aging','pipe-prev','pipe-conf2'],propostas:['perd-wr','perd-mot','prop-vel'],engenharia:['eng-sup'],contratos:['kpi:contratos','ctr-vig','ctr-mes','ctr-renov'],clientes:['kpi:clientes','cli-abc'],desempenho:['des-vend'],reunioes:['plano']}},
  {k:'rG',nome:'Consolidado anual',per:'esteAno',desc:'Resultado consolidado, evolução mensal e trimestral, equipes, clientes, mix, perdas, carteira e planejamento.',
@@ -8146,7 +8198,7 @@ const REL_TEMAS=[
  {k:'tRES',ic:'▤',nome:'Resultados e metas',per:'esteAno',desc:'Pedidos contra a meta, evolução, mês a mês e contra o ano anterior, vendedores, categoria fiscal, natureza, estados e principais clientes.',
    telas:{resultados:['kpi:resultados','res-bullet','res-ind','res-evo','res-rec','res-mes','res-yoy','q:v-vend','res-cat','q:v-cat','q:v-nat','m:v-mapa','q:v-uf','q:v-cli','res-spv','res-seq']}},
  {k:'tPRO',ic:'✎',nome:'Propostas e conversão',per:'esteTri',desc:'Propostas emitidas, conversão, velocidade, situação por vendedor, win rate, ciclo de venda e motivos de perda.',
-   telas:{propostas:['kpi:propostas','q:p-div','prop-funil','prop-vel','t:velocidade-por-vendedor','t:por-vendedor-e-situacao','q:p-so','q:p-mes','q:p-uf','prop-conv','q:l-div','perd-ciclo','perd-wr','perd-dec','perd-mot','q:l-vend','q:l-mes']}},
+   telas:{propostas:['kpi:propostas','q:p-div','prop-funil','prop-aprov','prop-vel','t:velocidade-por-vendedor','t:por-vendedor-e-situacao','q:p-so','q:p-mes','q:p-uf','prop-conv','q:l-div','perd-ciclo','perd-wr','perd-dec','perd-mot','q:l-vend','q:l-mes']}},
  {k:'tCAR',ic:'◷',nome:'Carteira e faturamento',per:'esteMes',desc:'Faturamento realizado, saldo a faturar, previsão de faturamento pelo mês de entrega e os pedidos da carteira.',
    telas:{carteira:['kpi:carteira','cart-fat','cart-mes','cart-lista']}},
  {k:'tCTR',ic:'⟳',nome:'Contratos de serviço',per:'esteAno',desc:'Contratos vigentes e a vencer, vigências, faturamento mês a mês pelas OS, renovação no Ploomes, OS aguardando faturamento e sem contrato.',
@@ -8164,7 +8216,7 @@ const SEC_NOMES={'*':'Todas as seções','sup-exec':'Execução e resultado (8 s
  'atv-kpi':'Execução no período','atv-pessoa':'Interações vinculadas à carteira','atv-sem':'Interações por semana','atv-passos':'Próximos passos','pipe-insp':'Inspeção das oportunidades','pipe-mud':'Mudanças entre fotografias','pipe-comp':'Previsão e compromisso','pipe-conf2':'Confiabilidade das previsões','kpi:pipeline':'Indicadores do pipeline',
  'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria (tabela)','q:v-cat':'Mix por categoria (gráficos)','q:c-top':'Top 10 clientes','q:v-cli':'Top 10 clientes','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
  'prop-conv':'Conversão e perdas','perd-wr':'Win rate','perd-mot':'Motivos de perda','prop-vel':'Velocidade das propostas','eng-sup':'Supervisão da engenharia','kpi:executiva':'Indicadores principais','exec-alertas':'Alertas de consistência','exec-div':'SEQ × SPV','exec-diag':'Destaques e riscos',
- 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','res-spv':'Serviços (SPV): antes e depois da Amanda','res-seq':'Equipamentos (SEQ): onde está a queda','ctr-uf':'Onde estão os contratos','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
+ 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','res-spv':'Serviços (SPV): antes e depois da Amanda','res-seq':'Equipamentos (SEQ): onde está a queda','ctr-uf':'Onde estão os contratos','prop-aprov':'Aproveitamento das propostas','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
 Object.assign(SEC_NOMES,{'kpi:pipeline':'Indicadores do pipeline','pipe-pos':'Posição do pipeline','pipe-pol':'Política de probabilidade','pipe-mes':'Previsão de pedidos por mês (política)','pipe-cob':'Cobertura da meta','pipe-div':'Pipeline por divisão',
  'q:n-div':'SEQ × SPV','pipe-estagios':'Distribuição atual por estágio','q:n-dono':'Por dono do negócio','t:origem-do-negocio':'Origem do negócio','t:segmento-do-cliente':'Segmento do cliente','q:n-so':'Por status da obra','q:n-id':'Idade dos negócios',
  'pipe-parados':'Negócios parados — para agir','pipe-conf':'Confirmação por vendedor','kpi:resultados':'Indicadores de resultados','res-mes':'Mês a mês','q:v-nat':'Natureza do pedido','m:v-mapa':'Mapa de vendas','q:v-uf':'Por estado',
