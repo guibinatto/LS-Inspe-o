@@ -6359,12 +6359,42 @@ function contratosModelo(){
     const r=c.parcela?[c.parcela,'parcela do contrato (Omie)']:c.unico&&(c.valorPed||c.total)?[(c.valorPed||c.total)/(c.parcelas||12),`faturado de uma vez ÷ ${c.parcelas||12} parcelas`]
       :c.valorPed&&meses?[c.valorPed/meses,`vendido no Controle ÷ ${meses} meses de vigência`]:c.mensal?[c.mensal,'média mensal das OS']:[null,'sem base para calcular'];
     c.receitaMes=r[0]; c.receitaFonte=r[1]; c.mesesVig=meses; });
+  /* local do contrato: cidade/UF do Omie; sem ele, a UF da obra nos pedidos do
+     contrato (ou do mesmo cliente) e, por último, o cadastro do cliente no Ploomes
+     quando ele tem uma UF só. Cidade de fora do Omie só quando o contrato não
+     indica um local próprio no nome ("BEPE - GARUVA" não é a sede da BEPE). */
+  const capit=t=>String(t||'').toLowerCase().replace(/(^|[\s-])(\S)/g,(m,a,b)=>a+b.toUpperCase()).replace(/\b(De|Da|Do|Das|Dos|E)\b/g,x=>x.toLowerCase());
+  L.forEach(c=>{ c.locFonte=c.uf?'Omie':''; c.cidFonte=c.cidade?'Omie':''; if(c.uf&&c.cidade)return;
+    const w=String(c.nCli||'').split(' ')[0], mesmo=v=>v&&v.nCli&&String(v.nCli).split(' ')[0]===w;
+    const ped=(c.ped&&c.ped.length?c.ped:[]).concat((M.pedidos||[]).filter(mesmo)), ufs=ped.map(v=>v.ufDaObra||v.uf).filter(u=>UF_POS[u]);
+    const emp=(M.empresas||[]).filter(e=>mesmo({nCli:e.nNome})&&UF_POS[e.uf]), localProprio=/\s-\s/.test(String(c.cli||''));
+    if(!c.uf&&ufs.length){ const k={}; ufs.forEach(u=>k[u]=(k[u]||0)+1); c.uf=Object.keys(k).sort((a,b)=>k[b]-k[a])[0]; c.locFonte='UF da obra nos pedidos'; }
+    else if(!c.uf&&emp.length&&new Set(emp.map(e=>e.uf)).size===1){ c.uf=emp[0].uf; c.locFonte='cadastro do cliente (Ploomes)'; }
+    if(!c.cidade&&!localProprio&&emp.length&&new Set(emp.map(e=>norm(e.cidade))).size===1&&emp[0].uf===c.uf&&emp[0].cidade){ c.cidade=capit(emp[0].cidade); c.cidFonte='sede do cliente (Ploomes)'; } });
   const doLocal=new Set(L.filter(c=>c.pl&&c.pl.renovLocal).flatMap(c=>c.pl.renov));
   L.forEach(c=>{ if(c.pl&&!c.pl.renovLocal&&c.pl.renov.length){ const r=c.pl.renov.filter(n=>!doLocal.has(n)); if(r.length)c.pl.renov=r; } });
   L.sort((a,b)=>(b.vigente-a.vigente)||((a.fim||9e15)-(b.fim||9e15)));
   const noCtr=new Set(L.flatMap(c=>c.os)), avulsas=os.filter(o=>!noCtr.has(o));
   _CTR={chave,L,os,avulsas,semNum:avulsas.filter(o=>!o.num),aguard:os.filter(o=>!o.faturado),base,R};
   return _CTR; }
+/* contratos por estado: mapa (quantidade), receita por mês e cidades */
+function secCtrLocal(V){ if(!V.length)return '';
+  const ufs=[...agrupa(V.filter(c=>UF_POS[c.uf]),c=>c.uf).entries()].map(([uf,a])=>({uf,a,n:a.length,rec:somar(a,c=>c.receitaMes||0),cid:[...new Set(a.map(c=>c.cidade).filter(Boolean))]})).sort((x,y)=>y.n-x.n||y.rec-x.rec);
+  const sem=V.filter(c=>!UF_POS[c.uf]), mx=Math.max(1,...ufs.map(u=>u.n)), recT=somar(V,c=>c.receitaMes||0);
+  const linC=c=>[esc(String(c.cli).slice(0,40)),esc(c.cidade||'—'),esc(c.uf||'—'),c.receitaMes?fmtBRL(c.receitaMes):'—',esc(c.num),esc([c.locFonte!=='Omie'?'UF: '+c.locFonte:'',c.cidFonte&&c.cidFonte!=='Omie'?'cidade: '+c.cidFonte:''].filter(Boolean).join(' · ')||'Omie')];
+  const COLS=[{t:'Cliente',f:1},{t:'Cidade'},{t:'UF'},{t:'Receita / mês',n:1},{t:'Contrato'},{t:'Fonte do local',f:1}];
+  ufs.forEach(u=>regLista('ctr-uf-'+u.uf,`Contratos vigentes em ${UF_NOME[u.uf]||u.uf}`,u.a.map(linC),COLS));
+  const tiles=Object.entries(UF_POS).map(([uf,[c,r]])=>{ const u=ufs.find(x=>x.uf===uf), q=u?u.n/mx:0;
+    return `<div class="uf ${u?'tem':''}" style="grid-column:${c+1};grid-row:${r+1};${u?`background:${alfa(COR().lar,.18+.82*q)};color:${q>.45?'#fff':'var(--txt)'};cursor:pointer`:''}"
+      ${u?`onclick="abrirLista('ctr-uf-${uf}')" title="${uf}: ${u.n} contrato(s) · ${fmtCompacto(u.rec)}/mês"`:''}><b>${uf}</b>${u?`<span>${fmtN(u.n)}</span>`:''}</div>`; }).join('');
+  let h=sec('Onde estão os contratos',`Contratos vigentes por estado e cidade do local atendido. Local do Omie; quando falta, a UF da obra nos pedidos do contrato ou o cadastro do cliente no Ploomes (indicado na lista). Clique num estado para ver os contratos.`,'ctr-uf');
+  h+=`<div class="card mapa-cx"><div class="mapa">${tiles}</div>
+    <div class="mapa-lado"><div class="unid">Contratos vigentes · receita por mês</div>
+      <ol>${ufs.map(u=>`<li><a class="td-link" onclick="abrirLista('ctr-uf-${u.uf}')"><b>${u.uf}</b></a> ${fmtN(u.n)} ${u.n===1?'contrato':'contratos'} · ${fmtCompacto(u.rec)}/mês <small>${recT?fmtPct(u.rec/recT,0):''}${u.cid.length?' · '+u.cid.map(esc).join(', '):''}</small></li>`).join('')}</ol>
+      ${sem.length?`<p class="mapa-nota">${fmtN(sem.length)} sem local identificado: ${sem.map(c=>esc(String(c.cli).split(' ')[0])).join(', ')}</p>`:''}</div></div>`;
+  regLista('ctr-uf-todos','Contratos vigentes por local',V.slice().sort((a,b)=>String(a.uf).localeCompare(String(b.uf))||String(a.cidade).localeCompare(String(b.cidade))).map(linC),COLS);
+  h+=`<div class="nota">${fmtN(ufs.length)} ${ufs.length===1?'estado':'estados'} com contrato vigente. <a class="td-link" onclick="abrirLista('ctr-uf-todos')">ver todos com cidade e fonte do local</a></div>`;
+  return h; }
 function ctrRecorte(L,f){ const v=EST.vend; return v?L.filter(x=>f(x).includes(v)):L; }
 function ctrConsulta(nome){ irTela('busca'); setTimeout(()=>pqExemplo(nome),30); }
 const ctrTag=s=>`<span class="tag ${{Vigente:'t-ok','A vencer':'t-ale',Encerrado:'',Cancelado:'t-err',Futuro:'t-az'}[s]||''}">${esc(s)}</span>`;
@@ -6440,6 +6470,7 @@ VISTA.contratos=function(){
       corpo:VR.length?svgBarrasH(VR.map((c,i)=>({rot:String(c.cli).slice(0,28),val:c.receitaMes,k:'ctr-r'+i,extra:fmtPct(c.receitaMes/(recMensal||1),0)})),{W:640,lw:210,rw:150,aria:'Receita mensal por contrato'}):'<p class="pl-vazio">Nenhum contrato vigente com valor.</p>',
       tabela:{cols:['Contrato','Cliente','Receita/mês','Receita/ano','Como foi calculada'],linhas:VR.map(c=>[c.num,c.cli,fmtBRL(c.receitaMes),fmtBRL(c.receitaMes*12),c.receitaFonte])}}); }
   /* vigências */
+  h+=secCtrLocal(V);
   h+=sec('Vigência dos contratos','Barra do início ao fim da vigência; a linha laranja é a data de referência. Tracejado = ano deduzido. Clique numa barra para ver as OS.','ctr-vig');
   h+=blocoGraf({id:'ctr-vig-g',tit:'Quando cada contrato começa e termina',perg:'Quais vencem primeiro e quanto falta?',per:`posição em ${fmtData(R)}`,fonte:'Omie — Contratos e OS',
     corpo:svgVigencias(L,{k:L.map((c,i)=>'ctr-c'+i)}),
@@ -7124,6 +7155,8 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
      <div class="dest"><div>${big(D.recMensal,'mi',mi(D.recMensal))}<div class="big-c">de receita por mês em ${fmtN(D.V.length)} contratos vigentes</div></div>
        <p class="lede"><b>${e(mi(D.recMensal*12))}</b> em 12 meses, se todos seguirem vigentes. A receita de cada contrato vem da parcela no Omie ou do valor vendido no Controle de Pedidos dividido pelos meses de vigência.</p></div>
      ${(()=>{ const VR=D.V.filter(c=>c.receitaMes).sort((a,b)=>b.receitaMes-a.receitaMes); return VR.length?`<div class="stage"><div class="st-t">Receita por mês, por contrato <span>contratos vigentes</span></div>${barras(VR.map(c=>({k:String(c.cli).slice(0,30),s:c.num+' · '+c.receitaFonte,v:c.receitaMes})),mi)}</div>`:''; })()}
+     ${(()=>{ const U=[...agrupar(D.V.filter(c=>c.uf),c=>c.uf).entries()].map(([uf,a])=>({uf,n:a.length,rec:somar(a,c=>c.receitaMes||0),cid:[...new Set(a.map(c=>c.cidade).filter(Boolean))]})).sort((x,y)=>y.n-x.n||y.rec-x.rec), sem=D.V.filter(c=>!c.uf);
+       return U.length?`<div class="stage"><div class="st-t">Onde estão <span>contratos vigentes por estado · receita por mês e cidades</span></div>${barras(U.map(u=>({k:(UF_NOME[u.uf]||u.uf)+' ('+u.uf+')',s:fmtN(u.n)+(u.n===1?' contrato':' contratos')+(u.cid.length?' · '+u.cid.join(', '):''),v:u.rec})),v=>mi(v)+'/mês')}${sem.length?`<p class="mut" style="margin-top:10px">${fmtN(sem.length)} sem local identificado.</p>`:''}</div>`:''; })()}
      <div class="facts">${[[fmtN(D.V.filter(c=>c.status==='A vencer').length),'vencem em até 90 dias'],[fmtN(D.renov.filter(c=>c.semRenov).length),'a renovar sem negócio aberto no Ploomes'],[mi(somar(D.C.aguard,o=>o.vNum)),`total aguardando faturamento hoje, em ${fmtN(D.C.aguard.length)} OS${D.C.aguard.filter(o=>o.dt&&o.dt<R).length?` (${fmtN(D.C.aguard.filter(o=>o.dt&&o.dt<R).length)} com a previsão já vencida)`:''}`]].map(([b,s])=>`<div class="fact"><b>${e(b)}</b><span>${e(s)}</span></div>`).join('')}</div>
      ${D.renov.length?`<div class="stage"><div class="st-t">Próximos vencimentos <span>e o que o Ploomes mostra do cliente</span></div><div class="tl">${D.renov.slice(0,8).map(c=>`<div class="tl-r"><div><b>${e(String(c.cli).slice(0,46))}</b><br><span>${e(c.num)} · fim ${e(fmtData(c.fim))}${c.implic?' (presumido)':''}</span></div>
        <div style="text-align:right"><b>${c.diasFim<0?'venceu há '+fmtN(-c.diasFim)+' d':fmtN(c.diasFim)+' dias'}</b><br><span class="tag ${c.pl.renov.length||c.pl.abSPV.length?'ok':c.pl.ab.length?'ale':'mau'}">${c.pl.renov.length?'renovação em negociação · proposta '+c.pl.renov.map(n=>e(String(n.codProposta||n.id))).join(', '):c.pl.abSPV.length?'negócio SPV aberto':c.pl.ab.length?'só outra divisão':'sem negócio de renovação'}</span></div></div>`).join('')}</div></div>`:''}`)}
@@ -8117,7 +8150,7 @@ const REL_TEMAS=[
  {k:'tCAR',ic:'◷',nome:'Carteira e faturamento',per:'esteMes',desc:'Faturamento realizado, saldo a faturar, previsão de faturamento pelo mês de entrega e os pedidos da carteira.',
    telas:{carteira:['kpi:carteira','cart-fat','cart-mes','cart-lista']}},
  {k:'tCTR',ic:'⟳',nome:'Contratos de serviço',per:'esteAno',desc:'Contratos vigentes e a vencer, vigências, faturamento mês a mês pelas OS, renovação no Ploomes, OS aguardando faturamento e sem contrato.',
-   telas:{contratos:['kpi:contratos','ctr-lista','ctr-rec','ctr-vig','ctr-mes','ctr-renov','ctr-ag','ctr-sn']}},
+   telas:{contratos:['kpi:contratos','ctr-lista','ctr-rec','ctr-uf','ctr-vig','ctr-mes','ctr-renov','ctr-ag','ctr-sn']}},
  {k:'tCLI',ic:'◍',nome:'Clientes e mercado',per:'esteAno',desc:'Quem compra e quem volta, curva ABC, principais clientes, carteira por vendedor e estados.',
    telas:{clientes:['kpi:clientes','q:c-div','q:c-nr','cli-abc','q:c-top','cli-cart','q:c-uf']}},
  {k:'tVEN',ic:'⚑',nome:'Vendedores',per:'esteMes',desc:'Equipe e cada vendedor: vendido, meta, carteira, follow-up, cotações por venda e evolução da atividade.',
@@ -8131,7 +8164,7 @@ const SEC_NOMES={'*':'Todas as seções','sup-exec':'Execução e resultado (8 s
  'atv-kpi':'Execução no período','atv-pessoa':'Interações vinculadas à carteira','atv-sem':'Interações por semana','atv-passos':'Próximos passos','pipe-insp':'Inspeção das oportunidades','pipe-mud':'Mudanças entre fotografias','pipe-comp':'Previsão e compromisso','pipe-conf2':'Confiabilidade das previsões','kpi:pipeline':'Indicadores do pipeline',
  'res-ind':'Indicadores do período','res-evo':'Evolução dentro do período','res-rec':'Plano de recuperação','res-yoy':'Comparação com o ano anterior','res-cat':'Mix por categoria (tabela)','q:v-cat':'Mix por categoria (gráficos)','q:c-top':'Top 10 clientes','q:v-cli':'Top 10 clientes','q:v-vend':'Pedidos por vendedor','des-ficha':'Ficha individual','des-vend':'Vendedores','des-meta':'Metas por vendedor',
  'prop-conv':'Conversão e perdas','perd-wr':'Win rate','perd-mot':'Motivos de perda','prop-vel':'Velocidade das propostas','eng-sup':'Supervisão da engenharia','kpi:executiva':'Indicadores principais','exec-alertas':'Alertas de consistência','exec-div':'SEQ × SPV','exec-diag':'Destaques e riscos',
- 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','res-spv':'Serviços (SPV): antes e depois da Amanda','res-seq':'Equipamentos (SEQ): onde está a queda','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
+ 'kpi:carteira':'Indicadores da carteira','cart-fat':'Faturamento realizado','cart-mes':'Previsão de faturamento','kpi:clientes':'Indicadores de clientes','res-spv':'Serviços (SPV): antes e depois da Amanda','res-seq':'Equipamentos (SEQ): onde está a queda','ctr-uf':'Onde estão os contratos','kpi:contratos':'Indicadores dos contratos','ctr-lista':'Contratos (lista)','ctr-vig':'Vigência dos contratos','ctr-mes':'Faturamento mês a mês dos contratos','ctr-renov':'Renovação dos contratos','ctr-ag':'OS aguardando faturamento','ctr-sn':'OS sem número de contrato','ctr-rec':'Receita mensal dos contratos','cli-abc':'Curva ABC de clientes','reu-ant':'Compromissos da reunião anterior','plano':'Plano de ação'};
 Object.assign(SEC_NOMES,{'kpi:pipeline':'Indicadores do pipeline','pipe-pos':'Posição do pipeline','pipe-pol':'Política de probabilidade','pipe-mes':'Previsão de pedidos por mês (política)','pipe-cob':'Cobertura da meta','pipe-div':'Pipeline por divisão',
  'q:n-div':'SEQ × SPV','pipe-estagios':'Distribuição atual por estágio','q:n-dono':'Por dono do negócio','t:origem-do-negocio':'Origem do negócio','t:segmento-do-cliente':'Segmento do cliente','q:n-so':'Por status da obra','q:n-id':'Idade dos negócios',
  'pipe-parados':'Negócios parados — para agir','pipe-conf':'Confirmação por vendedor','kpi:resultados':'Indicadores de resultados','res-mes':'Mês a mês','q:v-nat':'Natureza do pedido','m:v-mapa':'Mapa de vendas','q:v-uf':'Por estado',
