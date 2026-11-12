@@ -6825,8 +6825,8 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     .rodape b{font-size:.68rem;line-height:1.2;letter-spacing:.06em}.rodape span{margin-left:auto;font-weight:700;font-size:.8rem}
     .capa{background:var(--cinza);color:#fff;position:relative;overflow:hidden}
     .capa-in{display:grid;gap:clamp(24px,4vw,48px);align-items:center;padding-block:clamp(56px,8vw,96px)}@media(min-width:860px){.capa-in{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}}
-    .capa-t{display:grid;gap:18px;align-content:center}.capa-t img{width:min(260px,60%);height:auto}
-    .capa h1{font-family:var(--tit);font-weight:900;text-transform:uppercase;font-size:clamp(2.2rem,1.3rem + 3.6vw,4.6rem);line-height:1;letter-spacing:-.01em;overflow-wrap:anywhere}.capa h1 .lar{display:block}
+    .capa-t{display:grid;gap:18px;align-content:center;container-type:inline-size;min-width:0}.capa-t img{width:min(260px,60%);height:auto}
+    .capa h1{font-family:var(--tit);font-weight:900;text-transform:uppercase;font-size:min(clamp(2.2rem,1.3rem + 3.6vw,4.6rem),10.5cqi);line-height:1.02;letter-spacing:-.01em;overflow-wrap:normal;word-break:normal;hyphens:none}   /* cabe na coluna: a palavra mais longa (COMERCIAIS) nunca é cortada */.capa h1 .lar{display:block}
     .capa-sub{font-size:var(--s1);color:#E8E8E8}.capa-k{font-weight:700;font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;color:var(--lar)}
     .capa-simb{justify-self:end;width:min(320px,100%);aspect-ratio:255/320;background:var(--lar);-webkit-mask:var(--simb) center/contain no-repeat;mask:var(--simb) center/contain no-repeat;max-width:100%}
     @media(max-width:859px){.capa-simb{position:absolute;right:-12%;bottom:-8%;width:62vw;opacity:.18}}
