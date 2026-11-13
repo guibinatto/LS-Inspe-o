@@ -4885,16 +4885,18 @@ function pqResultado(){
      resultado); valor em R$, ou quantidade para interações e cadastro */
   const tipM=(r.tipos.length?r.tipos:PQ_TIPOS.map(x=>x[0])).filter(t=>R.some(o=>o.t===t&&o.uf));
   const mT=tipM.includes(PQ.mapaT)?PQ.mapaT:['venda','aberto','proposta','pedido','ganho','perdido','interacao','cliente'].find(t=>tipM.includes(t));
+  /* tipo escolhido nas abas do mapa (ou nenhum = Todos): filtra também a lista, a contagem e o Excel */
+  const fT=tipM.includes(PQ.mapaT)?PQ.mapaT:null, RL=fT?R.filter(o=>o.t===fT):R; PQ_ULT=RL;
   const baseM=R.filter(o=>o.t===mT), mp=new Map(baseM.map(o=>[o.x,o])), porQtd=mT==='interacao'||mT==='cliente';
   const titM={venda:'Onde vendeu',pedido:'Onde está a carteira a faturar',proposta:'Onde estão as propostas',aberto:'Onde estão os negócios abertos',
     ganho:'Onde ganhou',perdido:'Onde perdeu',interacao:'Onde houve interação',cliente:'Onde estão os clientes'}[mT]||'Onde estão';
   h+=`<div class="dupla">${ms.length>1&&tipG.length?card('Mês a mês',`${tipG.map(t=>PQ_TIPO[t].n.toLowerCase()).join(', ')} · segue os botões de tipo · clique numa barra para ver os registros`,graf('pq-mes')):''}
-    <div>${mT?`<div class="pq-mapa-t seg">${tipM.map(t=>`<button class="${t===mT?'on':''}" onclick="PQ.mapaT='${t}';pqResultado()">${PQ_TIPO[t].i} ${PQ_TIPO[t].n}</button>`).join('')}</div>`
+    <div>${mT?`<div class="pq-mapa-t seg" role="group" aria-label="Tipo de registro no mapa e na lista"><button class="${fT?'':'on'}" aria-pressed="${!fT}" onclick="PQ.mapaT=null;pqResultado()">Todos</button>${tipM.map(t=>`<button class="${t===fT?'on':''}" aria-pressed="${t===fT}" onclick="PQ.mapaT=PQ.mapaT==='${t}'?null:'${t}';pqResultado()">${PQ_TIPO[t].i} ${PQ_TIPO[t].n}</button>`).join('')}</div>`
       +mapaUF('pq-mapa',titM,`${PQ_TIPO[mT].n.toLowerCase()} do resultado por estado do cliente${porQtd?' · em quantidade':''}`,baseM.map(o=>o.x),
       x=>(mp.get(x)||{}).uf,x=>(mp.get(x)||{}).val||0,porQtd?'registros':PQ_TIPO[mT].n.toLowerCase(),porQtd?'n':'t'):''}</div></div>`;
   h+=`<div class="pq-barra"><label>Agrupar por</label><div class="seg">${PQ_GRUPOS.map(([k,n])=>`<button class="${PQ.grupo===k?'on':''}" onclick="pqSet('grupo','${k}')">${n}</button>`).join('')}</div>
-    <span>${fmtN(R.length)} registros</span><button class="btn sec" onclick="pqExcel()">↓ Excel</button><button class="btn sec" onclick="abrirEmailTela('busca')">✉ E-mail</button></div>`;
-  h+=PQ.grupo?pqGrupos(R):pqLista(R);
+    <span>${fmtN(RL.length)} registros${fT?` · só ${esc(PQ_TIPO[fT].n.toLowerCase())}`:''}</span><button class="btn sec" onclick="pqExcel()">↓ Excel</button><button class="btn sec" onclick="abrirEmailTela('busca')">✉ E-mail</button></div>`;
+  h+=PQ.grupo?pqGrupos(RL):pqLista(RL);
   el.innerHTML=h; desenharPendentes(); }
 let PQ_ULT=[];
 /* mapaUF guarda os registros originais (x); o mapa precisa achar o pqRegistro de volta */
