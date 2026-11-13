@@ -8,7 +8,7 @@ const { chromium } = require('playwright'); const http = require('http'), fs = r
 const [unico, pasta] = process.argv.slice(2).map(p => path.resolve(p));
 const H = fs.readFileSync(unico, 'utf8');
 const lib = re => { const m = H.match(re); if (!m) throw new Error('biblioteca não encontrada'); return m[1]; };
-const XLSX_JS = lib(/<script>(\/\*! xlsx\.js[\s\S]*?)<\/script>/), CHART_JS = lib(/<script>(\/\*!\s*\n\s*\* Chart\.js v[\s\S]*?)<\/script>/);
+const XLSX_JS = lib(/<script>(\/\*! xlsx\.js[\s\S]*?)<\/script>/), CHART_JS = lib(/<script>(\/\*\*\s*\n\s*\* Skipped minification[\s\S]*?)<\/script>/);
 const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
 
 const srv = http.createServer((q, r) => { const f = path.join(pasta, decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/, '/index.html'));
@@ -21,8 +21,8 @@ const srv = http.createServer((q, r) => { const f = path.join(pasta, decodeURICo
   async function abrir(alvo, w = 1400) {
     const ctx = await b.newContext({ viewport: { width: w, height: 1000 }, acceptDownloads: true }); const p = await ctx.newPage(); const erros = [];
     p.on('pageerror', e => erros.push(e.message)); p.on('console', m => { if (m.type() === 'error' && !/favicon/.test(m.text())) erros.push(m.text()); });
-    await ctx.route(/cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net/, r => { pedidos.push(r.request().url());
-      const u = r.request().url(); r.fulfill({ status: 200, contentType: 'text/javascript', body: /xlsx/.test(u) ? XLSX_JS : /chart/i.test(u) ? CHART_JS : '' }); });
+    await ctx.route(/cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|cdn\.sheetjs\.com/, r => { pedidos.push(r.request().url());
+      const u = r.request().url(); r.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body: /xlsx/.test(u) ? XLSX_JS : /chart/i.test(u) ? CHART_JS : '' }); });
     await p.goto(alvo); await p.waitForFunction(() => typeof F !== 'undefined' && F.todas, null, { timeout: 30000 }); return { p, ctx, erros };
   }
   const resumo = async p => p.evaluate(async () => { const R = {};
@@ -33,8 +33,8 @@ const srv = http.createServer((q, r) => { const f = path.join(pasta, decodeURICo
   const A = await abrir('file://' + unico), ra = await resumo(A.p);
   const S = await abrir(URL), rs = await resumo(S.p);
   t(pedidos.some(u => /chart\.umd/.test(u)) && pedidos.some(u => /xlsx\.full/.test(u)), 'Chart.js e SheetJS pedidos à CDN');
-  t(!pedidos.some(u => /jsdelivr/.test(u)), 'reserva jsDelivr não acionada quando a cdnjs responde');
-  t(await S.p.evaluate(() => !!window.Chart && Chart.version === '4.4.1' && !!window.XLSX && XLSX.version === '0.18.5'), 'versões das bibliotecas iguais às do arquivo único');
+  t(!pedidos.some(u => /cdnjs/.test(u)), 'reserva (cdnjs) não acionada quando a CDN principal responde; bibliotecas aceitas pela verificação de integridade (SRI)');
+  t(await S.p.evaluate(() => !!window.Chart && Chart.version === '4.4.1' && !!window.XLSX && XLSX.version === '0.20.3'), 'versões das bibliotecas iguais às do arquivo único');
   t(await S.p.evaluate(() => [...document.styleSheets].some(s => s.href && /styles\.css$/.test(s.href)) && document.querySelectorAll('style').length === 0), 'CSS vem só de styles.css');
   t(JSON.stringify(ra.telas) === JSON.stringify(rs.telas), 'todas as telas desenham o mesmo (gráficos, SVG, tabelas, KPIs)' + (JSON.stringify(ra.telas) === JSON.stringify(rs.telas) ? '' : `\n   único ${JSON.stringify(ra.telas)}\n   separ ${JSON.stringify(rs.telas)}`));
   t(ra.cor === rs.cor && ra.fonte === rs.fonte, `mesmo visual (botão ${rs.cor})`);

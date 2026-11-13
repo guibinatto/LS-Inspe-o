@@ -5,8 +5,8 @@
    Uso:  node ferramentas/separar.js [Painel.html] [pasta-de-saída]
    Saída: index.html (estrutura + bases embutidas), styles.css, app.js
 
-   - Chart.js 4.4.1 e SheetJS 0.18.5 passam a vir de CDN (cdnjs, com jsDelivr de
-     reserva) em vez de embutidos — as mesmas versões do arquivo único.
+   - Chart.js 4.4.1 e SheetJS 0.20.3 passam a vir de CDN, com verificação de
+     integridade (SRI), em vez de embutidos — as mesmas versões do arquivo único.
    - As bases (seed-dados / seed-config) ficam no index.html: são dados, e o
      "↓ Salvar" regrava justamente esses dois blocos.
    - Os <script> da aplicação são concatenados na mesma ordem em app.js. Scripts
@@ -16,14 +16,16 @@ const src = process.argv[2] || path.join(__dirname, '..', 'dados', 'painel-compl
 const out = process.argv[3] || path.join(__dirname, '..', 'versao-separada');
 let h = fs.readFileSync(src, 'utf8').replace(/^﻿/, '');
 
+/* Bibliotecas de CDN com verificação de integridade (SRI): se a CDN entregar outro
+   conteúdo, o navegador recusa. SheetJS 0.20.3 só é distribuída por cdn.sheetjs.com
+   (as versões novas não estão no npm/cdnjs); Chart.js tem jsDelivr de reserva. */
 const CDN = {
-  xlsx: ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-         'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js', 'XLSX'],
-  chart: ['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-          'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js', 'Chart'],
+  xlsx: { g: 'XLSX', urls: [['https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js', 'sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT']] },
+  chart: { g: 'Chart', urls: [['https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js', 'sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4'],
+                              ['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', 'sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD']] },
 };
-const tagCDN = ([a, b, g]) => `<script src="${a}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>\n` +
-  `<script>window.${g}||document.write('<script src="${b}" crossorigin="anonymous"><\\/script>')</script>`;
+const tagCDN = ({ urls, g }) => `<script src="${urls[0][0]}" integrity="${urls[0][1]}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>\n` +
+  (urls[1] ? `<script>window.${g}||document.write('<script src="${urls[1][0]}" integrity="${urls[1][1]}" crossorigin="anonymous"><\\/script>')</script>` : '');
 
 /* separa a página em blocos de nível superior: <script>…</script>, <style>…</style> e o resto.
    O fechamento é procurado literalmente: dentro do JS, "</script>" sempre aparece escapado. */
@@ -46,8 +48,8 @@ for (const b of B) {
   if (b.t === 'html') { if (/<body[\s>]/i.test(b.s)) pos = 'body'; html.push(b.s); continue; }
   if (b.t === 'style') { css.push(b.corpo.trim()); if (css.length === 1) html.push('<link rel="stylesheet" href="styles.css">'); continue; }
   /* script */
-  if (/^\s*\/\*!\s*xlsx\.js/.test(b.corpo)) { html.push(tagCDN(CDN.xlsx)); nLib++; continue; }
-  if (/^\s*\/\*!\s*\n?\s*\*\s*Chart\.js v/.test(b.corpo)) { html.push(tagCDN(CDN.chart)); nLib++; continue; }
+  if (/xlsx\.js \(C\)/.test(b.corpo.slice(0, 300))) { html.push(tagCDN(CDN.xlsx)); nLib++; continue; }
+  if (/\* Chart\.js v4/.test(b.corpo.slice(0, 600))) { html.push(tagCDN(CDN.chart)); nLib++; continue; }
   if (/\bid=["']seed-/.test(b.attrs) || /type=["']application\/json/.test(b.attrs)) { html.push(b.s); continue; }
   if (pos === 'head') { html.push(b.s); continue; }   /* script de cabeçalho (ex.: tema) fica onde está */
   js.push(b.corpo.replace(/^\n+|\s+$/g, ''));
