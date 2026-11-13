@@ -47,32 +47,55 @@ def ctx():
 CTX = ctx()
 
 
+class _SemRedirecionar(urllib.request.HTTPRedirectHandler):
+    """Redirecionamento é recusado: a chave (User-Key) nunca segue para outro endereço."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise SystemExit(f'Ploomes respondeu redirecionamento {code} para {newurl}: coleta interrompida')
+
+
+ABRIR = urllib.request.build_opener(urllib.request.HTTPSHandler(context=CTX), _SemRedirecionar()).open
+
+
 def get(caminho, params):
     url = f"{API}/{caminho}?" + urllib.parse.urlencode(params, safe="$(),;=' ")
     for tent in range(4):
         try:
             req = urllib.request.Request(url, method='GET', headers={'User-Key': CHAVE, 'Accept': 'application/json'})
-            with urllib.request.urlopen(req, context=CTX, timeout=120) as r:
+            with ABRIR(req, timeout=120) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
             if e.code in (429, 500, 502, 503, 504) and tent < 3:
                 time.sleep(2 ** (tent + 1)); continue
             raise SystemExit(f'Ploomes respondeu {e.code} em {caminho}: {e.read()[:300]!r}')
-        except urllib.error.URLError:
-            if tent < 3:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, json.JSONDecodeError):
+            if tent < 3:   # rede instável ou leitura interrompida: tenta de novo
                 time.sleep(2 ** (tent + 1)); continue
             raise
 
 
+def contar(caminho, params):
+    p = {k: v for k, v in params.items() if k == '$filter'}
+    return get(caminho, dict(p, **{'$top': 0, '$count': 'true'})).get('@odata.count')
+
+
 def todos(caminho, params):
-    out, skip = [], 0
-    while True:
-        p = dict(params, **{'$top': PAG, '$skip': skip, '$orderby': 'Id'})
-        v = get(caminho, p).get('value', [])
-        out += v
-        if len(v) < PAG:
+    """Pagina por Id e confere o total: registros criados/apagados durante a coleta
+    deslocariam as páginas e uma coleta incompleta seria publicada. Se o total não
+    bater, coleta de novo; se ainda não bater, para."""
+    for tent in range(2):
+        esperado = contar(caminho, params)
+        out, skip = [], 0
+        while True:
+            p = dict(params, **{'$top': PAG, '$skip': skip, '$orderby': 'Id'})
+            v = get(caminho, p).get('value', [])
+            out += v
+            if len(v) < PAG:
+                break
+            skip += PAG
+        ids = {x.get('Id') for x in out}
+        if esperado is None or (len(ids) == len(out) == esperado):
             return out
-        skip += PAG
+    raise SystemExit(f'{caminho}: coleta com {len(out)} registros ({len(ids)} distintos) e o Ploomes informa {esperado}; dados mudaram durante a coleta — rode de novo')
 
 
 def dt(s):
@@ -98,6 +121,21 @@ def op(obj, chave):
     return None
 
 
+import re as _re
+_RX_MAIL = _re.compile(r'[\w.+-]+@[\w-]+(\.[\w-]+)+')
+_RX_FONE = _re.compile(r'(\+?55[\s.-]?)?\(?\b\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}\b')
+
+
+def sem_pessoais(t, lim=500):
+    """Texto livre de interação (corpo de e-mail etc.): mascara e-mails e telefones de
+    terceiros e limita o tamanho. O painel não usa esses dados; assim eles não circulam
+    no painel publicado."""
+    if not t:
+        return t
+    t = _RX_FONE.sub('[telefone]', _RX_MAIL.sub('[e-mail]', str(t)))
+    return t if len(t) <= lim else t[:lim] + '…'
+
+
 def nome(o, *ch):
     for c in ch:
         o = (o or {}).get(c)
@@ -110,6 +148,9 @@ def salvar(pasta, arq, cab, linhas):
     ws.append(cab)
     for l in linhas:
         ws.append([l.get(c) for c in cab])
+        for cel in ws[ws.max_row]:   # texto do Ploomes que começa com "=" é TEXTO, não fórmula
+            if isinstance(cel.value, str) and cel.value[:1] in '=+-@':
+                cel.data_type = 's'
     wb.save(os.path.join(pasta, arq))
     return len(linhas)
 
@@ -204,7 +245,7 @@ def main(pasta):
                       'Cidade do Cliente': nome(i, 'Contact', 'City', 'Name'), 'Estado do Cliente': nome(i, 'Contact', 'State', 'Short'),
                       'Data': dt(i.get('Date')), 'Tipo': nome(i, 'Type', 'Name'), 'Check-in verificado': i.get('VerifiedCheckIn'),
                       'Data de CheckOut': dt(i.get('CheckOutDate')), 'Duração': i.get('DurationInSeconds'),
-                      'Endereço': i.get('CheckInAddress') or i.get('Address'), 'Descrição do Tarefa origem': i.get('Content'),
+                      'Endereço': i.get('CheckInAddress') or i.get('Address'), 'Descrição do Tarefa origem': sem_pessoais(i.get('Content')),
                       'Título do Negócio': dl.get('Title'), 'Código da Proposta do Negócio': lq.get('QuoteNumber'),
                       'Responsável do Negócio': nome(dl, 'Owner', 'Name')})   # sem 'Usuário': e-mails sincronizados vêm com o dono da integração como criador
 

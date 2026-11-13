@@ -9,3 +9,4 @@ apresentacao-teste/fonte/dados.json
 apresentacao-teste/*.html
 *.xlsx
 *.csv
+__pycache__/

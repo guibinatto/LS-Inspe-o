@@ -1239,7 +1239,16 @@ const fmtN=v=>(v==null||isNaN(v))?'—':Number(v).toLocaleString('pt-BR',{maximu
 const fmtD=(v,d=1)=>(v==null||isNaN(v))?'—':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtPct=(v,d=1)=>(v==null||isNaN(v)||!isFinite(v))?'—':fmtD(v*100,d)+'%';
 const fmtData=d=>d instanceof Date&&!isNaN(d)?d.toLocaleDateString('pt-BR'):'—';
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* valor vindo de dados (planilha, Ploomes, JSON importado) dentro de um atributo de evento
+   (onclick="f(...)"): vira string JS válida (JSON) e depois é escapado para HTML.
+   Nunca interpolar dado cru entre aspas simples num onclick. */
+const jsq=v=>esc(JSON.stringify(v==null?'':String(v)));
+const _escA=c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]);
+/* célula de CSV: texto que começa com = + - @ (ou tab/CR) viraria FÓRMULA no Excel
+   (ex.: um nome de cliente "=HYPERLINK(...)" vindo de planilha) — ganha um apóstrofo.
+   Números negativos ("-1.234,56") continuam números. */
+const csvCel=v=>{ let t=String(v==null?'':v); if(/^[=+\-@\t\r]/.test(t)&&!/^-?[\d.,\sR$%]+$/.test(t))t="'"+t; return '"'+t.replace(/"/g,'""')+'"'; };
 /* DATA DE REFERÊNCIA DA ANÁLISE: tudo que diz "hoje" (mês em curso, meta até
    hoje, vencido, atrasado, parado) usa esta data. Padrão = data do computador;
    o usuário pode fixar outra para reproduzir um relatório passado. */
@@ -3049,7 +3058,7 @@ function fecharDrill(id){const el=document.getElementById('dr-'+id);if(el)el.inn
 function baixarDrill(id){
   const d=DRILL[id]; if(!d)return;
   const defs=d.defs||COLS_DRILL[d.t]||[]; const lin=[defs.map(x=>'"'+x[0]+'"').join(';')];
-  const lim=s=>'"'+String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/"/g,'""')+'"';
+  const lim=s=>csvCel(String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&'));
   d.itens.forEach(x=>lin.push(defs.map(c=>lim(c[1](x))).join(';')));
   baixar(lin.join('\n'),`drill-${id}-${new Date().toISOString().slice(0,10)}.csv`,'text/csv;charset=utf-8');
 }
@@ -3254,15 +3263,15 @@ function montarFiltros(){
   const cx=document.getElementById('filtros'); if(!cx)return;
   const chips=[];
   DIMS.forEach(d=>{ (EST.dims[d.id]||new Set()).forEach(v=>
-    chips.push(`<span class="chip"><b>${d.rot}</b> ${esc(v)} <span onclick="tirarDim('${d.id}',${JSON.stringify(v).replace(/"/g,'&quot;')})">✕</span></span>`)); });
+    chips.push(`<span class="chip"><b>${d.rot}</b> ${esc(v)} <span onclick="tirarDim(${jsq(d.id)},${JSON.stringify(v).replace(/[&"<>]/g,_escA)})">✕</span></span>`)); });
   const nAt=Object.values(EST.dims).filter(x=>x&&x.size).length;
   cx.innerHTML=`<button class="f-tog" onclick="this.parentElement.classList.toggle('aberto')">☰ Filtros${nAt?` (${nAt})`:''}</button><div class="f-corpo"><span class="rot">Filtros</span>`
     +DIMS.map(d=>{ const vs=valoresDim(d); if(!vs.length)return '';
       const sel=EST.dims[d.id]||new Set();
       const bases=[d.v.venda?'vendas':null,d.v.neg?'negócios':null,d.v.ped?'pedidos':null,d.v.emp?'clientes':null].filter(Boolean);
-      return `<div class="fdrop"><button title="Filtra ${bases.join(', ')} — e as vendas derivadas deles" class="${sel.size?'ativo':''}" onclick="abrirDrop(event,'${d.id}')">${d.rot}${sel.size?`<span class="cnt">${sel.size}</span>`:''} ▾</button>
+      return `<div class="fdrop"><button title="Filtra ${bases.join(', ')} — e as vendas derivadas deles" class="${sel.size?'ativo':''}" onclick="abrirDrop(event,${jsq(d.id)})">${d.rot}${sel.size?`<span class="cnt">${sel.size}</span>`:''} ▾</button>
         <div class="fop" id="fop-${d.id}">${vs.map(v=>
-          `<label><input type="checkbox" ${sel.has(v)?'checked':''} onchange="marcaDim('${d.id}',this.value,this.checked)" value="${esc(v)}">${esc(v)}</label>`).join('')}</div></div>`;
+          `<label><input type="checkbox" ${sel.has(v)?'checked':''} onchange="marcaDim(${jsq(d.id)},this.value,this.checked)" value="${esc(v)}">${esc(v)}</label>`).join('')}</div></div>`;
     }).join('')
     +(chips.length?chips.join('')+`<button class="fdrop" style="all:unset;cursor:pointer;font-size:10.5px;color:var(--txt3);padding:4px 8px" onclick="limparDims()">✕ limpar tudo</button>`:'')+'</div>';
 }
@@ -3362,7 +3371,7 @@ function iniciar(){
   construir(); marcarUF();
   document.getElementById('nav').innerHTML=TELAS.map((t,i)=>
     (i===0||TELAS[i-1].bloco!==t.bloco?`<div class="nav-bloco">${t.bloco}</div>`:'')
-    +`<button data-t="${t.id}" onclick="irTela('${t.id}')" title="${esc(t.nome)}" aria-label="${esc(t.nome)}"><span class="ic" aria-hidden="true">${t.ic}</span><span class="nm">${t.nome}</span></button>`).join('')
+    +`<button data-t="${t.id}" onclick="irTela(${jsq(t.id)})" title="${esc(t.nome)}" aria-label="${esc(t.nome)}"><span class="ic" aria-hidden="true">${t.ic}</span><span class="nm">${t.nome}</span></button>`).join('')
     +`<button class="rec" onclick="recolherMenu()" aria-label="Recolher ou expandir o menu" title="Recolher/expandir o menu">⇤⇥</button>`;
   try{ if(localStorage.getItem('lsfire-railmin')==='1')document.querySelector('.app').classList.add('rail-min'); }catch(e){}
   try{const r=localStorage.getItem('lsfire-rot');if(r!==null)CFG.rotulos=r==='1';}catch(e){}
@@ -3675,11 +3684,11 @@ function treemap(id,grupos,rotQ){
   const desenho=(W,H,cls,cabeNome)=>`<div class="tree ${cls}" style="aspect-ratio:${W}/${H}">${squarify(gs.map((g,i)=>({v:g.t,i})),W,H).map(z=>{
       const g=gs[z.i], nome=cabeNome(z.w,z.h), num=cabeNome(z.w*1.8,z.h*1.8);
       return `<div class="tree-c" style="left:${(z.x/W*100).toFixed(3)}%;top:${(z.y/H*100).toFixed(3)}%;width:${(z.w/W*100).toFixed(3)}%;height:${(z.h/H*100).toFixed(3)}%;background:${g.cor}"
-        onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/"/g,'&quot;')},TREES['${id}'][${z.i}].itens)" title="${esc(g.k)}: ${fmtCompacto(g.t)} · ${fmtN(g.n)} ${rotQ}">
+        onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/[&"<>]/g,_escA)},TREES['${id}'][${z.i}].itens)" title="${esc(g.k)}: ${fmtCompacto(g.t)} · ${fmtN(g.n)} ${rotQ}">
         <em>${z.i+1}</em>${nome?`<b>${esc(g.k)}</b><span>${fmtPct(g.t/tot,0)}</span>`:(num?`<span>${fmtPct(g.t/tot,0)}</span>`:'')}</div>`;}).join('')}</div>`;
   return `<div class="card"><div class="unid">Valores em ${e.rot}</div>
     ${desenho(1000,380,'tree-largo',(w,h)=>w>125&&h>60)}${desenho(1000,1000,'tree-alto',(w,h)=>w>420&&h>200)}
-    <ol class="tree-leg">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/"/g,'&quot;')},TREES['${id}'][${i}].itens)">
+    <ol class="tree-leg">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/[&"<>]/g,_escA)},TREES['${id}'][${i}].itens)">
       <em style="background:${g.cor}">${i+1}</em><span class="tl-k">${esc(g.k)}${g.outros?`<small>${esc(g.outros.map(o=>o.k).join(', '))}</small>`:''}</span>
       <span class="tl-v"><b>${e.f(g.t)}</b> ${fmtPct(g.t/tot,0)}</span><span class="tl-n">${fmtN(g.n)} ${rotQ}</span></li>`).join('')}</ol>
     <p class="tree-nota so-tela">Clique num bloco ou numa linha para ver os negócios.</p><div class="drill" id="dr-${id}"></div></div>`;
@@ -3741,7 +3750,7 @@ function rankIcones(id,grupos,rotQ,oque){
     +(tk?`Maior ticket: <b>${esc(tk.k)}</b>, ${fmtCompacto(tk.v)} por negócio (a média é ${fmtCompacto(tot/totN)}).`:'');
   return `<div class="card ico-rank"><div class="unid">Valores em ${e.rot}</div>
     <div class="ico-cab"><span></span><span></span><span>em R$</span><span>em ${rotQ}</span></div>
-    <ol class="ico-lista">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/"/g,'&quot;')},ICOS['${id}'][${i}].itens)" title="${esc(g.k)}: ${fmtCompacto(g.t)} · ${fmtN(g.n)} ${rotQ}">
+    <ol class="ico-lista">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/[&"<>]/g,_escA)},ICOS['${id}'][${i}].itens)" title="${esc(g.k)}: ${fmtCompacto(g.t)} · ${fmtN(g.n)} ${rotQ}">
       <span class="ico${i===0?' um':''}">${svgIc(g.outros?'mais':iconeDe(g.k))}</span>
       <span class="ico-k">${esc(g.k)}<small>${g.outros?esc(g.outros.map(o=>o.k).join(', ')):`ticket ${fmtCompacto(g.n?g.t/g.n:0)}`}</small></span>
       <span class="ico-b"><span class="ico-tr"><i style="width:${(g.t/mxT*100).toFixed(1)}%"></i></span><span class="ico-v"><b>${e.f(g.t)}</b>${fmtPct(g.t/tot,0)}</span></span>
@@ -3753,7 +3762,7 @@ function rankIcones(id,grupos,rotQ,oque){
 const RANKS={};
 function ranking(id,grupos,rotQ,cor){
   const gs=[...grupos].sort((a,b)=>b.t-a.t), mx=Math.max(1,...gs.map(g=>g.t)), tot=somar(gs,g=>g.t)||1, e=escalaR(mx); RANKS[id]=gs;
-  return `<div class="card"><div class="unid">Valores em ${e.rot}</div><ol class="rank">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/"/g,'&quot;')},RANKS['${id}'][${i}].itens)">
+  return `<div class="card"><div class="unid">Valores em ${e.rot}</div><ol class="rank">${gs.map((g,i)=>`<li onclick="abrirDrill('${id}',${JSON.stringify(String(g.k)).replace(/[&"<>]/g,_escA)},RANKS['${id}'][${i}].itens)">
     <span class="rank-n">${i+1}</span><span class="rank-k">${esc(g.k)}</span>
     <span class="rank-b"><i style="width:${(g.t/mx*100).toFixed(1)}%;background:${cor||COR().lar}"></i></span>
     <span class="rank-v"><b>${e.f(g.t)}</b> ${fmtPct(g.t/tot,0)}</span><span class="rank-q">${fmtN(g.n)} ${rotQ}</span></li>`).join('')}</ol>
@@ -5068,7 +5077,7 @@ function funilEstagios(id,neg,gan,perd){   /* era funilEtapas: colidia com o fun
   FE=cols.map(([,v])=>v); const tot=somar(neg,n=>n.vNum||0)||1, totN=neg.length||1;
   return `<div class="fe-wrap"><div class="fe">${cols.map(([e,v],i)=>{ const pre=ordemEstagio(e)<ORDEM_FUNIL.indexOf('apresenta'), lim=pre?sla:par;
       const t=somar(v,n=>n.vNum||0), sq=v.filter(n=>divDe(n)==='SEQ'), sp=v.filter(n=>divDe(n)==='SPV'), md=kMediana(v.map(dias)), at=v.filter(n=>dias(n)>lim);
-      return `<div class="fe-p${i===0?' ini':''}" onclick="abrirDrill('${id}',${JSON.stringify(e).replace(/"/g,'&quot;')},FE[${i}])">
+      return `<div class="fe-p${i===0?' ini':''}" onclick="abrirDrill('${id}',${JSON.stringify(e).replace(/[&"<>]/g,_escA)},FE[${i}])">
         <h6>${esc(e)}</h6><b>${fmtN(v.length)}</b><span class="fe-n">negócio${v.length===1?'':'s'} · ${fmtPct(v.length/totN,0)}</span>
         <span class="fe-r">${fmtCompacto(t)} <small>${fmtPct(t/tot,0)}</small></span>
         <span class="fe-div">${sq.length?`<i class="seq" style="flex:${sq.length}">${sq.length}</i>`:''}${sp.length?`<i class="spv" style="flex:${sp.length}">${sp.length}</i>`:''}</span>
@@ -5520,7 +5529,7 @@ function painelOrc(){
   const an=[...agrupa(fila,z=>analista(z.n.orc)).entries()].map(([k,v])=>({k,v,seq:v.filter(z=>dv(z.n)==='SEQ').length,spv:v.filter(z=>dv(z.n)==='SPV').length,t:somar(v,z=>z.n.vNum||0)})).sort((a,b)=>b.v.length-a.v.length);
   const mx=Math.max(1,...an.map(a=>a.v.length));
   ORC_FILA=an;
-  h+=`<h5>Fila atual por analista · negócios em cotação</h5>${an.map((a,i)=>`<div class="orc-lin" onclick="abrirDrill('orc-fila',${JSON.stringify('Fila · '+nomeCurto(a.k)).replace(/"/g,'&quot;')},ORC_FILA[${i}].v.map(z=>z.n))">
+  h+=`<h5>Fila atual por analista · negócios em cotação</h5>${an.map((a,i)=>`<div class="orc-lin" onclick="abrirDrill('orc-fila',${JSON.stringify('Fila · '+nomeCurto(a.k)).replace(/[&"<>]/g,_escA)},ORC_FILA[${i}].v.map(z=>z.n))">
       <b>${a.k==='(sem analista)'?'sem analista':esc(nomeCurto(a.k))}</b>
       <span class="orc-bar" style="width:${(a.v.length/mx*100).toFixed(1)}%">${a.seq?`<i class="seq" style="flex:${a.seq}">${a.seq}</i>`:''}${a.spv?`<i class="spv" style="flex:${a.spv}">${a.spv}</i>`:''}</span>
       <em>${fmtN(a.v.length)} · ${fmtCompacto(a.t)}</em></div>`).join('')}
@@ -5979,14 +5988,14 @@ function secPlano(){
       <span class="pl-alertas">${nV?`<span class="kg-cond err">${fmtN(nV)} vencida(s)</span>`:''}${nP?`<span class="kg-cond">${fmtN(nP)} vence(m) em até ${CRIT().proxDias} dias</span>`:''}</span></div>
     ${vis.length?`<div class="tw"><table class="plano-t"><thead><tr><th>Prioridade</th><th>Tema</th><th>Origem (indicador/registro)</th><th>Evidência</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th>Observações</th><th></th></tr></thead><tbody>
     ${vis.map(a=>{ const ps=prazoSit(a); return `<tr class="st-${norm(a.status||'').replace(/ /g,'-')} pz-${norm(ps).replace(/ /g,'-')}"><td>${sel(a.id,'prioridade',PLANO_PRIOR,a.prioridade)}</td><td>${sel(a.id,'tema',PLANO_TEMAS,a.tema)}</td>
-      <td><textarea class="campo" rows="2" onchange="planoSet('${a.id}','origem',this.value)">${esc(a.origem||'')}</textarea></td>
-      <td><textarea class="campo" rows="2" onchange="planoSet('${a.id}','evidencia',this.value)">${esc(a.evidencia)}</textarea></td>
-      <td><textarea class="campo" rows="2" onchange="planoSet('${a.id}','acao',this.value)">${esc(a.acao)}</textarea></td>
-      <td><input class="campo" list="dl-resp" value="${esc(a.resp)}" placeholder="—" onchange="planoSet('${a.id}','resp',this.value)"></td>
-      <td><input class="campo" type="date" value="${esc(a.prazo)}" onchange="planoSet('${a.id}','prazo',this.value)">${ps==='vencida'?'<span class="kg-cond err">vencida</span>':ps==='próxima'?'<span class="kg-cond">próxima</span>':''}</td>
+      <td><textarea class="campo" rows="2" onchange="planoSet(${jsq(a.id)},'origem',this.value)">${esc(a.origem||'')}</textarea></td>
+      <td><textarea class="campo" rows="2" onchange="planoSet(${jsq(a.id)},'evidencia',this.value)">${esc(a.evidencia)}</textarea></td>
+      <td><textarea class="campo" rows="2" onchange="planoSet(${jsq(a.id)},'acao',this.value)">${esc(a.acao)}</textarea></td>
+      <td><input class="campo" list="dl-resp" value="${esc(a.resp)}" placeholder="—" onchange="planoSet(${jsq(a.id)},'resp',this.value)"></td>
+      <td><input class="campo" type="date" value="${esc(a.prazo)}" onchange="planoSet(${jsq(a.id)},'prazo',this.value)">${ps==='vencida'?'<span class="kg-cond err">vencida</span>':ps==='próxima'?'<span class="kg-cond">próxima</span>':''}</td>
       <td>${sel(a.id,'status',PLANO_STATUS,a.status)}</td>
-      <td><textarea class="campo" rows="2" onchange="planoSet('${a.id}','obs',this.value)">${esc(a.obs)}</textarea></td>
-      <td><button class="pl-x so-tela" title="Remover" onclick="planoTira('${a.id}')">✕</button></td></tr>`; }).join('')}</tbody></table></div>`
+      <td><textarea class="campo" rows="2" onchange="planoSet(${jsq(a.id)},'obs',this.value)">${esc(a.obs)}</textarea></td>
+      <td><button class="pl-x so-tela" title="Remover" onclick="planoTira(${jsq(a.id)})">✕</button></td></tr>`; }).join('')}</tbody></table></div>`
     :`<p class="pl-vazio">${L.length?'Nenhuma ação com estes filtros.':'Nenhuma ação registrada. O plano só traz o que o gestor decidir incluir.'}</p>`}
     <div class="pl-bar so-tela"><button class="btn sec" onclick="planoNovo()">＋ ação</button>
       <span>${fmtN(L.length)} no total · ${fmtN(L.filter(a=>a.status==='Concluída').length)} concluída(s) · ${fmtN(L.filter(a=>a.status==='Em andamento').length)} em andamento · ${fmtN(L.filter(a=>!a.status||a.status==='Não iniciada').length)} não iniciada(s)</span></div></div>`;
@@ -6018,7 +6027,7 @@ function tabelaDivisoes(){
   const pv=d=>previsaoPedidos(F.ab.filter(n=>d?divDe(n)===d:!['SEQ','SPV'].includes(divDe(n))));
   const sfD=d=>somar(sf.it.filter(x=>d?x.div===d:!['SEQ','SPV'].includes(x.div)),x=>x.vNum||0);
   /* cada valor abre os registros que o compõem */
-  window.DIVREG={}; const lk=(k,tit,its,txt)=>{ DIVREG[k]=its; return its&&its.length?`<a class="td-link" onclick="abrirDrill('xdiv',${JSON.stringify(tit).replace(/"/g,'&quot;')},DIVREG['${k}'])">${txt}</a>`:txt; };
+  window.DIVREG={}; const lk=(k,tit,its,txt)=>{ DIVREG[k]=its; return its&&its.length?`<a class="td-link" onclick="abrirDrill('xdiv',${JSON.stringify(tit).replace(/[&"<>]/g,_escA)},DIVREG['${k}'])">${txt}</a>`:txt; };
   const fdv=d=>x=>d?divDe(x)===d:!['SEQ','SPV'].includes(divDe(x)), nm=d=>d||'Sem divisão';
   const lin=d=>{ const r=real(d), m=d?metaD(d):null, an=antD(d), p=pv(d), k=d||'sd';
     return [d?`<b>${d}</b>`:'Sem divisão identificada',lk(k+'r',`${nm(d)} · pedidos recebidos`,F.vendas.filter(fdv(d)),fmtBRL(r)),m?fmtBRL(m):'<span class="nd">—</span>',m?`<b style="color:var(--${corRitmo(r/m)})">${fmtPct(r/m,0)}</b>`:'—',
@@ -7367,7 +7376,7 @@ VISTA.dados=function(){
   if(DADOS_ABA==='prob'){
     h+=card('Política de probabilidade','Uma política para o painel inteiro (valor ponderado do pipeline e previsão de pedidos), pela classificação do negócio. Valores convencionais: ajuste com a diretoria quando houver base histórica.',
       tab([{t:'Classificação',f:1},{t:'Camada',f:1},{t:'Probabilidade (%)',n:1},{t:'Entra na previsão',f:1}],
-        POL().map(x=>[esc(x.k),esc(ROT_CAMADA[x.camada]),`<input class="campo" type="number" min="0" max="100" step="5" value="${fmtD(x.p*100,0).replace(/\./g,'')}" style="width:80px;text-align:right" onchange="setProb(${JSON.stringify(x.k).replace(/"/g,'&quot;')},this.value)">`,x.entra?'sim':'não']))
+        POL().map(x=>[esc(x.k),esc(ROT_CAMADA[x.camada]),`<input class="campo" type="number" min="0" max="100" step="5" value="${fmtD(x.p*100,0).replace(/\./g,'')}" style="width:80px;text-align:right" onchange="setProb(${JSON.stringify(x.k).replace(/[&"<>]/g,_escA)},this.value)">`,x.entra?'sim':'não']))
       +`<div class="pl-bar"><button class="btn sec" onclick="CFG.probs={};render()">Voltar ao padrão</button></div>`);
   }
   if(DADOS_ABA==='conc'){
@@ -7392,7 +7401,7 @@ VISTA.dados=function(){
       amb.length?tab([{t:'Proposta',f:1},{t:'Cliente',f:1},{t:'Valor',n:1},{t:'Vínculo',f:1}],
         amb.map(p=>{ const m=negDaProposta(p.cod,p.nCli), cs=(m.cands&&m.cands.length?m.cands:(negDaProposta(null,p.nCli).cands||[])), man=(CFG.vincProp||{})[p.cod];
           return [esc(p.cod),esc(String(p.cli).slice(0,30)),fmtBRL(somar(M.propostas.filter(x=>x.cod===p.cod&&x.rev===p.rev),x=>x.total)),
-            `<select class="campo" onchange="setVincProp(${JSON.stringify(String(p.cod)).replace(/"/g,'&quot;')},this.value)"><option value="">— sem vínculo (ambíguo) —</option>${cs.map(n=>`<option value="${esc(n.id)}"${String(man)===String(n.id)?' selected':''}>#${esc(n.id)} · ${esc(n.sit)} · ${esc(String(n.titulo||'').slice(0,40))} · ${fmtCompacto(n.vNum||0)}</option>`).join('')}</select>`]; }))
+            `<select class="campo" onchange="setVincProp(${JSON.stringify(String(p.cod)).replace(/[&"<>]/g,_escA)},this.value)"><option value="">— sem vínculo (ambíguo) —</option>${cs.map(n=>`<option value="${esc(n.id)}"${String(man)===String(n.id)?' selected':''}>#${esc(n.id)} · ${esc(n.sit)} · ${esc(String(n.titulo||'').slice(0,40))} · ${fmtCompacto(n.vNum||0)}</option>`).join('')}</select>`]; }))
       :'<p class="pl-vazio">Nenhuma proposta ambígua.</p>');
     const cart=(M.carteira||[]).filter(c=>c.vinc&&c.vinc.conf!=='alta');
     h+=card('Carteira × Controle de Pedidos: vínculos inferidos ou ausentes','Alta = nº do PV + cliente ou valor. Média/baixa = inferido. Sem = não ligado (sem vendedor, divisão e entrega).',
@@ -7861,7 +7870,7 @@ function abrirLista(k,alvo){ const L=SUPL[k]; if(!L)return; const el=document.ge
     <button onclick="baixarLista('${k}')">↓ CSV</button><button onclick="document.getElementById('${alvo||'sup-lista'}').innerHTML=''">✕ fechar</button></div>
     ${L.linhas.length?tab(L.cols.map(c=>typeof c==='string'?{t:c}:c),L.linhas.slice(0,400),400):'<div class="vazio">Nada nesta lista.</div>'}</div>`;
   el.scrollIntoView({behavior:'smooth',block:'nearest'}); }
-function baixarLista(k){ const L=SUPL[k]; if(!L)return; const lim=s=>'"'+String(s==null?'':s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/"/g,'""')+'"';
+function baixarLista(k){ const L=SUPL[k]; if(!L)return; const lim=s=>csvCel(String(s==null?'':s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"'));
   baixar([L.cols.map(c=>lim(typeof c==='string'?c:c.t)).join(';')].concat(L.linhas.map(r=>r.map(lim).join(';'))).join('\n'),`lista-${k}-${isoD(hoje())}.csv`,'text/csv;charset=utf-8'); }
 const lnk=(k,txt)=>`<a class="td-link" onclick="abrirLista('${k}')">${txt}</a>`;
 /* pendências de um negócio aberto, com os mesmos critérios em todas as telas */
@@ -7876,9 +7885,9 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
   return [`${lnkNeg(n,`<b>${esc(String(n.cli).slice(0,38))}</b>`)}<br><small>${esc(nomeCurto(n.resp)||n.resp||'—')}${n.div?' · '+esc(n.div):''}</small>`,fmtBRL(n.vNum||0),
     `${esc(String(n.est||'—').slice(0,26))}<br><small>${n.estFunil?'no funil: '+esc(n.estFunil)+' · ':''}${n.diasEst!=null?fmtN(n.diasEst)+' dias na etapa':''}</small>`,
     ui?`${fmtData(ui.dt)}${ui.nivel==='cliente'?'<br><small>(no cliente)</small>':''}`:'<span class="nd-m">nenhuma</span>',
-    pa?`${pa.dt?fmtData(pa.dt)+'<br>':''}<small>${esc(String(pa.txt).slice(0,40))}</small>${pa.passo?` <a class="td-link so-tela" onclick="passoEditar('${pa.passo.id}')">editar</a>`:''}`:'<span class="kg-cond">sem próximo passo</span>',
+    pa?`${pa.dt?fmtData(pa.dt)+'<br>':''}<small>${esc(String(pa.txt).slice(0,40))}</small>${pa.passo?` <a class="td-link so-tela" onclick="passoEditar(${jsq(pa.passo.id)})">editar</a>`:''}`:'<span class="kg-cond">sem próximo passo</span>',
     `${n.dtPrev?`<span style="color:${n.dtPrev<R?'var(--err)':'inherit'}">${fmtData(n.dtPrev)}</span>`:'sem data'}<br><small>${esc(ROT_CAMADA[camadaNeg(n)]||camadaNeg(n)||'—')}</small>`,
-    `<small>${esc((extra||pendenciasNeg(n)).join(' · '))}</small>`,`<button class="mini so-tela" onclick="novoPasso('${n.id}')" title="Registrar próximo passo">＋ passo</button>`]; }
+    `<small>${esc((extra||pendenciasNeg(n)).join(' · '))}</small>`,`<button class="mini so-tela" onclick="novoPasso(${jsq(n.id)})" title="Registrar próximo passo">＋ passo</button>`]; }
 
 /* ======================= CENTRAL DE SUPERVISÃO ======================= */
 VISTA.supervisao=function(){
@@ -7888,7 +7897,7 @@ VISTA.supervisao=function(){
   const semP=ab.filter(n=>!proximaAtividade(n)), fila=F.neg.filter(naFilaOrc), filaAtr=fila.filter(n=>n.dtCri&&diasDe(n.dtCri,ref)>sla);
   const prevV=ab.filter(n=>n.dtPrev&&n.dtPrev<R), acV=recorte('acao',CFG.plano).filter(a=>prazoSit(a)==='vencida');
   regLista('crit',`Pendências críticas — pontuação ≥ ${K.limiarCritico}`,crit.map(x=>[...linhaNeg(x.n,[`${x.score} pts`,...x.mot])]),COLS_NEG);
-  regLista('passosV','Próximos passos vencidos (registrados no painel)',passosV.map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),fmtData(data(p.prazo)),fmtN(diasDe(data(p.prazo),R))+' dias',`<button class="mini so-tela" onclick="passoEditar('${p.id}')">atualizar</button>`]),['Cliente','Passo','Responsável','Prazo','Atraso','']);
+  regLista('passosV','Próximos passos vencidos (registrados no painel)',passosV.map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),fmtData(data(p.prazo)),fmtN(diasDe(data(p.prazo),R))+' dias',`<button class="mini so-tela" onclick="passoEditar(${jsq(p.id)})">atualizar</button>`]),['Cliente','Passo','Responsável','Prazo','Atraso','']);
   regLista('semP','Oportunidades sem próximo passo',semP.sort((a,b)=>(b.vNum||0)-(a.vNum||0)).map(n=>linhaNeg(n)),COLS_NEG);
   regLista('filaAtr',`Propostas atrasadas — fila de cotação acima do SLA de ${sla} dias`,filaAtr.map(n=>[esc(n.cli),esc(analista(n.orc)),esc(n.resp),fmtBRL(n.vNum||0),fmtData(n.dtCri),fmtN(diasDe(n.dtCri,ref))+' dias',esc(n.est)]),['Cliente','Analista','Vendedor','Valor','Entrou em','Espera','Etapa']);
   regLista('prevV','Previsões de fechamento vencidas',prevV.sort((a,b)=>a.dtPrev-b.dtPrev).map(n=>linhaNeg(n)),COLS_NEG);
@@ -7942,7 +7951,7 @@ VISTA.supervisao=function(){
       cp=CFG.comp.filter(c=>c.vend===v&&c.tipo==='vendedor').sort((x,y)=>x.em<y.em?1:-1)[0], acv=(CFG.plano||[]).filter(x=>x.resp===v&&prazoSit(x)==='vencida'), k=norm(v).replace(/ /g,'_');
     regLista('v_sp_'+k,`${v} — sem próximo passo`,sp.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_pv_'+k,`${v} — previsões vencidas`,pvv.map(n=>linhaNeg(n)),COLS_NEG);
     regLista('v_in_'+k,`${v} — negócios sem interação registrada no próprio negócio há mais de ${K.diasSemAtiv} dias`,ina.map(n=>linhaNeg(n)),COLS_NEG);
-    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/"/g,'&quot;')})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,
+    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/[&"<>]/g,_escA)})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,
       sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',pvv.length?lnk('v_pv_'+k,fmtN(pvv.length)):'0',ina.length?lnk('v_in_'+k,fmtN(ina.length)):'0',fmtN(it.length),
       `${fmtCompacto(pv)}${mt&&mt.valor?` <small>(${fmtPct(pv/mt.valor,0)} da meta)</small>`:''}`,cp?`${fmtCompacto(cp.total)} <small>em ${fmtData(new Date(cp.em))}</small>`:'<span class="nd-m">não registrado</span>',acv.length?`<b style="color:var(--err)">${acv.length}</b>`:'0']; });
   h+=sec('Situação por vendedor','Posição do pipeline na referência e movimento no período. Os números abrem a lista; o nome abre a ficha individual. Sem ranking: a comparação depende de carteira, região e divisão de cada um.','sup-vend');
@@ -7955,7 +7964,7 @@ VISTA.supervisao=function(){
   /* intervenção */
   h+=sec('Negócios que precisam de intervenção',`Ordenados pela pontuação (0–100) com os critérios ao lado: valor (até ${fmtCompacto(K.valorRef)}), prazo/proximidade do fechamento (${K.diasFech} dias), tempo sem atividade (> ${K.diasSemAtiv} dias), reincidência (adiamentos observados entre cargas e compromissos não cumpridos) e importância da conta (conta A).`,'sup-int');
   h+=card('','',tab([{t:'Pontos',n:1},...COLS_NEG.slice(0,-1),{t:''}],iv.slice(0,K.topN).map(x=>{ const l=linhaNeg(x.n,x.mot);
-      return [`<b title="${esc(x.comp.map(c=>`${c[0]}: ${fmtD(c[1],0)}${c[2]?' ('+c[2]+')':''}`).join('\n'))}">${x.score}</b>`,...l.slice(0,-1),`${l[l.length-1]}<button class="mini so-tela" onclick="planoNovoNeg('${x.n.id}')">＋ ação</button>`]; })));
+      return [`<b title="${esc(x.comp.map(c=>`${c[0]}: ${fmtD(c[1],0)}${c[2]?' ('+c[2]+')':''}`).join('\n'))}">${x.score}</b>`,...l.slice(0,-1),`${l[l.length-1]}<button class="mini so-tela" onclick="planoNovoNeg(${jsq(x.n.id)})">＋ ação</button>`]; })));
   /* compromissos da última reunião */
   const ur=recorte('reuniao',CFG.reunioes).filter(r=>r.status==='Realizada'||data(r.data)<=R).sort((a,b)=>a.data<b.data?1:-1)[0];
   h+=sec('Compromissos da última reunião',ur?`${esc(ur.titulo)} — ${fmtData(data(ur.data))}`:'Nenhuma reunião registrada ainda (Reuniões e planos de ação).','sup-reu');
@@ -8014,7 +8023,7 @@ VISTA.atividades=function(){
   h+=`<div class="g g6 kpis-2">${['Planejado','Reprogramado','Vencido','Concluído no prazo','Concluído com atraso','Concluído — prazo não avaliável','Cancelado'].map(k=>kpi(k,fmtN((sit.get(k)||[]).length),'',k==='Vencido'&&(sit.get(k)||[]).length?'err':'neutro')).join('')}</div>`;
   h+=ps.length?card('','',tab([{t:'Cliente',f:1},{t:'Passo',f:1},{t:'Responsável'},{t:'Dono do negócio'},{t:'Prazo'},{t:'Situação'},{t:'Histórico',f:1},{t:''}],
       ps.sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1).map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),esc(p.respNeg||'—'),p.prazo?fmtData(data(p.prazo)):'—',esc(situacaoPasso(p)),
-        esc((p.hist||[]).map(x=>`${fmtData(new Date(x.em))}: ${x.campo} ${x.de||'—'} → ${x.para||'—'}${x.just?' ('+x.just+')':''}`).join(' | ')),`<button class="mini so-tela" onclick="passoEditar('${p.id}')">atualizar</button>`])))
+        esc((p.hist||[]).map(x=>`${fmtData(new Date(x.em))}: ${x.campo} ${x.de||'—'} → ${x.para||'—'}${x.just?' ('+x.just+')':''}`).join(' | ')),`<button class="mini so-tela" onclick="passoEditar(${jsq(p.id)})">atualizar</button>`])))
     :card('','','<p class="pl-vazio">Nenhum próximo passo registrado. Use "＋ passo" na Central de supervisão ou na inspeção do pipeline.</p>');
   return h; };
 
@@ -8050,7 +8059,7 @@ function secCompromissos(){ const P=PER, R=hoje(), J=janelaComp(P);
   const vs=vendedoresAtivos().filter(v=>!EST.vend||v===EST.vend);
   const lin=vs.map(v=>{ const a=F.ab.filter(n=>n.resp===v), el=a.filter(n=>n.dtPrev&&n.dtPrev>=J.ini&&n.dtPrev<=J.fim), pot=a.filter(n=>n.dtPrev&&n.dtPrev<=J.fim);
     const ped=somar((F.todas||[]).filter(x=>x.resp===v&&noPer(x.dt)&&(!EST.div||x.div===EST.div)),x=>x.valorDet!==undefined?x.valorDet:x.valor);
-    const cv=compsDe(v,P,'vendedor'), cs=compsDe(v,P,'supervisao'), uv=cv[cv.length-1], us=cs[cs.length-1], q=JSON.stringify(v).replace(/"/g,'&quot;');
+    const cv=compsDe(v,P,'vendedor'), cs=compsDe(v,P,'supervisao'), uv=cv[cv.length-1], us=cs[cs.length-1], q=JSON.stringify(v).replace(/[&"<>]/g,_escA);
     return [esc(nomeCurto(v)||v),fmtBRL(ped),fmtBRL(somar(el,prevNeg)),uv?`${fmtBRL(uv.total)}<small> · ${uv.itens.length} neg. · ${fmtData(new Date(uv.em))}</small>`:'<span class="nd-m">não declarada</span>',
       us?`${fmtBRL(us.total)}<small> · ${fmtData(new Date(us.em))}</small><br><small>${esc(us.just)}</small>`:'—',fmtBRL(somar(pot,n=>n.vNum||0)),
       `<span class="so-tela"><button class="mini" onclick="compEditar(${q},'vendedor')">${uv?'nova versão':'registrar'}</button> <button class="mini" onclick="compEditar(${q},'supervisao')">revisar</button>${cv.length+cs.length?` <button class="mini" onclick="compVersoes(${q})">versões (${cv.length+cs.length})</button>`:''}</span>`]; });
@@ -8105,16 +8114,16 @@ function reuniaoAnterior(r){ return CFG.reunioes.filter(x=>x.id!==r.id&&x.tipo==
 VISTA.reunioes=function(){ const L=recorte('reuniao',CFG.reunioes).sort((a,b)=>a.data<b.data?1:-1); const r=L.find(x=>x.id===REU_SEL)||L[0];
   let h=`<div class="exec-cab"><span>Reuniões registradas: <b>${fmtN(L.length)}</b></span><button class="btn so-tela" onclick="reuniaoNova()">＋ Nova reunião</button>
     <span class="nd-m">Guardadas neste navegador e no arquivo ao usar ↓ Salvar. Sem servidor: outra pessoa só vê com o arquivo salvo.</span></div>`;
-  if(L.length)h+=`<div class="reu-lista so-tela">${L.slice(0,20).map(x=>`<button class="chip${r&&x.id===r.id?' on':''}" onclick="REU_SEL='${x.id}';render()">${esc(x.titulo)}</button>`).join('')}</div>`;
+  if(L.length)h+=`<div class="reu-lista so-tela">${L.slice(0,20).map(x=>`<button class="chip${r&&x.id===r.id?' on':''}" onclick="REU_SEL=${jsq(x.id)};render()">${esc(x.titulo)}</button>`).join('')}</div>`;
   if(r){ const ant=reuniaoAnterior(r), acAnt=ant?(CFG.plano||[]).filter(a=>a.reuniao===ant.id):[], ac=(CFG.plano||[]).filter(a=>a.reuniao===r.id);
     h+=sec('Compromissos da reunião anterior',ant?`${esc(ant.titulo)}. Situação atual de cada ação: prazo vencido não conclui a ação; reprogramações ficam no histórico com a justificativa.`:'Primeira reunião deste tipo'+(r.pessoa?' com '+esc(r.pessoa):'')+': não há compromissos anteriores.','reu-ant');
     if(ant)h+=card('','',acAnt.length?tabAcoes(acAnt):'<p class="pl-vazio">A reunião anterior não registrou ações.</p>');
     h+=sec(esc(r.titulo),`${esc(r.tipo)} · ${fmtData(data(r.data))} · período ${esc(r.per.rot)}${r.participantes?' · participantes: '+esc(r.participantes):''}`,'reu-atual');
     h+=`<div class="dupla"><div class="card"><h4>Indicadores discutidos</h4><div class="sub">capturados ao abrir a reunião (${fmtDH(new Date(r.capturado))}) — não mudam depois</div>${tab([{t:'Indicador',f:1},{t:'Valor',n:1}],r.ind)}</div>
-      <div class="card reu-txt"><h4>Registro</h4><label>Status <select class="campo" onchange="reuniaoSet('${r.id}','status',this.value)">${['Planejada','Realizada','Cancelada'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
-        ${[['decisoes','Decisões'],['bloqueadores','Bloqueadores'],['apoio','Apoio necessário']].map(([k,n])=>`<label>${n}<textarea class="campo" rows="3" onchange="reuniaoSet('${r.id}','${k}',this.value)">${esc(r[k]||'')}</textarea></label>`).join('')}
+      <div class="card reu-txt"><h4>Registro</h4><label>Status <select class="campo" onchange="reuniaoSet(${jsq(r.id)},'status',this.value)">${['Planejada','Realizada','Cancelada'].map(s=>`<option${r.status===s?' selected':''}>${s}</option>`).join('')}</select></label>
+        ${[['decisoes','Decisões'],['bloqueadores','Bloqueadores'],['apoio','Apoio necessário']].map(([k,n])=>`<label>${n}<textarea class="campo" rows="3" onchange="reuniaoSet(${jsq(r.id)},'${k}',this.value)">${esc(r[k]||'')}</textarea></label>`).join('')}
         <span class="so-rel">${[['decisoes','Decisões'],['bloqueadores','Bloqueadores'],['apoio','Apoio necessário']].map(([k,n])=>`<p><b>${n}:</b> ${esc(r[k]||'—')}</p>`).join('')}</span></div></div>`;
-    h+=card(`Ações desta reunião (${ac.length})`,'Cada ação vai para o plano com responsável, prazo e status. Nada é preenchido automaticamente.',(ac.length?tabAcoes(ac):'<p class="pl-vazio">Nenhuma ação registrada nesta reunião.</p>')+`<div class="pl-bar so-tela"><button class="btn sec" onclick="planoNovoReuniao('${r.id}')">＋ ação desta reunião</button></div>`); }
+    h+=card(`Ações desta reunião (${ac.length})`,'Cada ação vai para o plano com responsável, prazo e status. Nada é preenchido automaticamente.',(ac.length?tabAcoes(ac):'<p class="pl-vazio">Nenhuma ação registrada nesta reunião.</p>')+`<div class="pl-bar so-tela"><button class="btn sec" onclick="planoNovoReuniao(${jsq(r.id)})">＋ ação desta reunião</button></div>`); }
   else h+=card('','','<p class="pl-vazio">Nenhuma reunião registrada. Use "＋ Nova reunião" — ou, na ficha de um vendedor (Desempenho por pessoa), "Iniciar reunião individual".</p>');
   h+=secPlano();
   return h; };
@@ -8129,7 +8138,7 @@ function planoNovoReuniao(rid){ const r=CFG.reunioes.find(x=>x.id===rid);
 function fichaPessoa(v){ const P=PER, R=hoje(), X=indicadoresPeriodo(P,EST.vend?{}:{vend:v}), a=F.ab.filter(n=>n.resp===v), vS=x=>somar(x,n=>n.vNum||0);
   if(!X)return card('','','<p class="pl-vazio">Escolha um período.</p>');
   const iv=intervencao().filter(x=>x.n.resp===v), cp=CFG.comp.filter(c=>c.vend===v).sort((x,y)=>x.em<y.em?1:-1)[0], acs=(CFG.plano||[]).filter(x=>x.resp===v);
-  const reus=CFG.reunioes.filter(r=>r.pessoa===v).sort((x,y)=>x.data<y.data?1:-1), q=JSON.stringify(v).replace(/"/g,'&quot;');
+  const reus=CFG.reunioes.filter(r=>r.pessoa===v).sort((x,y)=>x.data<y.data?1:-1), q=JSON.stringify(v).replace(/[&"<>]/g,_escA);
   let h=sec(`Ficha individual — ${esc(v)}`,`${esc(P.rot)} · resultado, execução, pipeline e compromissos lado a lado. Não há nota geral de desempenho: cada indicador tem seu contexto (carteira, região, divisão, período de atuação).`,'des-ficha');
   h+=`<div class="exec-cab so-tela"><button class="btn" onclick="reuniaoNova('Reunião individual',${q})">▶ Iniciar reunião individual</button>${reus.length?`<span>Última reunião: <a class="td-link" onclick="REU_SEL='${reus[0].id}';irTela('reunioes')">${fmtData(data(reus[0].data))}</a></span>`:''}</div>`;
   h+=`<div class="g g4 kpis-2">${cardG({rot:'Pedidos recebidos',val:fmtCompacto(X.ped),per:P.rot,tipo:'mov',fonte:'pedidos do vendedor (soma dos registros)',sub:`${fmtN(X.nPed)} pedidos`})}
@@ -8330,7 +8339,7 @@ function secFechamentos(){ const L=[...CFG.fechamentos].sort((a,b)=>a.em<b.em?1:
   h+=card('',`<button class="btn sec so-tela" onclick="fechamentoRegistrar()">Registrar fechamento de ${esc(PER.rot)}</button>`,
     (L.length?tab([{t:'Período',f:1},{t:'Registrado em'},{t:'Recorte'},{t:'Situação'},{t:'Pedidos',n:1},{t:'Meta',n:1},{t:''}],L.map(f=>[esc(f.ctx.rot),fmtDH(new Date(f.em)),esc(f.ctx.recorte||''),
       `${f.parcial?'<span class="kg-cond">parcial</span> ':''}${f.retifica?'<span class="tag">retificação</span> ':''}${L.some(x=>x.retifica===f.id)?'<span class="tag">retificado</span>':''}`,fmtInd(f.ind.ped,'R$'),f.metas.pedidos?fmtBRL(f.metas.pedidos.valor):'—',
-      `<span class="so-tela"><button class="mini" onclick="fechamentoAbrir('${f.id}')">abrir</button><button class="mini" onclick="fechamentoAbrir('${f.id}',1)">comparar</button><button class="mini" onclick="fechamentoRegerar('${f.id}')">regerar relatório</button><button class="mini" onclick="fechamentoPlanilha('${f.id}')">planilha</button><button class="mini" onclick="fechamentoRegistrar('${f.id}')">retificar</button></span>`])):'<p class="pl-vazio">Nenhum fechamento registrado.</p>')
+      `<span class="so-tela"><button class="mini" onclick="fechamentoAbrir(${jsq(f.id)})">abrir</button><button class="mini" onclick="fechamentoAbrir(${jsq(f.id)},1)">comparar</button><button class="mini" onclick="fechamentoRegerar(${jsq(f.id)})">regerar relatório</button><button class="mini" onclick="fechamentoPlanilha(${jsq(f.id)})">planilha</button><button class="mini" onclick="fechamentoRegistrar(${jsq(f.id)})">retificar</button></span>`])):'<p class="pl-vazio">Nenhum fechamento registrado.</p>')
     +(fotos.length?`<p class="nd-m">${fotos.length} fotografia(s) simples da versão anterior continuam guardadas (Dados → Histórico).</p>`:'')+'<div class="drill" id="fech-ver"></div>');
   return h; }
 function fotoCongelar(){ const X=indicadoresPeriodo(PER); if(!X){ aviso('Escolha um período.'); return; }
@@ -8445,7 +8454,7 @@ function secHistorico(){ const S=snapsOrd(), at=snapAtual();
   let h=card('Histórico de cargas do pipeline (snapshots)',`Cada carga diferente do export de negócios é guardada como fotografia imutável. ${S.length<2?MSG_SEM_HIST():`${S.length} cargas desde ${inicioAcomp()}.`} As fotografias vão no arquivo (↓ Salvar) e ficam neste navegador; para juntar cargas de outra cópia do painel, importe o arquivo JSON exportado dela.`,
     tab([{t:'Carga (importação)'},{t:'Data efetiva (última atualização no arquivo)'},{t:'Arquivo',f:1},{t:'Fonte'},{t:'Negócios',n:1},{t:'Abertos',n:1},{t:'Valor aberto',n:1},{t:''}],
       S.map(s=>{ const m=[...snapMapa(s).values()], a=m.filter(x=>x.sit==='A'); return [fmtDH(new Date(s.carga))+(at&&s.id===at.id?' <span class="tag t-ok">atual</span>':''),fmtData(data(s.efetiva)),esc(s.arq||'—'),esc(s.fonte),fmtN(s.n),fmtN(a.length),fmtBRL(somar(a,x=>x.valor||0)),
-        at&&s.id===at.id?'':`<button class="mini so-tela" onclick="snapApagar('${s.id}')">apagar</button>`]; }))
+        at&&s.id===at.id?'':`<button class="mini so-tela" onclick="snapApagar(${jsq(s.id)})">apagar</button>`]; }))
     +`<div class="pl-bar so-tela"><button class="btn sec" onclick="centralExportar()">↓ Exportar histórico e registros (JSON)</button><label class="btn sec">↑ Importar JSON<input type="file" accept=".json" style="display:none" onchange="centralImportar(this.files[0]);this.value=''"></label></div>`);
   const hm=[...CFG.metasHist].sort((a,b)=>a.em<b.em?1:-1);
   h+=card('Histórico de alterações de metas','Toda alteração de meta já cadastrada fica registrada com data e justificativa.',hm.length?tab([{t:'Quando'},{t:'Meta',f:1},{t:'De',n:1},{t:'Para',n:1},{t:'Justificativa',f:1}],hm.map(x=>[fmtDH(new Date(x.em)),esc(x.meta),esc(String(x.de)),esc(String(x.para)),esc(x.just||'—')])):'<p class="pl-vazio">Nenhuma alteração registrada.</p>');
@@ -8464,7 +8473,7 @@ function secMetasPer(){ const L=CFG.metasPer, R=hoje();
   let h=card('Metas por período e por tipo',`Resultado, atividade, prazo e qualidade cadastral, por semana, mês, trimestre ou ano, com vigência. Sem meta explícita do período, vale o rateio da meta maior que o contém — método atual: <b>${metodoRateio()}</b> <select class="campo so-tela" onchange="CFG.rateioDias=this.value;centralGuardar();limparCaches();aplicar()"><option value="corridos"${CFG.rateioDias!=='uteis'?' selected':''}>dias corridos</option><option value="uteis"${CFG.rateioDias==='uteis'?' selected':''}>dias úteis</option></select>. Pedidos sem meta explícita seguem a meta anual com a distribuição mensal cadastrada. Alterar uma meta exige justificativa e fica no histórico.`,
     (L.length?tab([{t:'Indicador',f:1},{t:'Tipo'},{t:'Escopo'},{t:'Período'},{t:'Valor',n:1},{t:'Vigência'},{t:'Alterações',n:1},{t:''}],
       L.map(m=>[esc(META_IND[m.ind][0]),esc(META_IND[m.ind][2]),esc(m.escopo),`${GRAN[m.gran]} ${esc(m.chave)}`,fmtInd(num(m.valor),META_IND[m.ind][1]),`${m.vigIni?fmtData(data(m.vigIni)):'—'} a ${m.vigFim?fmtData(data(m.vigFim)):'—'}`,fmtN((m.hist||[]).length),
-        `<button class="mini so-tela" onclick="metaPerEditar('${m.id}')">alterar</button>`])):'<p class="pl-vazio">Nenhuma meta por período cadastrada.</p>')
+        `<button class="mini so-tela" onclick="metaPerEditar(${jsq(m.id)})">alterar</button>`])):'<p class="pl-vazio">Nenhuma meta por período cadastrada.</p>')
     +`<div class="pl-bar so-tela"><button class="btn sec" onclick="metaPerEditar()">＋ meta</button></div>`);
   return h; }
 function metaPerEditar(id){ const m=id?CFG.metasPer.find(x=>x.id===id):null, R=hoje(), escopos=['Empresa','SEQ','SPV',...vendedoresAtivos()];
@@ -8501,7 +8510,7 @@ function analistasAtivos(){ const s=new Set(); (todasMetasOrc()||[]).forEach(m=>
 function fichaAnalista(v){ const P=PER, ref=refNegocios(), sla=num(CFG.slaCot)||7, noP=d=>d&&d>=P.ini&&d<=P.fim, vS=a=>somar(a,n=>n.vNum||0);
   const mine=n=>analista(n.orc)===v, fila=F.neg.filter(n=>naFilaOrc(n)&&mine(n)), props=propostasTodas().filter(p=>p.neg&&mine(p.neg)&&noP(p.dt)), rec=F.neg.filter(n=>mine(n)&&noP(n.dtCri));
   const tempos=props.map(p=>p.neg.dtCri&&p.dt?diasDe(p.neg.dtCri,p.dt):null).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b), med=tempos.length?tempos[Math.floor(tempos.length/2)]:null;
-  const meta=(orcDoAno()||[]).find(m=>m.orc===v), q=JSON.stringify(v).replace(/"/g,'&quot;');
+  const meta=(orcDoAno()||[]).find(m=>m.orc===v), q=JSON.stringify(v).replace(/[&"<>]/g,_escA);
   let h=sec(`Ficha da engenharia — ${esc(v)}`,`${esc(P.rot)}. Solicitação recebida é APROXIMADA pela criação do negócio com este analista: o export não traz a data da solicitação à engenharia. Revisão não é tratada como erro do analista.`,'des-ficha');
   h+=`<div class="exec-cab so-tela"><button class="btn" onclick="reuniaoNova('Engenharia de aplicação',${q})">▶ Iniciar reunião</button></div>`;
   h+=`<div class="g g4 kpis-2">${cardG({rot:'Solicitações (aproximação)',val:fmtN(rec.length),per:P.rot,tipo:'mov',fonte:'negócios criados com o analista',sub:fmtCompacto(vS(rec))})}
@@ -8532,10 +8541,10 @@ function blocoGraf(o){ GTAB[o.id]={tit:o.tit,tabela:o.tabela};
   return `<figure class="gb" id="gb-${o.id}" ${o.sid?`data-sid="${o.sid}"`:''}><figcaption><div class="gb-t"><b>${o.tit}</b><span>${o.perg||''}</span></div>
     <div class="gb-m">${esc(o.per||'')}${o.unid?` · ${esc(o.unid)}`:''}${(o.flags||[]).map(f=>`<span class="fl">${esc(f)}</span>`).join('')}</div></figcaption>
     ${leg?`<div class="gb-leg">${leg}</div>`:''}<div class="gb-c">${o.corpo}</div><div class="gb-tab" id="gbt-${o.id}" hidden></div>
-    <div class="gb-rod"><span>Fonte: ${esc(o.fonte||'—')}${o.nota?' · '+o.nota:''}</span>${o.tabela?`<div class="gb-bt so-tela"><button class="mini" onclick="gbTabela('${o.id}')" aria-controls="gbt-${o.id}">Ver tabela</button><button class="mini" onclick="gbCSV('${o.id}')">CSV</button></div>`:''}</div></figure>`; }
+    <div class="gb-rod"><span>Fonte: ${esc(o.fonte||'—')}${o.nota?' · '+o.nota:''}</span>${o.tabela?`<div class="gb-bt so-tela"><button class="mini" onclick="gbTabela(${jsq(o.id)})" aria-controls="gbt-${o.id}">Ver tabela</button><button class="mini" onclick="gbCSV(${jsq(o.id)})">CSV</button></div>`:''}</div></figure>`; }
 function gbTabela(id){ const el=document.getElementById('gbt-'+id), g=GTAB[id]; if(!el||!g)return; if(!el.hidden){ el.hidden=true; return; }
   el.innerHTML=tab(g.tabela.cols.map(c=>typeof c==='string'?{t:c}:c),g.tabela.linhas); el.hidden=false; }
-function gbCSV(id){ const g=GTAB[id]; if(!g)return; const lim=x=>'"'+String(x==null?'':x).replace(/<[^>]*>/g,'').replace(/"/g,'""')+'"';
+function gbCSV(id){ const g=GTAB[id]; if(!g)return; const lim=x=>csvCel(String(x==null?'':x).replace(/<[^>]*>/g,''));
   baixar([g.tabela.cols.map(c=>lim(typeof c==='string'?c:c.t)).join(';')].concat(g.tabela.linhas.map(r=>r.map(lim).join(';'))).join('\n'),`grafico-${id}-${isoD(hoje())}.csv`,'text/csv;charset=utf-8'); }
 const sx=(v,d)=>String(Math.round(v*10)/10);
 const clique=(k)=>k?` class="svg-cl" tabindex="0" role="button" onclick="abrirLista('${k}')" onkeydown="if(event.key==='Enter')abrirLista('${k}')"`:'';
@@ -8606,9 +8615,9 @@ function fichaNegocio(id){ const n=M.negocios.find(x=>String(x.id)===String(id))
     <h4>Pendências</h4><p>${esc(n.aberto?pendenciasNeg(n).join(' · ')||'nenhuma':'negócio encerrado')}</p>
     <h4>Mudanças observadas entre cargas</h4><p class="nd-m">${mud.length?mud.map(esc).join('<br>'):esc(MSG_SEM_HIST())}</p>
     ${n.ajusteManual?`<div class="nota" style="border-left-color:var(--ale)"><b>Perda informada no painel</b> em ${fmtDH(new Date(n.ajusteManual.em))}${n.ajusteManual.por?' por '+esc(n.ajusteManual.por):''} — fonte: ${esc(n.ajusteManual.just)}. O export do Ploomes traz o negócio como ${esc(n.ajusteManual.sitOrig.toLowerCase())}.</div>`:''}
-    <div class="pl-bar so-tela">${n.aberto?`<button class="btn sec" onclick="fecharModal('m-form');registrarDesfecho('${n.id}')">Registrar perda</button>`:''}<button class="btn sec" onclick="fecharModal('m-form');novoPasso('${n.id}')">＋ próximo passo</button><button class="btn sec" onclick="fecharModal('m-form');planoNovoNeg('${n.id}')">＋ ação no plano</button></div></div>`;
+    <div class="pl-bar so-tela">${n.aberto?`<button class="btn sec" onclick="fecharModal('m-form');registrarDesfecho(${jsq(n.id)})">Registrar perda</button>`:''}<button class="btn sec" onclick="fecharModal('m-form');novoPasso(${jsq(n.id)})">＋ próximo passo</button><button class="btn sec" onclick="fecharModal('m-form');planoNovoNeg(${jsq(n.id)})">＋ ação no plano</button></div></div>`;
   formModal(`${n.cli} — ${String(n.titulo||'').slice(0,60)}`,[{k:'x',rot:'',tipo:'html',html}],()=>{},'Fechar'); }
-const lnkNeg=(n,txt)=>`<a class="td-link" onclick="fichaNegocio('${n.id}')" title="Abrir ficha do negócio">${txt}</a>`;
+const lnkNeg=(n,txt)=>`<a class="td-link" onclick="fichaNegocio(${jsq(n.id)})" title="Abrir ficha do negócio">${txt}</a>`;
 
 /* ---------- cascata do pipeline entre duas fotografias ----------
    Cada negócio cai em UMA categoria (sem dupla contagem), pela ordem:
@@ -8649,7 +8658,7 @@ VISTA.supervisao=function(){
   L('prevV','Filtro: previsão de fechamento anterior à referência',prevV.sort((a,b)=>a.dtPrev-b.dtPrev));
   L('crit',`Filtro: prioridade de intervenção ≥ ${K.limiarCritico} pontos`,crit.map(x=>x.n),n=>{ const p=prioridadeNeg(n); return [`${p.score} pts`,...p.mot]; });
   if(adiados)L('adiados','Filtro: previsão adiada entre as duas últimas cargas',adiados,n=>(mAd.out.get(String(n.id))||[]).map(x=>x.t));
-  regLista('passosV','Filtro: próximos passos do painel com prazo vencido',passosV.map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),fmtData(data(p.prazo)),fmtN(diasDe(data(p.prazo),R))+' dias',`<button class="mini so-tela" onclick="passoEditar('${p.id}')">atualizar</button>`]),['Cliente','Passo','Responsável','Prazo','Atraso','']);
+  regLista('passosV','Filtro: próximos passos do painel com prazo vencido',passosV.map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),fmtData(data(p.prazo)),fmtN(diasDe(data(p.prazo),R))+' dias',`<button class="mini so-tela" onclick="passoEditar(${jsq(p.id)})">atualizar</button>`]),['Cliente','Passo','Responsável','Prazo','Atraso','']);
   regLista('filaAtr',`Filtro: fila de cotação acima do SLA de ${sla} dias`,filaAtr.map(n=>[lnkNeg(n,esc(n.cli)),esc(analista(n.orc)),esc(n.resp),fmtBRL(n.vNum||0),fmtData(n.dtCri),fmtN(diasDe(n.dtCri,ref))+' dias',esc(n.est)]),['Cliente','Analista','Vendedor','Valor','Entrou em','Espera','Etapa']);
   regLista('acV','Filtro: ações do plano vencidas e não concluídas',acV.map(a=>[esc(a.prioridade||'—'),esc(a.acao||a.evidencia||'—'),esc(a.resp||'(sem responsável)'),fmtData(data(a.prazo)),esc(a.status),fmtN((a.hist||[]).filter(h=>h.campo==='prazo').length)]),['Prioridade','Ação','Responsável','Prazo','Status','Reprogramações']);
   regLista('contas',`Filtro: contas A com negócio aberto sem interação no negócio > ${K.diasSemAtiv} dias`,contas.map(a=>[esc(a[0].cli),esc([...new Set(a.map(n=>nomeCurto(n.resp)))].join(', ')),fmtN(a.length),fmtBRL(vS(a)),(u=>u?fmtData(u.dt):'nenhuma')(ultimaInter(a[0]))]),['Conta','Responsáveis','Negócios abertos','Valor','Última interação com a conta']);
@@ -8686,7 +8695,7 @@ VISTA.supervisao=function(){
   const top=iv.slice(0,8);
   h+=`<div class="pnl" data-sid="sup-int"><h4>Negócios que precisam de intervenção</h4><div class="q">Prioridade do NEGÓCIO (0–100): valor, prazo, tempo sem atividade, reincidência e conta. Não avalia pessoas. Clique para abrir a ficha.</div>
     <ul class="lst-int">${top.map(x=>`<li><div class="sc">${x.score}<i><b style="width:${x.score}%"></b></i></div><div class="tx">${lnkNeg(x.n,`<b>${esc(x.n.cli)}</b>`)}<small>${esc(nomeCurto(x.n.resp))} · ${fmtBRL(x.n.vNum||0)} · ${esc(x.mot.slice(0,3).join(' · '))}</small></div>
-      <div class="so-tela"><button class="mini" onclick="novoPasso('${x.n.id}')">passo</button><button class="mini" onclick="planoNovoNeg('${x.n.id}')">ação</button></div></li>`).join('')}</ul>
+      <div class="so-tela"><button class="mini" onclick="novoPasso(${jsq(x.n.id)})">passo</button><button class="mini" onclick="planoNovoNeg(${jsq(x.n.id)})">ação</button></div></li>`).join('')}</ul>
     <p class="nd-m"><a class="td-link" onclick="abrirLista('crit')">ver todos os ${fmtN(crit.length)} críticos</a> · critérios em Dados → Critérios</p></div></div>`;
   /* agenda · compromissos · ações vencidas · bloqueadores */
   const ini=segundaDe(R), fim=addDias(ini,6), den=d=>d&&d>=ini&&d<=fim, ag=[];
@@ -8727,7 +8736,7 @@ VISTA.supervisao=function(){
   const linV=vs.map(v=>{ const a=ab.filter(n=>n.resp===v), sp=a.filter(n=>!proximaAtividade(n)), si=a.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), pv=a.filter(n=>n.dtPrev&&n.dtPrev<R), k=norm(v).replace(/ /g,'_');
     regLista('v_sp_'+k,`Filtro: ${v} — sem próximo passo`,sp.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_si_'+k,`Filtro: ${v} — sem interação no negócio > ${K.diasSemAtiv} dias`,si.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_pv_'+k,`Filtro: ${v} — previsões vencidas`,pv.map(n=>linhaNeg(n)),COLS_NEG);
     const ped=somar((F.todas||[]).filter(x=>x.resp===v&&noPer(x.dt)&&(!EST.div||x.div===EST.div)),x=>x.valorDet!==undefined?x.valorDet:x.valor), mt=metaPedidos(PER,v), acv=recorte('acao',CFG.plano).filter(x=>x.resp===v&&prazoSit(x)==='vencida').length;
-    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/"/g,'&quot;')})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',si.length?lnk('v_si_'+k,fmtN(si.length)):'0',pv.length?lnk('v_pv_'+k,fmtN(pv.length)):'0',
+    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/[&"<>]/g,_escA)})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',si.length?lnk('v_si_'+k,fmtN(si.length)):'0',pv.length?lnk('v_pv_'+k,fmtN(pv.length)):'0',
       `${fmtCompacto(ped)}${mt&&mt.valor?` <small>(${fmtPct(ped/mt.valor,0)})</small>`:''}`,acv?`<b style="color:var(--err)">${acv}</b>`:'0']; });
   h+=card('','',tab([{t:'Vendedor',f:1},{t:'Abertos',n:1},{t:'Sem próximo passo',n:1},{t:'Sem interação recente',n:1},{t:'Previsão vencida',n:1},{t:`Pedidos em ${P.curto||P.rot}`,n:1},{t:'Ações vencidas',n:1}],linV)+'<div class="drill" id="sup-lista2"></div>');
   vs.forEach((v,i)=>sem6.forEach((d,j)=>{ const tit=`Filtro: ${v} — ${mm[0].toLowerCase()} na semana ${lab6[j]}`;
@@ -8873,7 +8882,7 @@ function desfazerDesfecho(did){ const d=(CFG.desfechos||[]).find(x=>x.id===did);
 function secDesfechos(){ const L=CFG.desfechos||[];
   return card('Desfechos informados no painel','Negócios que o gestor informou como perdidos antes de o Ploomes ser atualizado. Correção manual: o dado importado não muda; a perda deve ser lançada no Ploomes.',
     L.length?tab([{t:'Cliente',f:1},{t:'Proposta'},{t:'Valor',n:1},{t:'Perdido em'},{t:'Motivo'},{t:'Informado por'},{t:'Fonte',f:1},{t:'Registrado em'},{t:'Situação',f:1},{t:''}],
-      L.map(d=>[esc(d.cli),esc(d.cod||'—'),fmtBRL(d.valor),fmtData(data(d.data)),esc(d.motivo+(d.obs?' — '+d.obs:'')),esc(d.por||'—'),esc(d.just),fmtDH(new Date(d.em)),`<span class="kg-cond${/divergente/.test(d.situacao||'')?' err':''}">${esc(d.situacao||'—')}</span>`,`<button class="mini so-tela" onclick="desfazerDesfecho('${d.id}')">desfazer</button>`]))
+      L.map(d=>[esc(d.cli),esc(d.cod||'—'),fmtBRL(d.valor),fmtData(data(d.data)),esc(d.motivo+(d.obs?' — '+d.obs:'')),esc(d.por||'—'),esc(d.just),fmtDH(new Date(d.em)),`<span class="kg-cond${/divergente/.test(d.situacao||'')?' err':''}">${esc(d.situacao||'—')}</span>`,`<button class="mini so-tela" onclick="desfazerDesfecho(${jsq(d.id)})">desfazer</button>`]))
     :'<p class="pl-vazio">Nenhum desfecho informado. Para registrar, abra a ficha do negócio (clique no cliente) → "Registrar perda".</p>'); }
 
 /* ---------- composição com as telas existentes ---------- */
@@ -9792,9 +9801,16 @@ async function atualizarPloomes(){ const b=document.getElementById('bt-ploomes')
   /* confirmação no próprio botão (janelas de confirmação são bloqueadas no visualizador) */
   if(!_ploomesConf){ _ploomesConf=1; b.textContent='Confirmar: atualizar agora?'; b.classList.add('prim');
     setTimeout(()=>{ if(_ploomesConf===1){ _ploomesConf=0; b.textContent='↻ Ploomes'; b.classList.remove('prim'); } },8000); return; }
+  /* intervalo mínimo de 15 min entre pedidos (cada pedido abre uma sessão na nuvem) */
+  let ult=0; try{ ult=+localStorage.getItem('lsf-ploomes-ult')||0; }catch(e){}
+  const falta=ult+15*60e3-Date.now();
+  if(falta>0){ _ploomesConf=0; b.textContent='↻ Ploomes'; b.classList.remove('prim');
+    aviso('Uma atualização já foi pedida há pouco. Aguarde mais '+Math.ceil(falta/60e3)+' min: ela leva de 5 a 10 minutos e você recebe uma notificação no fim.',8000); return; }
   _ploomesConf=2; b.disabled=true; b.textContent='⏳ Pedindo…';
   try{
-    await _MCP.callTool(CCR_CONECTOR,'fire_trigger',{trigger_id:PLOOMES_TAREFA,text:'Pedido pelo botão do painel em '+new Date().toLocaleString('pt-BR')},{cache:false});
+    /* só o id fixo da tarefa: nenhum texto vai junto (a tarefa ignora texto extra) */
+    await _MCP.callTool(CCR_CONECTOR,'fire_trigger',{trigger_id:PLOOMES_TAREFA},{cache:false});
+    try{ localStorage.setItem('lsf-ploomes-ult',String(Date.now())); }catch(e){}
     b.textContent='✓ Atualização pedida'; b.classList.remove('prim');
     aviso('Atualização pedida. Em 5 a 10 minutos o painel e a apresentação são republicados com os dados do Ploomes e você recebe uma notificação. Depois, recarregue a página: a barra "Bases" mostra "hoje" com o selo API.',15000);
   }catch(err){ const c=err&&err.code; _ploomesConf=0; b.disabled=false; b.textContent='↻ Ploomes'; b.classList.remove('prim');
@@ -9818,9 +9834,9 @@ function baixarCSV(){
   tbs.forEach((t,i)=>{
     const cd=t.closest('.card'); const tit=cd&&cd.querySelector('h4')?cd.querySelector('h4').textContent:'Tabela '+(i+1);
     if(i)lin.push('');
-    lin.push('"'+tit.replace(/"/g,'""')+'"');
+    lin.push(csvCel(tit));
     [...t.querySelectorAll('tr')].forEach(tr=>{
-      lin.push([...tr.children].map(td=>'"'+td.textContent.trim().replace(/\s+/g,' ').replace(/"/g,'""')+'"').join(';'));
+      lin.push([...tr.children].map(td=>csvCel(td.textContent.trim().replace(/\s+/g,' '))).join(';'));
     });
   });
   const t=TELAS.find(x=>x.id===EST.tela)||{id:'tela'};
