@@ -263,7 +263,7 @@ def main(pasta):
                     'Valor': o.get('Amount'), 'Data': dt(o.get('Date')),
                     'Estágio': nome(o, 'Stage', 'Name'), 'Criador': nome(o, 'Creator', 'Name'),
                     'Id Venda de Produto (Omie)': op(o, O['idVP']),
-                    'Divisão de negócio do Negócio': op(dl, D['divisao']), 'Comissão Vendedor % do Negócio': op(dl, D['comissao'])}})
+                    'Id do Negócio': o.get('DealId'), 'Divisão de negócio do Negócio': op(dl, D['divisao']), 'Comissão Vendedor % do Negócio': op(dl, D['comissao'])}})
 
     n = {
         'API-Ploomes_Negocios_Todos.xlsx': salvar(pasta, 'API-Ploomes_Negocios_Todos.xlsx', cabN, neg),

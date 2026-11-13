@@ -1047,6 +1047,7 @@ table td{font-size:12.5px}
 .pnl li:first-child{border-top:0} .pnl li small{color:var(--txt3)} .pnl li .d{white-space:nowrap;color:var(--txt2)}
 .ctx-bar{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12.5px;color:var(--txt2);margin:0 0 12px} .ctx-bar b{color:var(--txt)}
 .ctx-bar .bs{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin:0 12px 0 0} .ctx-bar .bs i{flex:0 0 8px;width:8px;height:8px;border-radius:50%;display:inline-block;position:static;margin:0}
+[hidden]{display:none!important}   /* o CSS dos botões não pode desfazer o atributo hidden (ex.: ↻ Ploomes fora do claude.ai) */
 .ctx-bar .bs .api{font-size:9px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--lar);padding:1px 4px;border-radius:3px;margin-left:2px}
 .ctx-bar .bases{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 0}   /* cada base com o seu espaço: ponto, nome e idade não se sobrepõem */
 .kband{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
@@ -1275,6 +1276,8 @@ const hojeReal=()=>{ if(_HOJE_TESTE)return new Date(+_HOJE_TESTE);
   let d; try{ const [a,m,dd]=_FMT_SP.format(new Date(t)).split('-').map(Number); d=new Date(a,m-1,dd); }catch(e){ d=new Date(new Date(t).toDateString()); }
   _hojeMemo=d; _hojeAte=t+60000; return new Date(+d); };
 const hoje=()=>REF_DATA?new Date(+REF_DATA):hojeReal();
+/* data → 'AAAA-MM-DD' no DIA LOCAL (toISOString usa UTC: depois das 21h em Brasília já é o dia seguinte) */
+function isoDia(d){ return d?new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10):''; }
 const diasEntre=(a,b)=>(a&&b)?Math.round((b-a)/864e5):null;
 const mesKey=d=>d?d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'):null;
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -1403,7 +1406,7 @@ const CAMPOS={
   total:['total do servico','total'],impostos:['impostos retidos'],liquido:['total liquido'],
   categoria:['categoria'],cidade:['cidade'],dtInc:['data de inclusao completa','data de inclusao'],
   uf:['estado','uf'],unitario:['valor unitario']},
- vendasOmie:{razao:['razao social do cliente'],cliente:['cliente'],
+ vendasOmie:{razao:['razao social do cliente'],cliente:['cliente'],negId:['id do negocio','id negocio'],
   dtCriacao:['data da criacao'],numero:['numero'],
   numVP:['numero venda de produto omie','numero venda de produto'],
   numOS:['numero ordem de servico omie','numero ordem de servico'],
@@ -1778,6 +1781,12 @@ function construir(){
   _IDX_PROPNEG=null;
   M.propostas.forEach(p=>{ const m=negDaProposta(p.cod,p.nCli), c=PROPCAB.get(p.cod);
     p.fase=faseProposta(m.neg)!=='Sem negócio'?faseProposta(m.neg):faseDoEstagio(c&&c.est);
+    /* vínculo só pelo nome do cliente + negócio JÁ ENCERRADO: o resultado (ganho/perda)
+       é da proposta vinculada ao negócio pelo código, não de toda cotação do cliente
+       (Cocamar 10102 de R$ 3,8 mi contava "ganha" porque o negócio de R$ 442 mil foi
+       ganho). As outras ficam como alternativa não escolhida: emitidas, mas fora de
+       ganhas e de perdidas. */
+    if(m.porCli&&(p.fase==='Ganha'||p.fase==='Perdida')&&String(m.neg.codProposta||'').trim()!==String(p.cod||'').trim())p.fase=FASE_ALT;
     p.porCliProp=m.porCli; p.vinculo={conf:m.conf,crit:m.crit,n:m.cands.length};
     /* o cabeçalho manda no responsável: é o campo do próprio card da proposta */
     p.respProp=(c&&c.resp&&c.resp!=='(sem responsável)')?c.resp:(m.neg?m.neg.resp:null);
@@ -1859,6 +1868,7 @@ function construir(){
       v.cat=(v.categoria&&String(v.categoria).trim())||null;
       v.catCurta=v.cat?catVendaCurta(v.cat):null;
       v.div=divCurta(v.divisao);
+      v.negId=v.negId==null||v.negId===''?null:String(v.negId).trim();
       const k=[v.numero,v.ov,v.os,Math.round(v.vNum*100)].join('|');
       if(vis.has(k))return; vis.add(k); lim.push(v); });
     M.vendasOmie=lim; })();
@@ -2239,8 +2249,13 @@ function vendasConsolidadas(negFiltrados,histFiltrado,pedFiltrados,vndFiltradas)
     const d0=diasEntre(p.dt,dt), dd=d0==null?999:Math.abs(d0);
     if(dd>30)return false;
     if(!vNum||!p.vNum)return false;
-    if(Math.abs(p.vNum-vNum)/Math.max(p.vNum,vNum)>=0.005)return false;
-    if(p.nCli===nCli||p.nCli.slice(0,12)===nCli.slice(0,12))return true;
+    const dv=Math.abs(p.vNum-vNum)/Math.max(p.vNum,vNum), mesmoCli=p.nCli===nCli||p.nCli.slice(0,12)===nCli.slice(0,12);
+    /* mesmo cliente: Controle e Vendas trazem o MESMO pedido com até ~1% de diferença
+       (frete, arredondamento, impostos) — Haiduck 5.127,00 × 5.078,17; NTN 5.307,52 × 5.357,29.
+       Com 0,5% o pedido contava duas vezes no mês em curso. Até 3% é o mesmo pedido;
+       acima de 0,5% fica registrado para conferência. */
+    if(mesmoCli&&dv<0.03){ if(dv>=0.005&&orig)conflito('Mesmo cliente, valor até 3% diferente: tratado como o MESMO pedido do Controle',orig,p,'baixa'); return true; }
+    if(dv>=0.005)return false;
     if(dd<=10&&orig)conflito('Valor igual ao de um pedido do Controle, em até 10 dias, cliente diferente',orig,p,'baixa');
     return false; });
   /* Chave dura: a OV. O Vendas do Ploomes lança o MESMO pedido com valor
@@ -2359,8 +2374,18 @@ function vendasConsolidadas(negFiltrados,histFiltrado,pedFiltrados,vndFiltradas)
         dt:n.dtVenda,ref,uf:n.ufDaObra||n.ufCliente||n.ufObra,solucao:n.norma,origem:n.origem,
         natureza:'(sem família)',
         ufCliente:n.ufCliente,ufDaObra:n.ufDaObra,reg:n}); });
-  vndTodas.forEach(v=>{ out.push({fonte:'Vendas (Ploomes×Omie)',cli:v.cli,nCli:v.nCli,
-      resp:vendedor(v.criador),div:v.div,valor:v.vNum,dt:v.dt,
+  /* vendedor do pedido que chega pelo Vendas: o responsável pelo NEGÓCIO de origem
+     (Ploomes guarda o negócio no pedido), não quem lançou (Klabin R$ 35,8 mil do Fábio
+     aparecia para a Amanda, que lançou). Sem negócio ligado: negócio ganho do mesmo
+     cliente em até 60 dias; por último, quem lançou, marcado como aproximação. */
+  const negPorId=new Map((M.negocios||[]).map(n=>[String(n.id),n]));
+  const respVenda=v=>{ const n=v.negId&&negPorId.get(v.negId); if(n&&n.resp)return {resp:n.resp,n,como:'negócio de origem'};
+    const g=(M.negocios||[]).filter(x=>x.ganho&&x.resp&&(x.nCli===v.nCli||x.nCli.slice(0,12)===v.nCli.slice(0,12))&&x.dtVenda&&v.dt&&Math.abs(diasEntre(x.dtVenda,v.dt))<=60)
+      .sort((a,b)=>Math.abs(diasEntre(a.dtVenda,v.dt))-Math.abs(diasEntre(b.dtVenda,v.dt)))[0];
+    if(g)return {resp:g.resp,n:g,como:'negócio ganho do mesmo cliente'};
+    return {resp:vendedor(v.criador),n:null,como:'quem lançou o pedido (sem negócio ligado)'}; };
+  vndTodas.forEach(v=>{ const rv=respVenda(v); out.push({fonte:'Vendas (Ploomes×Omie)',cli:v.cli,nCli:v.nCli,
+      resp:rv.resp,respComo:rv.como,div:v.div||(rv.n&&rv.n.div)||null,valor:v.vNum,dt:v.dt,
       ref:v.ov||v.os||v.numero||v.cli,uf:uf2((empPorNome(v.nCli)||{}).uf),solucao:v.catCurta||null,
       natureza:/servi/i.test(String(v.cat||''))?'Serviços':/loca/i.test(String(v.cat||''))?'Locação':'(sem família)',
       ufCliente:uf2((empPorNome(v.nCli)||{}).uf),ufDaObra:null,
@@ -2386,7 +2411,7 @@ function dupDecisoes(){ const d=CFG.dupDecisao||{};
   return {foraOmie,foraCrm,ambos}; }
 /* ---- duplicidade DENTRO do próprio OMIE (clones do "duplicar oportunidade") ---- */
 function dupOmieChave(o){ const n=String(o.numero||'').trim();
-  return (n&&n!=='N/D')?('n:'+norm(n)):('t:'+norm(o.oportunidade||o.cli)+'|'+(o.dtVenda?o.dtVenda.toISOString().slice(0,10):'')+'|'+Math.round(o.vNum||0)); }
+  return (n&&n!=='N/D')?('n:'+norm(n)):('t:'+norm(o.oportunidade||o.cli)+'|'+(o.dtVenda?isoDia(o.dtVenda):'')+'|'+Math.round(o.vNum||0)); }
 const ehPL=o=>/^PL-?\d+/i.test(String(o&&o.numero||''));
 function duplicidadesOmie(){
   const g=M.historico.filter(o=>o.ganho&&o.dtVenda), out=[], visto=new Set();
@@ -3068,7 +3093,7 @@ function baixarDrill(id){
   const defs=d.defs||COLS_DRILL[d.t]||[]; const lin=[defs.map(x=>'"'+x[0]+'"').join(';')];
   const lim=s=>csvCel(String(s).replace(/<[^>]*>/g,'').replace(/&amp;/g,'&'));
   d.itens.forEach(x=>lin.push(defs.map(c=>lim(c[1](x))).join(';')));
-  baixar(lin.join('\n'),`drill-${id}-${new Date().toISOString().slice(0,10)}.csv`,'text/csv;charset=utf-8');
+  baixar(lin.join('\n'),`drill-${id}-${isoDia(new Date())}.csv`,'text/csv;charset=utf-8');
 }
 function tab(cols,linhas,alt){
   if(!linhas.length)return '<div class="vazio">Sem registros nesta seleção.</div>';
@@ -3989,6 +4014,7 @@ const varPct=(a,b)=>b?`<b style="color:var(--${a>=b?'ok':'err'})">${a>=b?'+':'�
 /* ---------- propostas do recorte (uma por código, última revisão) ---------- */
 function propostasRecorte(){ return propostasTodas().filter(p=>noAno(p)&&(!EST.div||p.div===EST.div)&&(!EST.vend||p.resp===EST.vend)&&(!p.neg||dimOK(p.neg,'neg'))); }
 /* todas as propostas consolidadas, sem recorte de período nem de pessoa */
+const FASE_ALT='Alternativa não escolhida';
 function propostasTodas(){
   const P=F.props;
   const porCod=agrupa(P,x=>x.cod||('sem-'+x.nCli));
@@ -4002,7 +4028,7 @@ function propostasTodas(){
       dt:(c&&c.dt)||(neg?neg.dtCri:null),
       ufCliente:itens[0].ufCliente||null,ufDaObra:itens[0].ufDaObra||null,
       ganho:itens[0].fase==='Ganha',perdido:itens[0].fase==='Perdida',
-      aberto:itens[0].fase!=='Ganha'&&itens[0].fase!=='Perdida'};});
+      aberto:itens[0].fase!=='Ganha'&&itens[0].fase!=='Perdida'&&itens[0].fase!==FASE_ALT};});
   props=props.concat(propsSoCabecalho(new Set(props.map(x=>x.cod))).map(x=>Object.assign(x,{
     div:null,statusObra:null,ganho:x.fase==='Ganha',perdido:x.fase==='Perdida',aberto:x.fase!=='Ganha'&&x.fase!=='Perdida'})));
   /* proposta só no cabeçalho (sem itens) ficava sem negócio e, por isso, sem divisão:
@@ -4235,7 +4261,7 @@ const XLSX_MIME='application/vnd.openxmlformats-officedocument.spreadsheetml.she
 function montarXlsVend(i){
   if(typeof XLSX==='undefined'){aviso('Biblioteca do Excel indisponível.');return null;}
   const gs=i<0?PREV_GR:[PREV_GR[i]].filter(Boolean); if(!gs.length)return null;
-  const wb=XLSX.utils.book_new(), usados=new Set(), dia=new Date().toISOString().slice(0,10);
+  const wb=XLSX.utils.book_new(), usados=new Set(), dia=isoDia(new Date());
   if(i<0){
     const res=[['Confirmação de oportunidades — resumo por vendedor'],[`LS Fire · gerado em ${fmtData(hoje())}`],[],
       ['Vendedor','Negócios','Valor (R$)','Na previsão (R$)','Vencida','Sem data','Não classificado'],
@@ -4893,7 +4919,7 @@ function pqExcel(){
   ws['!cols']=cols.map(k=>({wch:{Cliente:34,Descrição:40,Referência:22,Situação:22}[k]||12}));
   ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:3,c:0},e:{r:aoa.length-1,c:cols.length-1}})};
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Pesquisa');
-  const nome=`Pesquisa-${(PQ.ent?norm(PQ.ent.nome):norm(PQ.q)||'todos').replace(/\s+/g,'-').slice(0,40)}-${new Date().toISOString().slice(0,10)}.xlsx`;
+  const nome=`Pesquisa-${(PQ.ent?norm(PQ.ent.nome):norm(PQ.q)||'todos').replace(/\s+/g,'-').slice(0,40)}-${isoDia(new Date())}.xlsx`;
   baixarBlob(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true})],{type:XLSX_MIME}),nome); }
 
 /* "/" em qualquer lugar da aba foca a busca; a tela monta filtros e resultado depois do render */
@@ -4979,7 +5005,8 @@ function secVelocidade(){
 const APROV_MADURA=90;
 function aprovDados(){ const R=hoje(), P=propostasRecorte().filter(p=>p.dt&&p.dt<=R); if(!P.length)return null;
   const st=a=>{ const g=a.filter(p=>p.ganho), pe=a.filter(p=>p.perdido), v=f=>somar(f,p=>p.val||0);
-    return {n:a.length,g:g.length,pe:pe.length,ab:a.length-g.length-pe.length,vn:v(a),vg:v(g),vpe:v(pe),
+    const al=a.filter(p=>p.fase===FASE_ALT).length;   /* alternativa não escolhida: emitida, fora de ganhas/perdidas/abertas */
+    return {n:a.length,g:g.length,pe:pe.length,al,ab:a.length-g.length-pe.length-al,vn:v(a),vg:v(g),vpe:v(pe),
       aprov:a.length?g.length/a.length:null,aprovV:v(a)?v(g)/v(a):null,wr:g.length+pe.length?g.length/(g.length+pe.length):null,dec:a.length?(g.length+pe.length)/a.length:null}; };
   const ks=[...new Set(P.map(p=>mesKey(p.dt)))].sort(), idade=k=>Math.max(0,Math.round((R-new Date(+k.slice(0,4),+k.slice(5,7)-1,1))/864e5));
   const safraDe=a=>ks.map(k=>Object.assign({k,rot:mesRot(k),dias:idade(k),madura:idade(k)>APROV_MADURA+30},st(a.filter(p=>mesKey(p.dt)===k))));
@@ -4993,7 +5020,7 @@ function aprovDados(){ const R=hoje(), P=propostasRecorte().filter(p=>p.dt&&p.dt
 function secAproveitamento(){ const Q=aprovDados(); if(!Q)return '';
   const pc=v=>v==null?'—':fmtPct(v,0), cor=COR();
   const barra=(x,alt)=>{ const t=x.n||1; return `<div style="display:flex;height:${alt||16}px;border-radius:3px;overflow:hidden;background:var(--linha)" role="img" aria-label="${x.g} ganhas, ${x.pe} perdidas, ${x.ab} abertas de ${x.n}">
-      <i style="width:${(100*x.g/t).toFixed(1)}%;background:${cor.ok}" title="ganhas: ${x.g}"></i><i style="width:${(100*x.pe/t).toFixed(1)}%;background:${cor.err}" title="perdidas: ${x.pe}"></i><i style="width:${(100*x.ab/t).toFixed(1)}%;background:#BDBDBD" title="abertas: ${x.ab}"></i></div>`; };
+      <i style="width:${(100*x.g/t).toFixed(1)}%;background:${cor.ok}" title="ganhas: ${x.g}"></i><i style="width:${(100*x.pe/t).toFixed(1)}%;background:${cor.err}" title="perdidas: ${x.pe}"></i><i style="width:${(100*x.al/t).toFixed(1)}%;background:#7A7A7A" title="alternativas não escolhidas: ${x.al}"></i><i style="width:${(100*x.ab/t).toFixed(1)}%;background:#BDBDBD" title="abertas: ${x.ab}"></i></div>`; };
   let h=sec('Aproveitamento das propostas',`Aproveitamento = propostas ganhas ÷ todas as propostas emitidas (inclui as abertas). Win rate = ganhas ÷ decididas (ganhas + perdidas). Como as abertas ainda podem ser ganhas, o aproveitamento só se compara por safra (mês de emissão); "madura" = emitida há mais de ${APROV_MADURA} dias. Base: Ploomes desde ${fmtData(Q.ini)}.`,'prop-aprov');
   h+=`<div class="g g4 kpis-2">${cardG({rot:'Aproveitamento (todas)',val:pc(Q.tot.aprov),per:`emitidas desde ${fmtData(Q.ini)}`,cls:'lar',sub:`${fmtN(Q.tot.g)} ganhas de ${fmtN(Q.tot.n)} · em valor ${pc(Q.tot.aprovV)} · ${fmtN(Q.tot.ab)} ainda abertas`,tipo:'mov',fonte:'Ploomes'})}
     ${cardG({rot:`Aproveitamento (safras maduras)`,val:pc(Q.mad.aprov),per:`emitidas há mais de ${APROV_MADURA} dias`,sub:`${fmtN(Q.mad.g)} ganhas de ${fmtN(Q.mad.n)} · ${fmtN(Q.mad.ab)} ainda abertas`,tipo:'mov',fonte:'Ploomes'})}
@@ -5004,7 +5031,7 @@ function secAproveitamento(){ const Q=aprovDados(); if(!Q)return '';
     `<div style="display:grid;gap:10px">${Q.safra.map(x=>`<div style="display:grid;grid-template-columns:minmax(70px,120px) minmax(0,1fr) minmax(120px,190px);gap:12px;align-items:center">
       <div><b>${esc(x.rot)}</b><br><small class="mut">${fmtN(x.n)} propostas${x.madura?'':' · em decisão'}</small></div>${barra(x)}
       <div style="text-align:right"><b>${pc(x.aprov)}</b> <small>aproveitamento</small><br><small class="mut">${pc(x.dec)} decididas · win rate ${pc(x.wr)}</small></div></div>`).join('')}</div>
-     <div class="leg-x" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.8rem"><span><i style="display:inline-block;width:10px;height:10px;background:${cor.ok}"></i> ganhas</span><span><i style="display:inline-block;width:10px;height:10px;background:${cor.err}"></i> perdidas</span><span><i style="display:inline-block;width:10px;height:10px;background:#BDBDBD"></i> abertas</span></div>`);
+     <div class="leg-x" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:.8rem"><span><i style="display:inline-block;width:10px;height:10px;background:${cor.ok}"></i> ganhas</span><span><i style="display:inline-block;width:10px;height:10px;background:${cor.err}"></i> perdidas</span><span><i style="display:inline-block;width:10px;height:10px;background:#7A7A7A"></i> alternativa não escolhida (outra proposta do negócio encerrado)</span><span><i style="display:inline-block;width:10px;height:10px;background:#BDBDBD"></i> abertas</span></div>`);
   h+=card('Por vendedor','Vendedor responsável pela proposta. Ordenado pelo número de propostas.',tab([{t:'Vendedor'},{t:'Emitidas',n:1},{t:'Ganhas',n:1},{t:'Perdidas',n:1},{t:'Abertas',n:1},{t:'Aproveitamento',n:1},{t:`Safras maduras (+${APROV_MADURA} d)`,n:1},{t:'Win rate',n:1}],
     Q.vend.map(x=>[esc(x.k),fmtN(x.n),fmtN(x.g),fmtN(x.pe),fmtN(x.ab),`<b>${pc(x.aprov)}</b>`,x.mad.n?`${pc(x.mad.aprov)} <small>(${x.mad.g}/${x.mad.n})</small>`:'—',pc(x.wr)])));
   return h; }
@@ -5027,7 +5054,7 @@ function propostasCorpo(){
     ['Perdidas',a.filter(p=>p.perdido).length,somar(a.filter(p=>p.perdido),p=>p.val),'prop.']];});
   h+=roscaDiv('p-div','SEQ × SPV','As propostas do recorte por divisão, em R$ e em quantidade.',props,p=>p.val,'propostas');
   /* o caminho da proposta: emitida → saiu da cotação → decidida → ganha */
-  const saiu=props.filter(p=>['Em negociação','Em fechamento','Ganha','Perdida'].includes(p.fase)), deci=props.filter(p=>p.ganho||p.perdido);
+  const saiu=props.filter(p=>['Em negociação','Em fechamento','Ganha','Perdida',FASE_ALT].includes(p.fase)), deci=props.filter(p=>p.ganho||p.perdido);
   const semResp=saiu.filter(p=>!p.ganho&&!p.perdido);
   h+=sec('Conversão das propostas',`Das propostas emitidas, quantas chegaram ao cliente, quantas já foram decididas e quantas viraram venda; o percentual entre as faixas é a conversão de uma para a outra. ${fmtN(semResp.length)} propostas (${fmtCompacto(somar(semResp,p=>p.val))}) estão com o cliente, sem resposta. Em que estágio está cada negócio: aba <b>Negócios</b>.`,'prop-funil');
   h+=funilVertical([{k:'Emitidas',desc:'todas as propostas do recorte',n:props.length,t:r.t,cor:'#404040'},
@@ -5399,7 +5426,7 @@ function secFup(){
     return {k,f,a,s,pm:ultM.map(m=>f.filter(i=>i.mes===m)),tot:f.length,ult:f.reduce((x,i)=>!x||i.dt>x?i.dt:x,null),
       com:a.filter(z=>z.u).length};}).sort((a,b)=>b.tot-a.tot||b.a.length-a.a.length);
   const mAt=fups.filter(i=>i.mes===MES_ATUAL), mAnt=meses.length>1?fups.filter(i=>i.mes===meses[meses.length-2]):[];
-  const diaM=Math.min(1,HOJE.getDate()/30);
+  const diaM=Math.min(1,HOJE.getDate()/new Date(HOJE.getFullYear(),HOJE.getMonth()+1,0).getDate());
   let h=sec('Follow-up (FUP) dos vendedores',`FUP = interação registrada <b>dentro de um negócio</b> no Ploomes (e-mail, WhatsApp, telefone, simples, visita), atribuída ao responsável do negócio. A cobrança é sobre os negócios em <b>Apresentação da cotação / Follow-Up</b> — proposta com o cliente — e o limite é de ${lim} dias sem contato, contados do último FUP ou, se nunca houve, da proposta.`,'des-fup');
   h+=`<div class="g g4 kpis-2">
    ${kpi(`FUPs em ${MES_ATUAL_ROT}`,fmtN(mAt.length),`${meses.length>1?`${kMes(meses[meses.length-2])}: ${fmtN(mAnt.length)} · `:''}mês em curso (${fmtPct(diaM,0)} dos dias)`,'lar')}
@@ -5565,7 +5592,7 @@ function analistasCorpo(){
   /* média mensal só sobre os meses em que o CRM tem proposta: a base de propostas
      começa em jul/2026, dividir pelos 9 meses do ano derrubava a média para um terço */
   const mesesP=[...new Set(props.map(p=>p.dt&&mesKey(p.dt)).filter(Boolean))].sort();
-  const nMeses=mesesP.length?mesesP.length-(mesesP.includes(MES_ATUAL)?1-Math.min(1,HOJE.getDate()/30):0):null;
+  const nMeses=mesesP.length?mesesP.length-(mesesP.includes(MES_ATUAL)?1-Math.min(1,HOJE.getDate()/new Date(HOJE.getFullYear(),HOJE.getMonth()+1,0).getDate()):0):null;
   const aP=p=>analista(p.neg?p.neg.orc:null), aN=n=>analista(n.orc);
   const nomes=[...new Set([...props.map(aP),...ab.map(aN),...V.map(analistaVenda)])].filter(k=>k!=='(sem analista)');
   const L=nomes.map(k=>{ const pp=props.filter(p=>aP(p)===k), nn=ab.filter(n=>aN(n)===k), vv=V.filter(v=>analistaVenda(v)===k);
@@ -6093,6 +6120,14 @@ VISTA.executiva=function(){
       L.sort((a,b)=>Math.abs(b.vNum-b.vPloomes)-Math.abs(a.vNum-a.vPloomes)).map(n=>[esc(String(n.cli).slice(0,40)),esc(String(n.id)),fmtBRL(n.vPloomes),`<b>${fmtBRL(n.vNum)}</b>`,esc(n.propAtual),esc(n.motivoAjuste),esc(nomeCurto(n.resp))]),
       [{t:'Cliente',f:1},{t:'Negócio'},{t:'Valor no Ploomes',n:1},{t:'Valor usado',n:1},{t:'Proposta atual'},{t:'Por quê',f:1},{t:'Vendedor'}]);
     al.push(`${fmtN(L.length)} negócio(s) com o valor do Ploomes diferente da proposta atual: o painel usa a última revisão da proposta mais recente (${fmtBRL(somar(L,n=>n.vNum))} em vez de ${fmtBRL(somar(L,n=>n.vPloomes))}). Corrija no Ploomes. <a onclick="abrirLista('valor-prop')">ver negócios</a>`); } }
+  /* negócio ganho no CRM (com data de conversão em pedido) que não entrou no total por
+     nenhuma fonte: some da soma sem aviso (ex.: Flowserve R$ 347,5 mil em 19/10) */
+  { const naSoma=new Set(F.todas.map(v=>v.reg)), ini=new Date(R.getFullYear(),R.getMonth()-5,1);
+    const casa=n=>F.todas.some(v=>v.nCli&&n.nCli&&(v.nCli===n.nCli||v.nCli.slice(0,12)===n.nCli.slice(0,12))&&v.dt&&n.dtVenda&&Math.abs(diasEntre(v.dt,n.dtVenda))<=60
+      &&n.vNum&&Math.abs((v.valorDet!==undefined?v.valorDet:v.valor)-n.vNum)/Math.max(n.vNum,1)<0.15);
+    const SP=(F.neg||[]).filter(n=>n.ganho&&n.dtConv&&n.dtVenda&&n.dtVenda>=ini&&n.dtVenda<=R&&(n.vNum||0)>0&&!naSoma.has(n)&&!casa(n)).sort((a,b)=>b.vNum-a.vNum);
+    if(SP.length){ regLista('ganho-sem-ped','Negócios ganhos no CRM sem pedido no Controle nem no Vendas',SP.map(n=>[fmtData(n.dtVenda),esc(String(n.cli).slice(0,40)),esc(String(n.titulo||'').slice(0,50)),esc(n.div||''),esc(nomeCurto(n.resp)),fmtBRL(n.vNum)]),[{t:'Ganho em'},{t:'Cliente',f:1},{t:'Negócio',f:1},{t:'Divisão'},{t:'Vendedor'},{t:'Valor',n:1}]);
+      al.push(`${fmtN(SP.length)} negócio(s) ganho(s) no CRM nos últimos 6 meses sem pedido no Controle nem no Vendas (${fmtBRL(somar(SP,n=>n.vNum))}): não entram no total de pedidos. Confira se o pedido foi lançado. <a onclick="abrirLista('ganho-sem-ped')">ver negócios</a>`); } }
   if(typeof CONFLITOS!=='undefined'&&CONFLITOS.length)al.push(`${fmtN(CONFLITOS.length)} registro(s) com vínculo ambíguo entre bases não foram somados duas vezes. <a onclick="irPara('dados','vinc')">ver vínculos</a>`);
   let h=`<div class="exec-cab"><span>Período: <b>${esc(per)}</b></span><span>Referência: <b>${fmtData(R)}</b>${REF_DATA?' (fixada)':''}</span><span>Gerado em ${fmtData(hojeReal())}</span>
     ${temFiltroParcial()?`<span class="kg-cond ale">recorte filtrado: ${[EST.div,EST.vend,...filtrosForaDaMeta()].filter(Boolean).map(esc).join(' · ')}</span>`:''}
@@ -6705,6 +6740,8 @@ function seqDados(){ const R=hoje(), val=v=>v.valorDet!==undefined?v.valorDet:v.
   const semData=ab.filter(n=>!n.dtPrev), venc=ab.filter(n=>n.dtPrev&&n.dtPrev<R);
   /* 3. perdas */
   const per=F.perd.filter(n=>sq(n)&&(n.dtAtu||n.dtCri)>=ini1), gan=F.neg.filter(n=>sq(n)&&n.ganho&&(n.dtVenda||n.dtCri)>=ini1), vPer=somar(per,n=>n.vNum||0);
+  /* conversão só com negócios do CRM nos dois lados: as perdas do histórico OMIE não têm ganhos correspondentes */
+  const _crm=new Set(F.neg), nPerC=per.filter(n=>_crm.has(n)).length;
   const mot=[...agrupar(per,motivoPerda).entries()].map(([k,a])=>({k,n:a.length,v:somar(a,n=>n.vNum||0),neg:a.slice().sort((p,q)=>(q.vNum||0)-(p.vNum||0)).map(x=>Object.assign({cli:x.cli,v:x.vNum||0},perdaDetalhe(x)))})).sort((x,y)=>y.v-x.v);
   const preco=mot.find(m=>/^pre[çc]o/i.test(m.k)), semMot=mot.find(m=>/sem motivo/i.test(m.k));
   /* por vendedor */
@@ -6715,7 +6752,7 @@ function seqDados(){ const R=hoje(), val=v=>v.valorDet!==undefined?v.valorDet:v.
   const H=[{k:'conc',t:'Concentração em poucos clientes grandes',sh:shConc,nv:nivel(shConc,.4,.6)},
     {k:'parado',t:'Propostas paradas, sem follow-up',sh:shSem,nv:nivel(shSem,.35,.5)},
     {k:'preco',t:'Perdas por preço',sh:shPreco,nv:nivel(shPreco,.25,.4)}];
-  return {R,ini,ini1,ks,mes,rIni,rec,recAnt,ano,anoAnt,val,ab,pipe,top,top5,cliPed,vPed:somar(pedJan,val),U,fu,sem,faixas,etapas,semData,venc,per,gan,vPer,vGan:somar(gan,n=>n.vNum||0),mot,preco,semMot,vend,H,pr}; }
+  return {R,ini,ini1,ks,mes,rIni,rec,recAnt,ano,anoAnt,val,ab,pipe,top,top5,cliPed,vPed:somar(pedJan,val),U,fu,sem,faixas,etapas,semData,venc,per,gan,nPerC,vPer,vGan:somar(gan,n=>n.vNum||0),mot,preco,semMot,vend,H,pr}; }
 
 /* seção da SEQ no painel (Resultados e metas) */
 function secSeq(){ if(EST.div==='SPV')return ''; const Q=seqDados(); if(!Q)return '';
@@ -6737,7 +6774,7 @@ function secSeq(){ if(EST.div==='SPV')return ''; const Q=seqDados(); if(!Q)retur
       nota:`${fmtN(Q.semData.length)} dos ${fmtN(Q.ab.length)} negócios abertos estão sem data de fechamento; ${fmtN(Q.venc.length)} com a data vencida.`})}
     ${blocoGraf({id:'seq-mot',tit:'Perdas da SEQ por motivo',perg:'Perde-se por preço?',per:`desde ${fmtData(Q.ini1)}`,unid:'R$',fonte:'Ploomes e OMIE (motivos unificados)',
       corpo:svgBarrasH(Q.mot.slice(0,7).map(m=>({rot:m.k,val:m.v,extra:fmtN(m.n)+' neg.'})),{W:560,lw:190,rw:160}),tabela:{cols:['Motivo','Negócios','Valor'],linhas:Q.mot.map(m=>[m.k,m.n,fmtBRL(m.v)])},
-      nota:`${fmtN(Q.gan.length)} ganhos (${fmtCompacto(Q.vGan)}) e ${fmtN(Q.per.length)} perdidos (${fmtCompacto(Q.vPer)}) no período: ${Q.gan.length+Q.per.length?fmtPct(Q.gan.length/(Q.gan.length+Q.per.length),0):'—'} dos decididos viraram pedido.`})}</div>`;
+      nota:`${fmtN(Q.gan.length)} ganhos (${fmtCompacto(Q.vGan)}) e ${fmtN(Q.per.length)} perdidos (${fmtCompacto(Q.vPer)}) no período: ${Q.gan.length+Q.nPerC?fmtPct(Q.gan.length/(Q.gan.length+Q.nPerC),0):'—'} dos decididos no CRM viraram pedido.`})}</div>`;
   const par=Q.sem.slice().sort((a,b)=>(b.n.vNum||0)-(a.n.vNum||0)).slice(0,12);
   h+=`<div class="dupla"><div class="card"><h4>Maiores negócios da SEQ sem follow-up</h4>${tab([{t:'Cliente'},{t:'Vendedor'},{t:'Situação'},{t:'Sem FUP',n:1},{t:'Valor',n:1}],
       par.map(z=>[esc(String(z.n.cli).slice(0,40)),esc(nomeCurto(z.n.resp)||z.n.resp||''),esc(z.n.certeza||''),z.d==null?'nunca':fmtN(z.d)+' d',fmtBRL(z.n.vNum||0)]),360)}</div>
@@ -6863,7 +6900,10 @@ function apresDados(){
   const vencEntra=PP.venc.filter(n=>polDe(n.certeza).entra); PP.vencEntra=vencEntra; PP.previsaoComVenc=PP.previsao;   /* o motor já soma as de data vencida */ PP.integralComVenc=PP.integral+somar(vencEntra,n=>n.vNum||0);
   const porSit=POL().map(q=>{ const a=PP.eleg.concat(vencEntra).filter(n=>polDe(n.certeza).k===q.k); return {k:q.k,p:q.p,entra:q.entra,camada:q.camada,n:a.length,bruto:somar(a,n=>n.vNum||0),pond:somar(a,prevNeg),neg:a.slice().sort((x,y)=>(y.vNum||0)-(x.vNum||0))}; }).filter(x=>x.n).sort((a,b)=>(b.entra-a.entra)||(b.p-a.p));
   const fimAno=new Date(R.getFullYear(),11,31), ateDez=somar(ab.filter(n=>n.dtPrev&&n.dtPrev>=R&&n.dtPrev<=fimAno),prevNeg)+somar(vencEntra,prevNeg);   /* vencidas entram pela situação */
-  const pedAno=somar(vendasDoAno(R.getFullYear(),R),v=>v.valorDet!==undefined?v.valorDet:v.valor), metaAno=EST.vend?null:((EST.div==='SPV'?0:metaTotalSeq())+(EST.div==='SEQ'?0:metaTotalSpv()))||null;
+  /* realizado do ano: quando o período é o próprio ano até a data, o MESMO total oficial do
+     capítulo Resultado (antes a meta do ano usava a soma dos registros e divergia em R$ 154 mil) */
+  const _anoTodo=P.ini&&P.ini.getFullYear()===R.getFullYear()&&P.ini.getMonth()===0&&P.ini.getDate()===1&&X.ped!=null;
+  const pedAno=_anoTodo?X.ped:somar(vendasDoAno(R.getFullYear(),R),v=>v.valorDet!==undefined?v.valorDet:v.valor), metaAno=EST.vend?null:((EST.div==='SPV'?0:metaTotalSeq())+(EST.div==='SEQ'?0:metaTotalSpv()))||null;
   /* follow-up: a mesma régua da seção FUP do painel (interação dentro do negócio;
      cobrança sobre os negócios em Apresentação da cotação / Follow-Up) */
   const {lim:fupLim,fups,fu}=fupNegocios();
@@ -6871,7 +6911,8 @@ function apresDados(){
   const fuVend=[...new Set(fu.map(z=>z.n.resp))].filter(k=>k&&!/^\(/.test(k)).map(k=>{ const a=fu.filter(z=>z.n.resp===k), sm=a.filter(z=>z.d==null||z.d>fupLim);
     return {k:nomeCurto(k)||k,n:a.length,sem:sm.length,emDia:a.length-sm.length,vSem:somar(sm,z=>z.n.vNum||0),fups:fupsPer.filter(i=>i.resp===k).length}; }).sort((a,b)=>b.n-a.n);
   const FUP={lim:fupLim,fu,sem:fuSem,vend:fuVend,fupsPer:fupsPer.length,semanas:Math.max(1,(Math.min(+(D_P_FIM(P)||R),+R)-(+P.ini||+R))/(7*864e5))};
-  return {FUP,PP,prevMes,camadas,porSit,ateDez,pedAno,metaAno,R,P,X,div,vend,a,pulso,etapas,perd,mot,sf,C,V,renov,recMensal,cli,totCli,pipeV,ab,
+  const fechado=!!(P.fim&&P.fim<R&&!(P.fimCal&&P.fimCal>=R));   /* período já encerrado: pipeline e previsão são posição de HOJE */
+  return {fechado,FUP,PP,prevMes,camadas,porSit,ateDez,pedAno,metaAno,R,P,X,div,vend,a,pulso,etapas,perd,mot,sf,C,V,renov,recMensal,cli,totCli,pipeV,ab,
     recorte:[EST.vend,EST.div].filter(Boolean).join(' · ')||'Time inteiro · SEQ + SPV',logo:(document.querySelector('.rail .marca img')||{}).src||''}; }
 
 /* identidade LS Fire (padrão corporativo): logo colorido para fundo claro, versão
@@ -7018,7 +7059,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     .saf-r{display:grid;grid-template-columns:minmax(64px,110px) minmax(0,1fr) minmax(76px,120px);gap:12px;align-items:center}
     .saf-m{font-weight:700;font-size:.9rem}.saf-m small,.saf-v small{display:block;font-weight:400;font-size:.72rem;color:var(--txt2)}.saf-v{text-align:right;font-variant-numeric:tabular-nums}
     .saf-b{display:flex;height:16px;border-radius:3px;overflow:hidden;background:#EFEFEF}.saf-b i{display:block;width:var(--w);transition:width .9s cubic-bezier(.2,.7,.1,1) var(--d,0ms)}
-    .saf-b .g{background:#1E8E4E}.saf-b .p{background:#C62828}.saf-b .a{background:#D9D9D9}
+    .saf-b .g{background:#1E8E4E}.saf-b .p{background:#C62828}.saf-b .l{background:#7A7A7A}.saf-b .a{background:#D9D9D9}
     .js section:not(.in) .saf-b i{width:0}
     .venc{margin-top:18px;border:1px dashed #C62828;border-radius:4px;padding:12px 14px;background:#FFF6F6}.venc-h{display:grid;gap:2px;margin-bottom:4px}.venc-h b{color:#C62828;font-size:.92rem}.venc-h span{font-size:.82rem;color:var(--mut)}.venc .pm-l{border-left-color:#E8A0A0}
     .sit-tot{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--txt);margin-top:14px;padding-top:10px;font-weight:700}.sit-tot b{font-family:var(--tit);font-size:var(--s1);color:var(--lar)}
@@ -7088,7 +7129,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
     <div class="capa-t"><img src="${LSF_LOGO_NEG}" alt="LS Fire"><div class="capa-k">Diretoria Comercial · ${e(MOD.nome)}</div>
       <h1>${e(MOD.t[0])} <span class="lar">${e(typeof MOD.t[1]==='function'?MOD.t[1](D.P):MOD.t[1])}</span></h1>
       <p class="capa-sub">${e(D.P.rot)} · ${e(D.recorte)}</p>
-      <div class="capa-n">${[[mi(X.ped),'em pedidos'],[mi(D.pipeV),'em pipeline'],[mi(D.PP.previsao),'previstos em 3 meses']].map(([v,t],i)=>`<div style="--d:${600+i*180}ms"><b class="cnt">${e(v)}</b><span>${t}</span></div>`).join('')}</div><div class="capa-cue"><i></i>Role para ver a apresentação</div></div>
+      <div class="capa-n">${[[mi(X.ped),'em pedidos'],[mi(D.pipeV),'em pipeline'+(D.fechado?' (posição em '+fmtData(R).slice(0,5)+')':'')],[mi(D.PP.previsao),'previstos em 3 meses'+(D.fechado?' (a partir de '+fmtData(R).slice(0,5)+')':'')]].map(([v,t],i)=>`<div style="--d:${600+i*180}ms"><b class="cnt">${e(v)}</b><span>${t}</span></div>`).join('')}</div><div class="capa-cue"><i></i>Role para ver a apresentação</div></div>
     <div class="capa-simb" aria-hidden="true"></div></div></section>
   ${faixa}
   ${sec('resultado','',`${tit('Pedidos','recebidos',e(D.P.rot))}
@@ -7100,6 +7141,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
        <div class="leg"><span><i style="background:#C8C8C8"></i>${D.a-1}</span><span><i style="background:#FF6600"></i>${D.a}</span></div></div>`)}
   ${sec('divisoes','',`${tit('SEQ × SPV contra a','meta',`A SEQ responde por <b class="lar">${pc(sDiv/sT)}</b> do vendido e a SPV por <b class="lar">${pc(sSpv/sT)}</b>. O traço preto marca a meta do período.`)}
      <div class="stage">${divRow('SEQ')}${divRow('SPV')}
+       ${X.ped!=null&&Math.abs(X.ped-sDiv-sSpv)>=1?`<p class="mut" style="margin:6px 0 10px">Total oficial do período: <b>${e(mi(X.ped))}</b>. SEQ + SPV somam ${e(mi(sDiv+sSpv))}; a diferença de <b>${e(mi(X.ped-sDiv-sSpv))}</b> é de conciliação (total da planilha oficial sem pedido distribuído por divisão).</p>`:''}
        <div class="rib" style="margin-top:8px"><div style="flex:${sDiv};background:#FF6600;--d:0ms"></div><div style="flex:${sSpv};background:#404040;--d:120ms"></div></div>
        <div class="rib-l"><div><b class="lar">${pc(sDiv/sT)}</b><span>SEQ · ${e(mi(sDiv))}</span></div><div><b>${pc(sSpv/sT)}</b><span>SPV · ${e(mi(sSpv))}</span></div></div></div>`)}
   ${sec('spv','',(()=>{ const Q=spvDados(), L=Q.serie, mx=Math.max(1,...L.map(m=>Math.max(m.n,m.nAnt))), W=1000, H=300, pb=34, pt=26, n=L.length||1, gw=W/n, bw=Math.min(30,gw*.3), Y=v=>H-pb-(H-pb-pt)*(v/mx), iM=L.findIndex(m=>m.k===mesKey(Q.marco));
@@ -7135,7 +7177,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <div class="sit-v"><b class="${v.n&&v.emDia/v.n>=.7?'ok':v.n&&v.emDia/v.n<.4?'mau':''}">${v.n?pc(v.emDia/v.n):'—'}</b><small>${v.sem?`${fmtN(v.sem)} sem contato · ${e(mi(v.vSem))}`:'todos em dia'}</small></div></div>`).join('')}</div></div>
      ${piores.length?`<div class="stage"><div class="st-t">Há mais tempo sem contato <span>negócios com proposta apresentada</span></div><div class="tl">${piores.map(z=>`<div class="tl-r"><div><b>${e(String(z.n.cli).slice(0,46))}</b><br><span>${e(nomeCurto(z.n.resp)||z.n.resp)} · ${e(String(z.n.titulo||'').replace(/_?\[Neg[oó]cio\.[^\]]*\]/gi,'').replace(/\|\s*null\b/gi,'').replace(/[\s|]+$/,'').slice(0,60))}</span></div>
        <div style="text-align:right"><b>${z.d==null?'nunca':fmtN(z.d)+' dias'}</b><br><span>${e(mi(z.n.vNum))}</span></div></div>`).join('')}</div></div>`:''}`; })())}
-  ${sec('pipeline','',`${tit('Pipeline','aberto',`Ploomes · posição em ${e(fmtData(R))}`)}
+  ${sec('pipeline','',`${tit('Pipeline','aberto',`Ploomes · posição em ${e(fmtData(R))}${D.fechado?` (hoje, não no fim de ${e(D.P.rot)})`:''}`)}
      <div class="dest"><div>${big(D.pipeV,'mi',mi(D.pipeV))}<div class="big-c">em ${fmtN(D.ab.length)} negócios abertos</div></div>
      <p class="lede">Previsão ponderada de <b>${e(mi(X.previsao))}</b> sobre ${e(mi(X.elegivel))} elegíveis no horizonte. ${X.prevVenc?`<b>${fmtN(X.prevVenc)}</b> negócios estão com a previsão vencida.`:''}</p></div>
      <div class="stage"><div class="st-t">Valor em aberto por etapa <span>do primeiro contato ao fechamento</span></div>${barras(D.etapas.map(x=>({k:x.k.replace(/^\d+\.\s*/,''),s:fmtN(x.n)+' negócios',v:x.v})),mi,{top:false})}</div>`)}
@@ -7148,7 +7190,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <text x="${x+2+bw/2}" y="${Y(m.pond)-8}" text-anchor="middle" class="lbl" style="--d:${i*50+760}ms">${e(m.pond?fmtCompacto(m.pond).replace('R$ ',''):'')}</text>
          <text x="${x}" y="${H-10}" text-anchor="middle" class="ax">${e(m.rot)}</text></g>`; }).join('')}</svg>`;
      const cT=somar(D.camadas,c=>c.pond)||1, corC={'Alta confiança':'#FF6600','Provável':'#FFB27F','Possível':'#9A9A9A'}, falta=D.metaAno?Math.max(0,D.metaAno-D.pedAno):null;
-     return `${tit('Previsão de','vendas',`Negócios abertos no Ploomes com data de fechamento, ponderados pela política de probabilidade do painel · horizonte ${e(PP.J.rot)}`)}
+     return `${tit('Previsão de','vendas',`Negócios abertos no Ploomes com data de fechamento, ponderados pela política de probabilidade do painel · horizonte ${e(PP.J.rot)}${D.fechado?` · <b>posição em ${e(fmtData(R))}</b>: o período ${e(D.P.rot)} já terminou, e a previsão olha daqui para frente`:''}`)}
      <div class="dest"><div>${big(PP.previsaoComVenc,'mi',mi(PP.previsaoComVenc))}<div class="big-c">previsão ponderada em 3 meses</div></div>
        <p class="lede">De <b>${e(mi(PP.integralComVenc))}</b> em ${fmtN(PP.eleg.length+PP.vencEntra.length)} negócios. ${PP.vencEntra.length?`Inclui <b>${fmtN(PP.vencEntra.length)}</b> com a data de fechamento <b>vencida</b> (${e(mi(somar(PP.vencEntra,prevNeg)))} ponderados), que entram pela situação e ficam sinalizados com ⚠.`:''} <b>${fmtN(PP.sem.length)}</b> sem data ficam fora da conta.</p></div>
      ${(()=>{ const pol=POL().slice().sort((x,y)=>y.p-x.p), dentro=pol.filter(q=>q.entra), fora=pol.filter(q=>!q.entra);
@@ -7203,12 +7245,12 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
          <div class="ap-v"><span class="ap-a">${fmtN(d.np)} propostas</span><i>→</i><b>${fmtN(d.nv)} pedidos</b></div>
          <strong class="${d.np&&d.nv/d.np>=.2?'ok':d.np&&d.nv/d.np<.08?'mau':''}">${d.np?fmtN(Math.round(d.nv/d.np*100)):'—'} a cada 100</strong>
          <span class="mut" style="font-size:.8rem">${e(mi(d.vp))} propostos → ${e(mi(d.vv))} em pedidos · propostas → pedidos nos últimos meses: ${d.mes.slice(-3).map(m=>`${e(mesRot(m.k))}: ${m.np} → ${m.nv}`).join(' · ')}</span></div>`).join('')}</div>
-     ${(()=>{ const A=aprovDados(); if(!A)return ''; const pa=x=>x.aprov==null?'—':fmtPct(x.aprov,0), bar=(x,i)=>{ const t=x.n||1; return `<div class="saf-b" role="img" aria-label="${x.g} ganhas, ${x.pe} perdidas, ${x.ab} abertas de ${x.n}"><i class="g" style="--w:${(100*x.g/t).toFixed(1)}%;--d:${i*90}ms"></i><i class="p" style="--w:${(100*x.pe/t).toFixed(1)}%;--d:${i*90+120}ms"></i><i class="a" style="--w:${(100*x.ab/t).toFixed(1)}%;--d:${i*90+240}ms"></i></div>`; };
+     ${(()=>{ const A=aprovDados(); if(!A)return ''; const pa=x=>x.aprov==null?'—':fmtPct(x.aprov,0), bar=(x,i)=>{ const t=x.n||1; return `<div class="saf-b" role="img" aria-label="${x.g} ganhas, ${x.pe} perdidas, ${x.ab} abertas de ${x.n}"><i class="g" style="--w:${(100*x.g/t).toFixed(1)}%;--d:${i*90}ms"></i><i class="p" style="--w:${(100*x.pe/t).toFixed(1)}%;--d:${i*90+120}ms"></i><i class="l" style="--w:${(100*x.al/t).toFixed(1)}%;--d:${i*90+180}ms"></i><i class="a" style="--w:${(100*x.ab/t).toFixed(1)}%;--d:${i*90+240}ms"></i></div>`; };
        return `<div class="stage"><div class="st-t">Aproveitamento das propostas por safra <span>ganhas ÷ todas as emitidas, pelo mês de emissão · madura = mais de ${APROV_MADURA} dias</span></div>
        <p class="mut" style="margin:0 0 14px">Win rate conta só as decididas; o aproveitamento conta todas, inclusive as abertas. No total, <b>${pa(A.tot)}</b> de aproveitamento (${fmtN(A.tot.g)} de ${fmtN(A.tot.n)}) e <b>${fmtPct(A.tot.wr||0,0)}</b> de win rate. Nas safras maduras: <b>${pa(A.mad)}</b>.</p>
        <div class="saf">${A.div.map(d=>`<div class="saf-d"><b>${d.k}</b> <span class="mut">${pa(d)} de aproveitamento · ${fmtN(d.g)} de ${fmtN(d.n)} · win rate ${d.wr==null?'—':fmtPct(d.wr,0)}</span></div>
          ${d.safra.filter(x=>x.n).map((x,i)=>`<div class="saf-r"><span class="saf-m">${e(x.rot)}<small>${fmtN(x.n)} prop.${x.madura?'':' · em decisão'}</small></span>${bar(x,i)}<span class="saf-v"><b>${pa(x)}</b><small>${x.dec==null?'':fmtPct(x.dec,0)+' decididas'}</small></span></div>`).join('')}`).join('')}</div>
-       <div class="leg"><span><i style="background:#1E8E4E"></i>ganhas</span><span><i style="background:#C62828"></i>perdidas</span><span><i style="background:#D9D9D9"></i>ainda abertas</span></div></div>`; })()}`; })())}
+       <div class="leg"><span><i style="background:#1E8E4E"></i>ganhas</span><span><i style="background:#C62828"></i>perdidas</span><span><i style="background:#7A7A7A"></i>alternativa não escolhida</span><span><i style="background:#D9D9D9"></i>ainda abertas</span></div></div>`; })()}`; })())}
   ${sec('seq','',(()=>{ const Q=seqDados(); if(!Q)return `${tit('Olhar da','SEQ','')}<p class="mut">Sem base de propostas da SEQ.</p>`;
      const L=Q.mes, mx=Math.max(1,...L.map(m=>Math.max(m.n,m.nAnt))), W=1000, H=300, pb=34, pt=30, n=L.length||1, gw=W/n, bw=Math.min(40,gw*.3), Y=v=>H-pb-(H-pb-pt)*(v/mx);
      const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pedidos da SEQ por mês contra o ano anterior">${[.25,.5,.75,1].map(f=>`<line x1="0" x2="${W}" y1="${Y(mx*f)}" y2="${Y(mx*f)}" class="grid"/>`).join('')}
@@ -7223,7 +7265,7 @@ function apresentacaoHTML(op){ op=op||{}; const MOD=op.modelo||APRES_MODELOS[0],
        parado:`<b>${fmtN(Q.sem.length)}</b> de ${fmtN(Q.fu.length)} negócios com proposta apresentada estão há mais de ${Q.U.lim} dias sem FUP: <b>${e(mi(somar(Q.sem,z=>z.n.vNum||0)))}</b>.`,
        preco:`<b>${e(mi(Q.preco?Q.preco.v:0))}</b> de ${e(mi(Q.vPer))} perdidos desde ${e(mesRot(mesKey(Q.ini1)))} foram por preço (${fmtN(Q.preco?Q.preco.n:0)} negócios).${Q.semMot?` Outros ${fmtN(Q.semMot.n)} perdidos (${e(mi(Q.semMot.v))}) estão sem motivo.`:''}`};
      const mxF=Math.max(1,...Q.faixas.map(f=>f.v)), par=Q.sem.slice().sort((a,b)=>(b.n.vNum||0)-(a.n.vNum||0)).slice(0,6);
-     const decid=Q.gan.length+Q.per.length, mxM=Math.max(1,...Q.mot.slice(0,4).map(m=>m.v)), mxV=Math.max(1,...Q.vend.map(x=>x.nFu));
+     const decid=Q.gan.length+Q.nPerC, mxM=Math.max(1,...Q.mot.slice(0,4).map(m=>m.v)), mxV=Math.max(1,...Q.vend.map(x=>x.nFu));
      return `${tit('Olhar da','SEQ',`Equipamentos: onde está a queda de pedidos. Pedidos desde ${e(fmtData(Q.rIni))} contra as mesmas datas do ano anterior e três hipóteses, cada uma medida com a sua régua.`)}
      <div class="dest"><div>${big(Q.rec.length,'int',fmtN(Q.rec.length))}<div class="big-c">pedidos da SEQ de ${e(fmtData(Q.rIni))} a ${e(fmtData(Q.R))} · ${fmtN(Q.recAnt.length)} nas mesmas datas do ano anterior</div></div>
        <p class="lede">No ano, a SEQ soma <b>${fmtN(Q.ano.length)}</b> pedidos (${e(mi(somar(Q.ano,Q.val)))}) contra ${fmtN(Q.anoAnt.length)} (${e(mi(somar(Q.anoAnt,Q.val)))}) no mesmo período do ano anterior: a queda é <b>recente</b>. As propostas não caíram: <b>${fmtN(ultP.np)}</b> em ${e(ultP.rot)}. O que não está acontecendo é a proposta virar pedido.</p></div>
@@ -7605,7 +7647,7 @@ const TIPO_ATIV=t=>{ const s=norm(t||''); return /telefone|liga/.test(s)?'Ligaç
 const PASSO_ST=['Aberto','Concluído','Cancelado'];
 function passosDe(id){ return CFG.passos.filter(p=>String(p.neg)===String(id)); }
 function passoAberto(id){ return passosDe(id).filter(p=>p.status==='Aberto').sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1)[0]||null; }
-function situacaoPasso(p){ const R=isoD(hoje()); if(p.status==='Cancelado')return 'Cancelado'; if(p.status==='Concluído')return !p.prazo||!p.concluido?'Concluído — prazo não avaliável':p.concluido.slice(0,10)>p.prazo?'Concluído com atraso':'Concluído no prazo';
+function situacaoPasso(p){ const R=isoD(hoje()); if(p.status==='Cancelado')return 'Cancelado'; if(p.status==='Concluído')return !p.prazo||!p.concluido?'Concluído — prazo não avaliável':isoDia(new Date(p.concluido))>p.prazo?'Concluído com atraso':'Concluído no prazo';
   return p.prazo&&p.prazo<R?'Vencido':(p.hist||[]).some(h=>h.campo==='prazo')?'Reprogramado':'Planejado'; }
 function proximaAtividade(n){ const X=idxInter(), f=X.fut.get(String(n.id)), p=passoAberto(n.id);
   const L=[]; if(f)L.push({dt:f,txt:'interação agendada no Ploomes',fonte:'Ploomes'}); if(p&&p.prazo)L.push({dt:data(p.prazo),txt:p.texto,fonte:'painel',passo:p});
@@ -7775,7 +7817,7 @@ function indicadores(C){ const P=C.P; if(!P||!P.ini)return null;
   const intAll=M.interacoes.filter(i=>!i.futura&&i.dt&&noP(i.dt)&&i.dt<=R&&okV(i)&&(!div||!i.div||i.div===div));
   const {out:inter,dup}=dedupInter(intAll), cli=new Set(inter.map(i=>i.nCli));
   const ciclos=gan.map(x=>x.dtCri&&x.dtVenda?diasDe(x.dtCri,x.dtVenda):null).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b);
-  const med=a=>a.length?a[Math.floor(a.length/2)]:null;
+  const med=a=>mediana(a);   /* mediana correta (antes, com nº par, pegava o elemento superior) */
   const atual=P.fim>=R||isoD(P.fim)===isoD(R);
   /* posição: no período em andamento é a posição atual; num período encerrado,
      a fotografia da data de encerramento — nunca a posição de hoje */
@@ -7788,10 +7830,10 @@ function indicadores(C){ const P=C.P; if(!P||!P.ini)return null;
         defasagem:diasDe(new Date(new Date(foto.carga).toDateString()),fe)}; }
     else fotoMsg=`Sem fotografia do pipeline até ${fmtData(fe)}: a primeira carga registrada é de ${inicioAcomp()}. A posição atual não é usada como posição do encerramento.`; }
   const pl=recorte('acao',CFG.plano).filter(okV);
-  const conc_=pl.filter(a=>a.status==='Concluída'&&a.concluidaEm&&noP(data(a.concluidaEm.slice(0,10))));
+  const conc_=pl.filter(a=>a.status==='Concluída'&&a.concluidaEm&&noP(data(isoDia(new Date(a.concluidaEm)))));
   const acVenc=pl.filter(a=>prazoSit(a)==='vencida');
   const ps=recorte('passo',CFG.passos).filter(p=>(!vend||p.resp===vend||p.respNeg===vend)&&p.prazo&&noP(data(p.prazo)));
-  const psConc=ps.filter(p=>p.status==='Concluído'), psAval=psConc.filter(p=>p.prazo&&p.concluido), psPrazo=psAval.filter(p=>p.concluido.slice(0,10)<=p.prazo);
+  const psConc=ps.filter(p=>p.status==='Concluído'), psAval=psConc.filter(p=>p.prazo&&p.concluido), psPrazo=psAval.filter(p=>isoDia(new Date(p.concluido))<=p.prazo);
   /* mudanças entre a fotografia do início e a do fim (ou a atual) */
   const hasHist=snapsOrd().length>1; let mv=null;
   if(hasHist){ const a=fotoAte(addDias(P.ini,-1))||fotoAte(P.ini), b=atual?snapAtual():fotoAte(P.fimCal&&P.fimCal<R?P.fimCal:P.fim), m=mudancas(a,P,b);
@@ -7799,7 +7841,7 @@ function indicadores(C){ const P=C.P; if(!P||!P.ini)return null;
       mv={de:a,para:b,av:c('avancou').length,rec:c('recuou').length,adi:c('adiado').length,adiV:somar(c('adiado'),([id])=>(B.get(id)||{}).valor||0),novos:c('novo').length,trazidos:c('trazido').length,levados:c('levado').length}; } }
   const pv=atual?previsaoPedidos(ab):null, sf=atual&&!vend&&!div?saldoFaturar():null, fr=!filtro&&temFatOficial()?faturamentoRealizado(P):null;
   const mp=metaPedidos(P,vend), mi=P.fimCal&&P.fimCal>P.fim?metaPedidos(Object.assign({},P,{fim:P.fimCal}),vend):mp;
-  const X={ctx:C,P,ped,nPed:regs.length,ticket:regs.length?somar(regs,v=>v.valorDet!==undefined?v.valorDet:v.valor)/regs.length:null,conc,
+  const X={ctx:C,P,ped,nPed:regs.length,ticket:regs.length?(ped!=null?ped:somar(regs,v=>v.valorDet!==undefined?v.valorDet:v.valor))/regs.length:null,conc,   /* ticket = o MESMO total exibido ÷ nº de pedidos (antes: soma dos registros, que difere do oficial) */
     meta:mp,metaIntegral:mi,ating:mp&&mp.valor?ped/mp.valor:null,desvio:mp&&mp.valor?ped-mp.valor:null,
     fat:fr?fr.total:null,fatParcial:fr&&fr.parcial,
     novas:novas.length,novasV:vS(novas),props:props.length,propsV:somar(props,p=>p.val||0),
@@ -8165,7 +8207,7 @@ function fichaPessoa(v){ const P=PER, R=hoje(), X=indicadoresPeriodo(P,EST.vend?
 /* ======================= ENGENHARIA DE APLICAÇÃO — supervisão ======================= */
 function secEngSup(){ const P=PER, R=hoje(), ref=refNegocios(), sla=num(CFG.slaCot)||7, props=propostasRecorte(), fila=F.neg.filter(naFilaOrc);
   const an=[...new Set([...fila.map(n=>analista(n.orc)),...props.map(p=>analista(p.neg?p.neg.orc:null))])].filter(x=>x!=='(sem analista)').sort();
-  const rec=F.neg.filter(n=>noPer(n.dtCri)), med=a=>{ a=a.filter(x=>x!=null&&x>=0).sort((x,y)=>x-y); return a.length?a[Math.floor(a.length/2)]:null; };
+  const rec=F.neg.filter(n=>noPer(n.dtCri)), med=a=>mediana(a.filter(x=>x!=null&&x>=0));
   let h=sec('Supervisão da engenharia de aplicação',`${esc(P.rot)}. Solicitação recebida = negócio criado no período com analista (aproximação: o export não traz a data da solicitação). Proposta entregue = proposta emitida no período. Tempo até a proposta = criação do negócio → data da proposta (inclui o tempo aguardando informação do cliente, que a base não separa).`,'eng-sup');
   h+=card('','',tab([{t:'Analista',f:1},{t:'Solicitações recebidas',n:1},{t:'Na fila (posição)',n:1},{t:`Fila acima de ${sla} dias`,n:1},{t:'Propostas entregues',n:1},{t:'Tempo até a proposta (mediana)',n:1},{t:'Propostas com revisão',n:1},{t:'Carga: negócios abertos',n:1}],
     an.map(a=>{ const pp=props.filter(p=>analista(p.neg?p.neg.orc:null)===a), f=fila.filter(n=>analista(n.orc)===a);
@@ -8517,7 +8559,7 @@ function secDependencias(){ return card('Dependências e limitações','O que o 
 function analistasAtivos(){ const s=new Set(); (todasMetasOrc()||[]).forEach(m=>{ if(m.orc&&!orcInativo(m.orc))s.add(m.orc); }); F.neg.forEach(n=>{ const a=analista(n.orc); if(a&&a!=='(sem analista)')s.add(a); }); return [...s].sort(); }
 function fichaAnalista(v){ const P=PER, ref=refNegocios(), sla=num(CFG.slaCot)||7, noP=d=>d&&d>=P.ini&&d<=P.fim, vS=a=>somar(a,n=>n.vNum||0);
   const mine=n=>analista(n.orc)===v, fila=F.neg.filter(n=>naFilaOrc(n)&&mine(n)), props=propostasTodas().filter(p=>p.neg&&mine(p.neg)&&noP(p.dt)), rec=F.neg.filter(n=>mine(n)&&noP(n.dtCri));
-  const tempos=props.map(p=>p.neg.dtCri&&p.dt?diasDe(p.neg.dtCri,p.dt):null).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b), med=tempos.length?tempos[Math.floor(tempos.length/2)]:null;
+  const tempos=props.map(p=>p.neg.dtCri&&p.dt?diasDe(p.neg.dtCri,p.dt):null).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b), med=mediana(tempos);
   const meta=(orcDoAno()||[]).find(m=>m.orc===v), q=JSON.stringify(v).replace(/[&"<>]/g,_escA);
   let h=sec(`Ficha da engenharia — ${esc(v)}`,`${esc(P.rot)}. Solicitação recebida é APROXIMADA pela criação do negócio com este analista: o export não traz a data da solicitação à engenharia. Revisão não é tratada como erro do analista.`,'des-ficha');
   h+=`<div class="exec-cab so-tela"><button class="btn" onclick="reuniaoNova('Engenharia de aplicação',${q})">▶ Iniciar reunião</button></div>`;
@@ -8779,15 +8821,19 @@ function secPipelineAnalitico(){ const R=hoje(), ab=F.ab, vS=a=>somar(a,n=>n.vNu
   /* C) cascata */
   h+=sec('Mudanças do pipeline entre cargas','Pipeline aberto inicial, movimentos e pipeline final. Cada negócio entra em uma única categoria; a soma reconcilia início e fim.','pipe-casc');
   if(S.length<2)h+=card('','',`<p class="pl-vazio">${esc(MSG_SEM_HIST())} A cascata aparece quando houver duas cargas do export de negócios.</p>`);
-  else { const a=S[S.length-2], b=S[S.length-1], C=cascataPipeline(a,b,{vend:EST.vend,div:EST.div}), rot={novo:'Novos negócios',reaberto:'Reabertos',entrou:'Entraram no recorte',aumento:'Aumentos de valor',reducao:'Reduções de valor',ganho:'Ganhos',perda:'Perdas',saiuCarga:'Fora da carga (ajuste)',saiuHoriz:'Saíram do recorte'};
+  else { const a=S[S.length-2], b=S[S.length-1], C=cascataPipeline(a,b,{vend:EST.vend,div:EST.div}), rot={novo:'Novos negócios',reaberto:'Reabertos',entrou:'Entraram no recorte',aumento:'Aumentos de valor',reducao:'Reduções de valor',ganho:'Saíram por ganho (viraram pedido)',perda:'Saíram por perda',saiuCarga:'Fora da carga (ajuste)',saiuHoriz:'Saíram do recorte'};
     const B=snapMapa(b), A=snapMapa(a); Object.keys(C.cat).forEach(k=>regLista('cs_'+k,`Filtro: ${rot[k]} entre ${fmtData(new Date(a.carga))} e ${fmtData(new Date(b.carga))}`,C.cat[k].map(([id,v])=>{ const x=B.get(id)||A.get(id); return [esc(x.cli),esc(x.resp),fmtBRL(v),esc(x.est||'—')]; }),['Cliente','Responsável','Movimento','Etapa']));
-    const passos=[{rot:'Pipeline inicial',val:C.ini,tot:1},...Object.keys(rot).filter(k=>C.cat[k].length).map(k=>({rot:rot[k],val:C.s(k),k:'cs_'+k,ajuste:k==='saiuCarga'})),...(Math.abs(C.ajuste)>=1?[{rot:'Ajuste não explicado',val:C.ajuste,ajuste:1}]:[]),{rot:'Pipeline final',val:C.fim,tot:1}];
+    const passos=[{rot:'Pipeline inicial',val:C.ini,tot:1},...Object.keys(rot).filter(k=>C.cat[k].length).map(k=>({rot:rot[k],val:C.s(k),k:'cs_'+k,ajuste:k==='saiuCarga'})),...(Math.abs(C.ajuste)>=1?[{rot:'Ajuste não explicado',val:C.ajuste,ajuste:1}]:[]),{rot:'Pipeline final (Ploomes)',val:C.fim,tot:1},
+      /* as fotografias guardam o valor do Ploomes; o painel usa o valor da proposta atual
+         (ex.: Cargill R$ 14,5 mil → R$ 10,7 mi). Sem este degrau a cascata terminava em
+         R$ 148 mi e o card mostrava R$ 161 mi. */
+      ...(b===S[S.length-1]&&Math.abs(vS(F.ab)-C.fim)>=1?[{rot:'Valor pela proposta atual',val:vS(F.ab)-C.fim,ajuste:1},{rot:'Pipeline exibido no painel',val:vS(F.ab),tot:1}]:[])];
     h+=blocoGraf({id:'g-casc',tit:'Cascata do pipeline aberto',perg:'O que fez o pipeline crescer ou encolher entre as duas últimas cargas?',per:`${fmtData(new Date(a.carga))} → ${fmtData(new Date(b.carga))}`,unid:'R$',
       flags:['mudanças observadas entre cargas'],fonte:'fotografias das cargas do export de negócios',nota:'"Fora da carga" = negócio que não veio na carga nova: não é tratado como perda',leg:[[corV('--g-real'),'posição'],[corV('--g1'),'aumenta'],[corV('--g4'),'reduz']],
       corpo:svgCascata(passos),tabela:{cols:['Etapa','Valor','Negócios'],linhas:passos.map(p=>[p.rot,fmtBRL(p.val),p.k?fmtN(C.cat[p.k.slice(3)].length):''])}}); }
   /* D) distribuição por etapa */
   const g=[...agrupa(ab,n=>n.est||'(sem etapa)').entries()].sort((x,y)=>(typeof ordemEstagio==='function'?ordemEstagio(x[0])-ordemEstagio(y[0]):0)||vS(y[1])-vS(x[1]));
-  const med=a=>{ const v=a.map(n=>n.diasEst).filter(x=>x!=null).sort((p,q)=>p-q); return v.length?v[Math.floor(v.length/2)]:null; };
+  const med=a=>mediana(a.map(n=>n.diasEst).filter(x=>x!=null));
   g.forEach(([e,a],i)=>regLista('et'+i,`Filtro: etapa "${e}"`,a.sort((x,y)=>(y.vNum||0)-(x.vNum||0)).map(n=>linhaNeg(n)),COLS_NEG));
   h+=sec('Distribuição por etapa','Onde está o pipeline hoje e há quanto tempo parado em cada etapa. Distribuição atual: não é taxa de conversão histórica.','pipe-etapa');
   h+=`<div class="grid2">${blocoGraf({id:'g-etapa-v',tit:'Valor aberto por etapa',perg:'Em que etapa está o dinheiro?',per:`posição em ${fmtData(R)}`,unid:'R$',fonte:'Ploomes — negócios abertos',
@@ -8797,8 +8843,8 @@ function secPipelineAnalitico(){ const R=hoje(), ab=F.ab, vS=a=>somar(a,n=>n.vNu
   /* H) envelhecimento */
   const fx=[[0,15,'0–15 d'],[16,30,'16–30 d'],[31,60,'31–60 d'],[61,90,'61–90 d'],[91,1e9,'mais de 90 d']], camp=AGING.m==='idade'?(n=>n.dur):(n=>n.diasEst);
   const semDado=ab.filter(n=>camp(n)==null), bk=fx.map(([lo,hi,r],i)=>{ const a=ab.filter(n=>camp(n)!=null&&camp(n)>=lo&&camp(n)<=hi); regLista('ag'+i,`Filtro: ${AGING.m==='idade'?'idade do negócio':'tempo na etapa'} ${r}`,a.map(n=>linhaNeg(n)),COLS_NEG); return {rot:r,val:a.length,v:vS(a),k:'ag'+i}; });
-  const todos=ab.map(camp).filter(x=>x!=null).sort((a,b)=>a-b), mediana=todos.length?todos[Math.floor(todos.length/2)]:null;
-  h+=sec('Envelhecimento dos negócios abertos',`Faixas de ${AGING.m==='idade'?'idade do negócio (desde a criação)':'tempo na etapa atual'}. Mediana: ${mediana==null?'—':mediana+' dias'}.`,'pipe-aging');
+  const todos=ab.map(camp).filter(x=>x!=null).sort((a,b)=>a-b), med_=mediana(todos);
+  h+=sec('Envelhecimento dos negócios abertos',`Faixas de ${AGING.m==='idade'?'idade do negócio (desde a criação)':'tempo na etapa atual'}. Mediana: ${med_==null?'—':med_+' dias'}.`,'pipe-aging');
   h+=`<div class="seg so-tela" style="margin-bottom:8px" role="group" aria-label="Medida do envelhecimento"><button class="${AGING.m==='etapa'?'on':''}" onclick="AGING.m='etapa';render()">Tempo na etapa</button><button class="${AGING.m==='idade'?'on':''}" onclick="AGING.m='idade';render()">Idade do negócio</button></div>`;
   h+=blocoGraf({id:'g-aging',tit:'Negócios por faixa de envelhecimento',perg:'Quantos negócios estão envelhecendo sem avançar?',per:`posição em ${fmtData(R)}`,unid:'negócios',fonte:'Ploomes — negócios abertos',nota:semDado.length?`${semDado.length} sem a informação`:'',
     leg:[[corV('--g-real'),'negócios']],corpo:svgColunas(bk.map(b=>b.rot),bk.map(b=>b.val),{fmt:fmtN,k:bk.map(b=>b.k),aria:'Envelhecimento'}),tabela:{cols:['Faixa','Negócios','Valor'],linhas:bk.map(b=>[b.rot,fmtN(b.val),fmtBRL(b.v)])}});
@@ -9319,7 +9365,7 @@ html,body{background:#F4F4F4!important;color:#1F2328!important;overflow:auto!imp
 @media(max-width:600px){.leit .tab.narr th,.leit .tab.narr td{display:block;width:auto!important;border:0}.leit .tab.narr tr{display:block;border-bottom:1px solid #E6E6E6;padding:6px 0}.leit .tab.narr th{padding-bottom:0}}</style></head><body data-t="claro"><main class="leit">
 <p style="color:#6B6B6B;font-size:12px">LS FIRE · COMERCIAL</p><h1>${esc(REL_ULTIMO.tit)}</h1><p style="font-size:13px">${esc(REL_ULTIMO.perRot||PER.rot)} · ref. ${REL_ULTIMO.ref||fmtData(hoje())} · ${esc(REL_ULTIMO.recorte||'')} · gerado em ${fmtData(new Date())}</p>
 ${REL_ULTIMO.fluido}</main></body></html>`;
-  baixar(doc,`Leitura-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${new Date().toISOString().slice(0,10)}.html`,'text/html;charset=utf-8'); }
+  baixar(doc,`Leitura-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${isoDia(new Date())}.html`,'text/html;charset=utf-8'); }
 
 /* de quando são os dados: a importação (se houver) e o registro mais recente de
    pedidos e de negócios — "dados até" sozinho era lido como a data da importação */
@@ -9376,7 +9422,7 @@ async function baixarPDF(){
       if(i)pdf.addPage('a4','landscape');
       pdf.addImage(cv.toDataURL('image/jpeg',0.86),'JPEG',0,0,297,210,undefined,'FAST');
     }
-    const nome=`Relatorio-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${new Date().toISOString().slice(0,10)}.pdf`;
+    const nome=`Relatorio-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${isoDia(new Date())}.pdf`;
     baixarBlob(pdf.output('blob'),nome);
   }catch(e){
     /* sem internet para as bibliotecas: o arquivo local ainda imprime pelo navegador */
@@ -9388,7 +9434,7 @@ async function baixarPDF(){
 function baixarRelatorio(){
   if(!REL_ULTIMO)return;
   const css=cssPagina();
-  const nome=`Relatorio-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${new Date().toISOString().slice(0,10)}.html`;
+  const nome=`Relatorio-${REL_PUB[REL_ULTIMO.pub].nome}-LS-Fire-${isoDia(new Date())}.html`;
   baixar(`<!DOCTYPE html>\n<html lang="pt-BR" data-t="claro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(REL_ULTIMO.tit)}</title><style>${css}</style></head>
 <body class="rel-doc"><div class="rel-folhas">${REL_ULTIMO.html}</div>
@@ -9574,9 +9620,9 @@ function aplicaComparativo(c,arq){
   CFG.refOficial=Object.assign({},CFG.refOficial||{});
   Object.entries(c.pedidos).forEach(([a,x])=>{ const n=ult(x.valores); if(!n)return;
     CFG.refOficial[a]={rotulo:`Comparativo de pedidos — planilha oficial${c.data?' de '+fmtData(c.data):''}`,meses:n,
-      valores:x.valores.map(v=>v==null?0:v),pedidos:(x.qtd||[]).map(v=>v==null?0:v),data:c.data?c.data.toISOString().slice(0,10):null}; });
+      valores:x.valores.map(v=>v==null?0:v),pedidos:(x.qtd||[]).map(v=>v==null?0:v),data:c.data?isoDia(c.data):null}; });
   CFG.fatOficial=Object.assign({},CFG.fatOficial||{});
-  Object.entries(c.fat).forEach(([a,v])=>{ const n=ult(v); if(n)CFG.fatOficial[a]={meses:n,valores:v,data:c.data?c.data.toISOString().slice(0,10):null}; });
+  Object.entries(c.fat).forEach(([a,v])=>{ const n=ult(v); if(n)CFG.fatOficial[a]={meses:n,valores:v,data:c.data?isoDia(c.data):null}; });
   BRUTO._meta=Object.assign({},BRUTO._meta); BRUTO._meta.imp=Object.assign({},BRUTO._meta.imp,{comparativo:{em:new Date().toISOString(),arq,linhas:Object.keys(c.pedidos).length+Object.keys(c.fat).length}});
   limparCaches(); construir(); marcarUF(); listarBases&&listarBases(); recarregarFiltros(); aplicar(); }
 function receber(files){
@@ -9851,7 +9897,7 @@ function baixarCSV(){
     });
   });
   const t=TELAS.find(x=>x.id===EST.tela)||{id:'tela'};
-  baixar(lin.join('\n'),`executivo-${t.id}-${new Date().toISOString().slice(0,10)}.csv`,'text/csv;charset=utf-8');
+  baixar(lin.join('\n'),`executivo-${t.id}-${isoDia(new Date())}.csv`,'text/csv;charset=utf-8');
 }
 /* troca o conteúdo E a tag de abertura (a do seed carrega data-z quando comprimido) */
 function trocaBloco(html,id,conteudo,tag){
@@ -9895,7 +9941,7 @@ async function corpoComDados(dados){
 async function salvarHTML(diretoria){
   try{
     const h=await corpoComDados(diretoria?baseDiretoria():BRUTO);
-    const d=new Date().toISOString().slice(0,10);
+    const d=isoDia(new Date());
     baixar(CAB_LOCAL+h,`Painel-Executivo-LS-Fire-${diretoria?'diretoria-':''}${d}.html`,'text/html;charset=utf-8');
   }catch(e){ console.error(e); aviso('Não consegui gravar o arquivo: '+e.message); }
 }
