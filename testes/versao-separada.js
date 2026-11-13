@@ -8,7 +8,10 @@ const { chromium } = require('playwright'); const http = require('http'), fs = r
 const [unico, pasta] = process.argv.slice(2).map(p => path.resolve(p));
 const H = fs.readFileSync(unico, 'utf8');
 const lib = re => { const m = H.match(re); if (!m) throw new Error('biblioteca não encontrada'); return m[1]; };
-const XLSX_JS = lib(/<script>(\/\*! xlsx\.js[\s\S]*?)<\/script>/), CHART_JS = lib(/<script>(\/\*\*\s*\n\s*\* Skipped minification[\s\S]*?)<\/script>/);
+/* a cópia embutida da SheetJS escreve o caractere U+FFFD das tabelas de código de página como
+   o escape � (o publicador do claude.ai recusa o caractere literal); a CDN entrega o
+   literal, e o SRI confere bytes: desfaz o escape para responder com o arquivo exato */
+const XLSX_JS = lib(/<script>(\/\*! xlsx\.js[\s\S]*?)<\/script>/).replace(/\\ufffd/g, '�'), CHART_JS = lib(/<script>(\/\*\*\s*\n\s*\* Skipped minification[\s\S]*?)<\/script>/);
 const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
 
 const srv = http.createServer((q, r) => { const f = path.join(pasta, decodeURIComponent(q.url.split('?')[0]).replace(/^\/$/, '/index.html'));
