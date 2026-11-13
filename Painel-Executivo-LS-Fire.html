@@ -57,7 +57,7 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
      monocromática #CF4E04 #A63F03 #7D2F02 #542002 · terra #BF612A #8C593B #594437 #404040
      · análoga #F23205 #FF6600 #F20905 #F2A505. O verde fica só para "bom / meta batida".
      --az = SPV (marrom terra; no escuro, um tom claro do mesmo marrom) */
-  --lar:#FF6600; --lar2:#FF6600;
+  --lar:#FF6600; --lar2:#FF6600; --lar-txt:#B34700;
   --bg:#171412; --bg2:#1E1A18; --card:#24201D; --card2:#2B2623; --linha:#3A3330;
   --txt:#F4EFEB; --txt2:#BCB2AA; --txt3:#8D837C;
   --ok:#2FB57A; --err:#F23205; --ale:#F2A505; --az:#C49A7E; --rox:#CF4E04; --cia:#FF6600;
@@ -74,7 +74,7 @@ body{margin:0;background:var(--bg);color:var(--txt);
   font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;
   -webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
-a{color:var(--lar)}
+a{color:var(--lar-txt)}
 .app{display:flex;min-height:100vh}
 
 /* ---------- rail ---------- */
@@ -149,11 +149,15 @@ a{color:var(--lar)}
   .rail button .ic{font-size:12px}
   .rail .rodape{border-top:0;border-left:1px solid var(--linha);flex-direction:row;
     flex:0 0 auto;padding:7px 8px}
-  .rail .rodape button{font-size:0!important;padding:8px 10px}
-  .rail .rodape button::first-letter{font-size:15px}
+  .rail .rodape button{font-size:17px!important;padding:0;min-width:44px;min-height:44px;justify-content:center}
+  .rail .rodape button .rt{display:none}
   .rail .rodape button#bt-print{display:none}
   .abrir-rail{display:none!important}
-  .topo{padding:9px 12px;gap:8px;row-gap:7px}
+  /* só o menu fica preso no topo; os filtros recolhem atrás de um botão com o resumo do recorte */
+  .topo{padding:9px 12px;gap:8px;row-gap:7px;position:static!important}
+  .topo .filt-m{display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 12px;border:1px solid var(--linha);border-radius:8px;background:var(--bg);color:var(--txt);font:600 12px Arial,sans-serif;cursor:pointer;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .topo .filt-m span{font-weight:400;color:var(--txt2);overflow:hidden;text-overflow:ellipsis}
+  .topo:not(.filt-ab) #seg-ano,.topo:not(.filt-ab) #per-ctl,.topo:not(.filt-ab) #seg-div,.topo:not(.filt-ab) #sel-vend{display:none!important}
   .topo .tit{font-size:13.5px;width:100%;margin-right:0}
   .topo .tit small{font-size:10px}
   .seg button{padding:6px 9px;font-size:10.5px}
@@ -188,7 +192,7 @@ a{color:var(--lar)}
 .kpi .rot{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3)}
 .kpi .val{font-size:25px;font-weight:700;letter-spacing:-.02em;line-height:1.15;margin:3px 0 1px}
 .kpi.ok .val{color:var(--ok)}.kpi.err .val{color:var(--err)}
-.kpi.ale .val{color:var(--ale)}.kpi.az .val{color:var(--az)}.kpi.lar .val{color:var(--lar)}
+.kpi.ale .val{color:var(--ale)}.kpi.az .val{color:var(--az)}.kpi.lar .val{color:var(--lar-txt)}
 .kpi .pe{font-size:10.5px;color:var(--txt2)}
 .kpi.gg .val{font-size:40px}
 
@@ -222,7 +226,7 @@ td.f{color:var(--txt);font-weight:700}
 .t-ok{color:var(--ok);border-color:rgba(34,197,139,.4)}
 .t-err{color:var(--err);border-color:rgba(242,9,5,.4)}
 .t-ale{color:var(--ale);border-color:rgba(242,165,5,.4)}
-.t-lar{color:var(--lar);border-color:rgba(242,92,5,.45)}
+.t-lar{color:var(--lar-txt);border-color:rgba(242,92,5,.45)}
 .t-az{color:var(--az);border-color:rgba(89,68,55,.4)}
 
 /* ---------- gráficos ---------- */
@@ -243,21 +247,21 @@ td.f{color:var(--txt);font-weight:700}
 .trilha button{all:unset;cursor:pointer;font-size:10px;letter-spacing:.05em;text-transform:uppercase;
   color:var(--txt3);background:var(--card);border:1px solid var(--linha);border-radius:99px;padding:4px 12px}
 .trilha button:hover{color:var(--txt)}
-.trilha button.on{background:var(--lar);color:#fff;border-color:var(--lar);font-weight:700}
+.trilha button.on{background:var(--lar);color:#fff;border-color:var(--lar-txt);font-weight:700}
 .trilha span{color:var(--txt3);font-size:11px}
 /* ---------- drill ---------- */
 .drill:empty{display:none}
 .drill-cx{margin-top:12px;border:1px solid var(--lar);border-radius:10px;background:var(--card2);overflow:hidden}
 .drill-cab{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--linha);
   background:var(--card);flex-wrap:wrap}
-.drill-cab b{font-size:11.5px;color:var(--lar)}
+.drill-cab b{font-size:11.5px;color:var(--lar-txt)}
 .drill-cab span{font-size:10.5px;color:var(--txt3);margin-right:auto}
 .drill-cab button{all:unset;cursor:pointer;font-size:10.5px;color:var(--txt2);
   border:1px solid var(--linha);border-radius:7px;padding:4px 9px}
-.drill-cab button:hover{color:var(--txt);border-color:var(--lar)}
+.drill-cab button:hover{color:var(--txt);border-color:var(--lar-txt)}
 .drill-cx .tw{border:0;border-radius:0}
 .dica-clique{font-size:10.5px;color:var(--txt3);margin:-4px 0 10px}
-.dica-clique b{color:var(--lar)}
+.dica-clique b{color:var(--lar-txt)}
 /* ---------- filtros de dimensão ---------- */
 .filtros{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:9px 20px;
   border-bottom:1px solid var(--linha);background:var(--bg2);position:sticky;top:0;z-index:25}
@@ -266,7 +270,7 @@ td.f{color:var(--txt);font-weight:700}
 .fdrop>button{all:unset;cursor:pointer;background:var(--card);border:1px solid var(--linha);
   color:var(--txt2);font-size:10.5px;padding:5px 10px;border-radius:7px;white-space:nowrap}
 .fdrop>button:hover{color:var(--txt)}
-.fdrop>button.ativo{border-color:var(--lar);color:var(--txt)}
+.fdrop>button.ativo{border-color:var(--lar-txt);color:var(--txt)}
 .fdrop>button .cnt{background:var(--lar);color:#fff;border-radius:99px;padding:0 5px;margin-left:5px;font-size:9px}
 .fop{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:70;background:var(--bg2);
   border:1px solid var(--linha);border-radius:9px;padding:7px;min-width:210px;max-height:290px;
@@ -275,10 +279,10 @@ td.f{color:var(--txt);font-weight:700}
 .fop label{display:flex;gap:7px;align-items:center;padding:4px 6px;border-radius:6px;
   font-size:10.5px;cursor:pointer;color:var(--txt2)}
 .fop label:hover{background:var(--card);color:var(--txt)}
-.fop input{accent-color:var(--lar)}
+.fop input{accent-color:var(--lar-txt)}
 .chip{display:inline-flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--lar);
   color:var(--txt);border-radius:99px;padding:3px 9px;font-size:10px}
-.chip b{color:var(--lar);font-weight:700}
+.chip b{color:var(--lar-txt);font-weight:700}
 .chip span{cursor:pointer;color:var(--txt3)}
 .chip span:hover{color:var(--err)}
 @media(max-width:760px){.filtros{padding:8px 12px;position:static;overflow-x:auto}}
@@ -296,7 +300,7 @@ td.f{color:var(--txt);font-weight:700}
 .modal .conteudo>p{margin:0 0 14px;font-size:11.5px;color:var(--txt3)}
 .dropzona{border:2px dashed var(--linha);border-radius:12px;padding:30px 18px;text-align:center;
   cursor:pointer;transition:.15s;color:var(--txt2);font-size:12px}
-.dropzona:hover,.dropzona.sobre{border-color:var(--lar);background:var(--card);color:var(--txt)}
+.dropzona:hover,.dropzona.sobre{border-color:var(--lar-txt);background:var(--card);color:var(--txt)}
 .dropzona b{display:block;font-size:13px;margin-bottom:4px;color:var(--txt)}
 .arq{display:flex;gap:10px;align-items:center;padding:8px 11px;border:1px solid var(--linha);
   border-radius:8px;margin-top:8px;font-size:11px;background:var(--card)}
@@ -306,7 +310,7 @@ td.f{color:var(--txt);font-weight:700}
   .modal{padding:10px}.modal .conteudo{padding:14px}}
 .base-item{background:var(--card);border:1px solid var(--linha);border-radius:8px;padding:9px 11px;font-size:10.5px}
 .base-item b{display:block;font-size:11px;color:var(--txt)}
-.base-item .n{font-size:17px;font-weight:700;color:var(--lar);line-height:1.2}
+.base-item .n{font-size:17px;font-weight:700;color:var(--lar-txt);line-height:1.2}
 .mcampo{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .mcampo label{font-size:10.5px;color:var(--txt3)}
 .mcampo input,.mcampo select{background:var(--card);border:1px solid var(--linha);color:var(--txt);
@@ -316,10 +320,10 @@ td.f{color:var(--txt);font-weight:700}
 .btn:hover{background:var(--lar2)}
 .btn.sec{background:var(--card);color:var(--txt2);border:1px solid var(--linha)}
 .btn.sec:hover{color:var(--txt);background:var(--card2)}
-.nav-bloco{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.38);padding:12px 12px 4px}
+.nav-bloco{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#C8C8C8;padding:12px 12px 4px}
 .nav-bloco:first-child{padding-top:2px}
-.topo .acoes button.dest{border-color:var(--lar);color:var(--lar);font-weight:700}
-.topo .acoes button.prim{background:var(--lar);color:#fff;border-color:var(--lar);font-weight:700}
+.topo .acoes button.dest{border-color:var(--lar-txt);color:var(--lar-txt);font-weight:700}
+.topo .acoes button.prim{background:var(--lar);color:#fff;border-color:var(--lar-txt);font-weight:700}
 .mais{position:relative}
 .mais-m{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:60;background:var(--bg2);border:1px solid var(--linha);border-radius:10px;
   box-shadow:0 14px 40px rgba(0,0,0,.25);padding:6px;min-width:250px;flex-direction:column;gap:2px}
@@ -353,7 +357,7 @@ td.f{color:var(--txt);font-weight:700}
 .diag{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:10px}
 .diag li{font-size:12px;line-height:1.45}
 .diag .dg-t{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.diag .dg-t button{all:unset;cursor:pointer;font-size:10.5px;color:var(--lar);border:1px solid var(--lar);border-radius:6px;padding:1px 7px;white-space:nowrap}
+.diag .dg-t button{all:unset;cursor:pointer;font-size:10.5px;color:var(--lar-txt);border:1px solid var(--lar);border-radius:6px;padding:1px 7px;white-space:nowrap}
 .diag p{margin:2px 0} .diag p span{display:inline-block;min-width:96px;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3)}
 .diag small{color:var(--txt3);font-size:10px}
 .pl-vazio{color:var(--txt3);font-size:12px;margin:6px 0}
@@ -361,21 +365,24 @@ td.f{color:var(--txt);font-weight:700}
 .plano-t textarea.campo{min-width:170px;resize:vertical}
 .plano-t tr.st-concluida td{opacity:.6} .plano-t tr.pz-vencida td:first-child{box-shadow:inset 3px 0 0 var(--err)} .plano-t tr.pz-proxima td:first-child{box-shadow:inset 3px 0 0 var(--ale)}
 .pl-filtros{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:11px;color:var(--txt2);margin-bottom:10px} .pl-filtros .campo{font-size:11px;padding:3px 6px} .pl-alertas{display:flex;gap:6px}
-.kg-tipo{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(242,101,34,.10);color:var(--lar)}
+.kg-tipo{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(242,101,34,.10);color:var(--lar-txt)}
 .kg-tipo.pos{background:rgba(60,110,160,.12);color:var(--az)} .kg-tipo.prev{background:var(--card2);color:var(--txt2);border:1px dashed var(--linha)}
 .kg-fonte{color:var(--txt3);font-style:italic}
 /* central de supervisão */
 .st-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-bottom:10px}
 @media(max-width:1100px){.st-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}} @media(max-width:560px){.st-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .st-tile{display:flex;flex-direction:column;gap:3px;text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--linha);border-top:3px solid var(--ok);border-radius:10px;padding:10px 12px;min-width:0}
-.st-tile:hover{border-color:var(--lar)} .st-tile b{font-size:24px;font-family:var(--mono,inherit);color:var(--txt)} .st-tile span{font-size:11.5px;font-weight:700;color:var(--txt)} .st-tile small{font-size:10px;color:var(--txt3)}
-.st-tile.err{border-top-color:var(--err)} .st-tile.err b{color:var(--err)} .st-tile.ale{border-top-color:var(--ale)} .st-tile.ale b{color:var(--ale)}
-.mini{all:unset;cursor:pointer;font-size:10.5px;color:var(--lar);border:1px solid var(--lar);border-radius:6px;padding:1px 7px;white-space:nowrap;margin:1px}
+.st-tile:hover{border-color:var(--lar-txt)} .st-tile b{font-size:24px;font-family:var(--mono,inherit);color:var(--txt)} .st-tile span{font-size:11.5px;font-weight:700;color:var(--txt)} .st-tile small{font-size:10px;color:var(--txt3)}
+/* o estado aparece na borda e no ponto do rótulo; o número fica neutro (o mesmo valor não muda de cor entre telas) */
+.st-tile.err{border-top-color:var(--err)} .st-tile.ale{border-top-color:var(--ale)}
+.st-tile>span::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.st-tile.err>span::before{background:var(--err)} .st-tile.ale>span::before{background:var(--ale)}
+.mini{all:unset;cursor:pointer;font-size:10.5px;color:var(--lar-txt);border:1px solid var(--lar);border-radius:6px;padding:1px 7px;white-space:nowrap;margin:1px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px} .chip{display:inline-flex;gap:5px;align-items:baseline;cursor:pointer;font-size:11px;background:var(--card);border:1px solid var(--linha);border-radius:99px;padding:3px 10px;color:var(--txt2)}
-.chip.on{border-color:var(--lar);color:var(--lar)} .chip b{color:var(--txt)} .chip small{color:var(--txt3)}
+.chip.on{border-color:var(--lar-txt);color:var(--lar-txt)} .chip b{color:var(--txt)} .chip small{color:var(--txt3)}
 .rel-grupo{margin:4px 0 8px;font-size:13px;color:var(--txt)} .rel-grupo span{font-weight:400;color:var(--txt3);margin-left:8px;font-size:12px}
 .rel-modelos{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:12px}
-.rel-mod{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--linha);border-radius:10px;padding:11px 13px} .rel-mod.on{border-color:var(--lar);box-shadow:inset 0 3px 0 var(--lar)}
+.rel-mod{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--linha);border-radius:10px;padding:11px 13px} .rel-mod.on{border-color:var(--lar-txt);box-shadow:inset 0 3px 0 var(--lar)}
 .rel-mod b{font-size:12.5px} .rel-mod span{font-size:11px;color:var(--txt3);line-height:1.4}
 .relc-form{display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:10px;font-size:11.5px;color:var(--txt2)} .relc-form label{display:flex;flex-direction:column;gap:4px}
 .relc-pers{font-size:11.5px;margin:6px 0 10px} .relc-pers div{margin:5px 0} .relc-pers label{margin-right:10px;white-space:nowrap}
@@ -384,8 +391,9 @@ td.f{color:var(--txt);font-weight:700}
 .f-form .mcampo{margin-bottom:10px} .f-form .mcampo label{display:block;font-size:11px;color:var(--txt3);margin-bottom:4px} .f-form .campo{width:100%;box-sizing:border-box;font-family:inherit}
 .comp-tw{max-height:46vh;overflow:auto} .comp-t{font-size:11px;border-collapse:collapse;width:100%} .comp-t td,.comp-t th{padding:3px 4px;border-bottom:1px solid var(--linha);vertical-align:top;text-align:left} .comp-t .campo{width:100%;min-width:80px;font-size:11px;padding:3px 5px}
 .g.g6{grid-template-columns:repeat(6,minmax(0,1fr))} @media(max-width:900px){.g.g6{grid-template-columns:repeat(3,minmax(0,1fr))}} @media(max-width:520px){.g.g6{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.exec-alertas{display:flex;flex-direction:column;gap:6px;margin:0 0 14px} .exec-alertas .al{font-size:11.5px;padding:7px 10px;border-radius:8px;border:1px solid var(--linha);border-left:3px solid var(--ale);background:var(--card)}
-.exec-alertas .al a,.diag .ver{color:var(--lar);cursor:pointer;text-decoration:underline}
+.exec-alertas{display:flex;flex-direction:column;gap:6px;margin:0 0 14px}
+.exec-alertas>summary{cursor:pointer;font-size:12.5px;font-weight:700;padding:9px 12px;border:1px solid var(--linha);border-left:3px solid var(--ale);border-radius:8px;background:var(--card);list-style-position:inside;min-height:24px} .exec-alertas>summary span{font-weight:400;color:var(--txt2)} .exec-alertas[open]>summary{margin-bottom:2px} .exec-alertas .al{font-size:11.5px;padding:7px 10px;border-radius:8px;border:1px solid var(--linha);border-left:3px solid var(--ale);background:var(--card)}
+.exec-alertas .al a,.diag .ver{color:var(--lar-txt);cursor:pointer;text-decoration:underline}
 .diag p.ev{font-variant-numeric:tabular-nums}
 .td-link{color:inherit;text-decoration:underline dotted;cursor:pointer} .pl-x{all:unset;cursor:pointer;color:var(--txt3);padding:2px 6px} .pl-x:hover{color:var(--err)}
 .pl-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--txt3)}
@@ -401,12 +409,12 @@ td.f{color:var(--txt);font-weight:700}
 .per-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .per-ctl .campo{font-size:11px;padding:5px 7px}
 .per-ref{display:flex;gap:4px;align-items:center;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em}
-.per-ref button{all:unset;cursor:pointer;color:var(--lar);font-size:13px;padding:0 3px}
+.per-ref button{all:unset;cursor:pointer;color:var(--lar-txt);font-size:13px;padding:0 3px}
 #bt-mail[data-pend]:not([data-pend=""])::after{content:attr(data-pend);display:inline-block;margin-left:6px;background:var(--err);color:#fff;border-radius:99px;font-size:9.5px;padding:0 6px}
 /* ---------- pesquisa ---------- */
 .pq-hero{padding:18px 18px 12px;position:relative;margin-bottom:12px;background:linear-gradient(135deg,var(--card),var(--card2))}
 .pq-caixa{display:flex;align-items:center;gap:10px;border:2px solid var(--lar);border-radius:12px;padding:4px 12px;background:var(--bg2)}
-.pq-lupa{font-size:22px;color:var(--lar)}
+.pq-lupa{font-size:22px;color:var(--lar-txt)}
 .pq-caixa input{all:unset;flex:1;font-size:16px;padding:10px 0;color:var(--txt);min-width:0}
 .pq-caixa input::placeholder{color:var(--txt3);font-size:13px}
 .pq-caixa kbd{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:5px;padding:1px 6px}
@@ -414,11 +422,11 @@ td.f{color:var(--txt);font-weight:700}
 .pq-sug:empty{display:none}
 .pq-s{display:grid;grid-template-columns:26px 1fr auto;gap:2px 10px;padding:8px 14px;cursor:pointer;border-bottom:1px solid var(--linha);align-items:center}
 .pq-s:last-child{border-bottom:0}.pq-s:hover,.pq-s.on{background:var(--card2)}
-.pq-s .pq-ic{grid-row:span 2;font-size:16px;text-align:center}.pq-s b{font-size:13px}.pq-s em{font-style:normal;font-size:10px;color:var(--lar);text-transform:uppercase;letter-spacing:.06em}
+.pq-s .pq-ic{grid-row:span 2;font-size:16px;text-align:center}.pq-s b{font-size:13px}.pq-s em{font-style:normal;font-size:10px;color:var(--lar-txt);text-transform:uppercase;letter-spacing:.06em}
 .pq-s small{grid-column:2/4;font-size:10.5px;color:var(--txt3)}
 .pq-ex{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:11px;color:var(--txt3)}
 .pq-ex button{all:unset;cursor:pointer;border:1px dashed var(--linha);border-radius:99px;padding:3px 10px;color:var(--txt2)}
-.pq-ex button:hover{border-color:var(--lar);color:var(--lar)}
+.pq-ex button:hover{border-color:var(--lar-txt);color:var(--lar-txt)}
 mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px}
 .pq-tipos{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;margin-bottom:10px}
 .pq-tipo{all:unset;cursor:pointer;background:var(--card);border:1px solid var(--linha);border-top:3px solid var(--c);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;transition:.12s}
@@ -429,15 +437,15 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .pq-linhas>div,.pq-barra{display:flex;align-items:center;gap:8px}.pq-linhas label,.pq-barra label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3)}
 .seg button.on{background:var(--lar);color:#fff}
 .pq-entendi{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 12px;font-size:11.5px;color:var(--txt2)}
-.pq-ent-txt b{color:var(--lar)}.pq-limpa{all:unset;cursor:pointer;font-size:11px;color:var(--txt3);text-decoration:underline}
+.pq-ent-txt b{color:var(--lar-txt)}.pq-limpa{all:unset;cursor:pointer;font-size:11px;color:var(--txt3);text-decoration:underline}
 .pq-barra{margin:14px 0 8px;flex-wrap:wrap}.pq-barra span{margin-left:auto;font-size:11px;color:var(--txt3)}
 .pq-sub{font-size:10.5px;color:var(--txt3);margin-top:1px}
 .pq-mapa-t{flex-wrap:wrap;margin-bottom:4px}.pq-mapa-t button{font-size:10.5px}
 .pq-vazio{display:flex;flex-direction:column;gap:4px;align-items:center;padding:40px;color:var(--txt3)}.pq-vazio b{color:var(--txt);font-size:14px}
-.pq-ficha{margin-bottom:12px;border-color:var(--lar)}
+.pq-ficha{margin-bottom:12px;border-color:var(--lar-txt)}
 .pq-ficha-cab{display:flex;gap:12px;align-items:center;margin-bottom:12px}.pq-ficha-cab>div{flex:1}
 .pq-ficha-ic{font-size:26px;width:48px;height:48px;border-radius:12px;background:rgba(242,92,5,.12);display:grid;place-items:center}
-.pq-ficha-cab small{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lar)}.pq-ficha-cab h2{font-size:19px;margin:0}
+.pq-ficha-cab small{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lar-txt)}.pq-ficha-cab h2{font-size:19px;margin:0}
 .pq-ficha-corpo{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
 .pq-frases{margin:0 0 12px;padding-left:18px;font-size:12.5px;line-height:1.6}
 .pq-tops{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
@@ -453,13 +461,13 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .linhas-cfg table input{width:100%;background:transparent;border:0;color:var(--txt);font:inherit;
   font-size:11px;padding:2px 0}
 .linhas-cfg table input:focus{outline:1px solid var(--lar);border-radius:3px}
-.glos dt{font-size:11.5px;font-weight:700;color:var(--lar);margin-top:11px}
+.glos dt{font-size:11.5px;font-weight:700;color:var(--lar-txt);margin-top:11px}
 .glos dd{margin:2px 0 0;font-size:11px;color:var(--txt2)}
 .topo .acoes{display:flex;gap:6px}
 .topo .acoes button{all:unset;cursor:pointer;background:var(--card);border:1px solid var(--linha);
   color:var(--txt2);font-size:10.5px;padding:6px 10px;border-radius:8px;white-space:nowrap}
-.topo .acoes button:hover{color:var(--txt);border-color:var(--lar)}
-.topo .acoes button.on{background:var(--lar);color:#fff;border-color:var(--lar);font-weight:700}
+.topo .acoes button:hover{color:var(--txt);border-color:var(--lar-txt)}
+.topo .acoes button.on{background:var(--lar);color:#fff;border-color:var(--lar-txt);font-weight:700}
 @media(max-width:760px){.topo .acoes{order:9;width:100%;overflow-x:auto;padding-bottom:2px}}
 @media print{
   .rail,.topo .seg,.topo .campo,.abrir-rail{display:none!important}
@@ -478,7 +486,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13.5px}
 .kpi.lar{border-top:3px solid var(--lar)} .kpi.az{border-top:3px solid var(--az)}
 .kpi.ok{border-top:3px solid var(--ok)} .kpi.err{border-top:3px solid var(--err)}
 .kpi.neutro{border-top:3px solid var(--linha)} .kpi.ale{border-top:3px solid var(--ale)}
-.sec h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--lar);white-space:nowrap;flex-shrink:0}
+.sec h3{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--lar-txt);white-space:nowrap;flex-shrink:0}
 .sec h3::before{content:'';display:inline-block;width:4px;height:12px;background:var(--lar);margin-right:8px;vertical-align:-1px;border-radius:2px}
 .card h4{font-size:13.5px}
 .card .sub{font-size:11.5px;color:var(--txt2)}
@@ -497,7 +505,7 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13.5px}
 .divs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .divs .bloco-div{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sombra)}
 .divs .bloco-div h5{margin:0 0 8px;font-size:11px;letter-spacing:.1em;text-transform:uppercase}
-.divs .bloco-div h5.seq{color:var(--lar)} .divs .bloco-div h5.spv{color:var(--az)}
+.divs .bloco-div h5.seq{color:var(--lar-txt)} .divs .bloco-div h5.spv{color:var(--az)}
 .divs .lin{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--linha);font-size:12.5px}
 .divs .lin:last-child{border-bottom:0}
 .divs .lin b{font-family:Arial,Helvetica,sans-serif}
@@ -682,7 +690,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .orc-painel{display:flex;flex-direction:column;gap:14px;margin-bottom:6px}
 .orc-meio{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
 .orc-fila,.orc-em{background:var(--card);border:1px solid var(--linha);border-radius:var(--r);padding:14px 16px}
-.orc-painel h5{margin:0 0 12px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--lar)}
+.orc-painel h5{margin:0 0 12px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--lar-txt)}
 .orc-lin{display:grid;grid-template-columns:90px 1fr auto;align-items:center;gap:12px;margin:10px 0;cursor:pointer}
 .orc-lin b{font-size:14px}
 .orc-bar{display:flex;height:30px;border-radius:3px;overflow:hidden;min-width:40px}
@@ -693,7 +701,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .orc-leg i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-2px}
 .orc-call{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .orc-call>div{border-left:5px solid var(--lar);background:var(--card2);padding:10px 12px;display:flex;gap:12px;align-items:center}
-.orc-call b{color:var(--lar);font-size:19px;white-space:nowrap}.orc-call span{font-size:11.5px;color:var(--txt2);line-height:1.3}
+.orc-call b{color:var(--lar-txt);font-size:19px;white-space:nowrap}.orc-call span{font-size:11.5px;color:var(--txt2);line-height:1.3}
 .orc-emis{display:flex;flex-direction:column;gap:12px}
 .orc-em{border-left:5px solid var(--lar)}.orc-em.spv{border-left-color:var(--az)}.orc-em.spv h5{color:var(--az)}
 .orc-em-cab{display:flex;align-items:center;gap:14px;margin-bottom:10px}
@@ -733,7 +741,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .ico-lista{list-style:none;margin:0;padding:0}
 .ico-lista li{padding:7px 6px;border-top:1px solid var(--linha);cursor:pointer;border-radius:6px}
 .ico-lista li:hover{background:var(--card2)}
-.ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(242,92,5,.12);color:var(--lar)}
+.ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(242,92,5,.12);color:var(--lar-txt)}
 .ico.um{background:var(--lar);color:#fff}
 .ico svg{width:20px;height:20px}
 .ico-k{font-size:13px;line-height:1.25;min-width:0}.ico-k small{display:block;font-size:11px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -799,7 +807,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rel-pubs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
 .rel-pubs label{border:1px solid var(--linha);border-radius:10px;padding:9px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:12px}
 .rel-pubs label span{color:var(--txt3);font-size:11px}
-.rel-pubs label:has(input:checked){border-color:var(--lar);background:rgba(242,92,5,.06)}
+.rel-pubs label:has(input:checked){border-color:var(--lar-txt);background:rgba(242,92,5,.06)}
 .rel-pubs input{display:none}
 .rel-telas{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px}
 .rel-render .cx,.rel-pag .cx{height:188px!important}.rel-render .cx.alt,.rel-pag .cx.alt{height:222px!important}
@@ -820,7 +828,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rel-barra{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 16px;background:#404040;color:#fff;font-size:13px}
 .rel-barra span{color:#B3AAA4;margin-right:auto}
 .rel-barra button{background:#4D4D4D;color:#fff;border:1px solid #544A44;border-radius:8px;padding:6px 12px;cursor:pointer;font:inherit}
-.rel-barra button:first-of-type{background:var(--lar);border-color:var(--lar);font-weight:700}.rel-barra button:disabled{opacity:.7;cursor:progress}
+.rel-barra button:first-of-type{background:var(--lar);border-color:var(--lar-txt);font-weight:700}.rel-barra button:disabled{opacity:.7;cursor:progress}
 .rel-folhas{padding:16px 0 40px;transform-origin:top center}
 .rel-gerando{padding:80px;text-align:center;color:#595959;font-size:15px}
 .rel-pag{width:1123px;height:794px;margin:0 auto 18px;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.15);position:relative;overflow:visible;
@@ -832,7 +840,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rel-cab .rel-cab-d{flex:0 0 auto;text-align:right;font-size:10.5px;color:#595959;display:block}
 .rel-conteudo{flex:1;overflow:visible;padding-top:10px;display:flex;flex-direction:column;gap:12px}
 .rel-pag.alta{height:auto;min-height:794px}
-.rel-cap{font-size:15px;font-weight:800;color:var(--lar);border-bottom:2px solid var(--lar);padding:0 0 4px;margin:0 0 8px;letter-spacing:.02em}
+.rel-cap{font-size:15px;font-weight:800;color:var(--lar-txt);border-bottom:2px solid var(--lar);padding:0 0 4px;margin:0 0 8px;letter-spacing:.02em}
 .rel-cont{font-size:10px;color:#6B6B6B;margin:0 0 4px}
 /* papel: tabela cabe na LARGURA da folha — quebra de linha nas células e, se
    ainda for larga, versão compacta (fonte e espaçamento menores). Nunca escala. */
@@ -872,7 +880,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rel-capa-faixa{background:#404040;height:120px;display:flex;align-items:center;gap:16px;padding:0 44px;border-bottom:6px solid var(--lar)}
 .rel-capa-faixa img{height:64px} .rel-capa-faixa span{color:#FF6600;letter-spacing:.2em;font-size:13px;font-weight:700}
 .rel-capa-corpo{flex:1;padding:56px 60px 0}
-.rel-capa-corpo small{color:var(--lar);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+.rel-capa-corpo small{color:var(--lar-txt);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
 .rel-capa-corpo h1{font-size:40px;margin:10px 0 6px;line-height:1.1}
 .rel-capa-corpo>p{color:#595959;font-size:14px;margin:0}
 .rel-capa-kpis{display:flex;gap:18px;margin:44px 0 30px}
@@ -881,11 +889,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .rel-capa-kpis b{font-family:Arial,Helvetica,sans-serif;font-size:26px}
 .rel-capa-corpo .rel-capa-data{font-size:12px;color:#6B6B6B}
 .rel-dest{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;font-size:13.5px;line-height:1.45}
-.rel-dest.acao li::marker{color:var(--lar)}
+.rel-dest.acao li::marker{color:var(--lar-txt)}
 .rel-obs{border-left:4px solid var(--lar);background:#FAFAFA;padding:10px 14px;font-size:13px}
 .rel-meta-tab{margin:6px 0 2px}.rel-meta-tab .tw{max-height:none}.rel-meta-tab td,.rel-meta-tab th{font-size:12px;padding:4px 8px}.rel-meta-tab tr:last-child td{border-top:2px solid #D6D6D6;font-weight:700}
 .rel-meta-termo .termo-rit{flex-basis:100%}
-.rel-meta-termo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}.rel-meta-termo h5{margin:0 0 4px;font-size:12px;letter-spacing:.08em}.rel-meta-termo h5.seq{color:var(--lar)}.rel-meta-termo h5.spv{color:var(--az)}
+.rel-meta-termo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}.rel-meta-termo h5{margin:0 0 4px;font-size:12px;letter-spacing:.08em}.rel-meta-termo h5.seq{color:var(--lar-txt)}.rel-meta-termo h5.spv{color:var(--az)}
 .rel-como{margin-top:auto;font-size:11px;color:#6B6B6B;border-top:1px dashed #E2E2E2;padding-top:8px}
 body.rel-doc{background:#E6E6E6;margin:0}
 @media print{
@@ -956,8 +964,9 @@ html[data-t="claro"]{
   --bg:#F4F4F4;--bg2:#FFFFFF;--card:#FFFFFF;--card2:#FAFAFA;--linha:#E2E2E2;--linha2:#CFCFCF;
   --txt:#000000;--txt2:#404040;--txt3:#6B6B6B;
   --lar:#FF6600;--lar2:#C24E00;--marca:#FF6600;--lar-suave:#FFF1E8;
+  --lar-txt:#B34700;   /* laranja como TEXTO pequeno: #FF6600 sobre branco tem 2,9:1; este tem 5,3:1 */
   --az:#404040;--ok:#18794A;--ale:#9A5B00;--err:#C0281C;--rox:#C24E00;--cia:#FF9A52;
-  --seq:#C24E00;--spv:#404040;   /* SEQ laranja escuro, SPV cinza: nenhum dos dois se confunde com o total (laranja) */
+  --seq:#8A3700;--spv:#404040;   /* SEQ laranja escuro, SPV cinza: nenhum dos dois se confunde com o total (laranja) */
   --g-real:#FF6600;--g-meta:#000000;--g-comp:#BDBDBD;--g-est:#FFB27F;
   --g1:#C24E00;--g2:#404040;--g3:#FF9A52;--g4:#8C8C8C;--g5:#FFC9A3;--g6:#BDBDBD;
   --ok-f:#E7F4EC;--ale-f:#FFF4DE;--err-f:#FCEBEA;--az-f:#F0F0F0;
@@ -967,8 +976,9 @@ html:not([data-t="claro"]){
   --bg:#141414;--bg2:#1C1C1C;--card:#222222;--card2:#2A2A2A;--linha:#3A3A3A;--linha2:#4A4A4A;
   --txt:#FFFFFF;--txt2:#D0D0D0;--txt3:#A8A8A8;
   --lar:#FF6600;--lar2:#FF9A52;--marca:#FF6600;--lar-suave:rgba(255,102,0,.16);
+  --lar-txt:#FF9A52;
   --az:#BDBDBD;--ok:#4CC488;--ale:#E8AE45;--err:#FF7A6B;--rox:#FF9A52;--cia:#FFB27F;
-  --seq:#FF9A52;--spv:#BDBDBD;
+  --seq:#FFC299;--spv:#BDBDBD;
   --g-real:#FF6600;--g-meta:#FFFFFF;--g-comp:#6B6B6B;--g-est:#C24E00;
   --g1:#FFB27F;--g2:#BDBDBD;--g3:#C24E00;--g4:#8C8C8C;--g5:#FFC9A3;--g6:#6B6B6B;
   --ok-f:rgba(76,196,136,.12);--ale-f:rgba(232,174,69,.12);--err-f:rgba(255,122,107,.12);--az-f:rgba(189,189,189,.12);
@@ -984,7 +994,7 @@ body{font-family:Arial,Helvetica,"Liberation Sans",sans-serif!important;font-siz
 .kpi .pe{font-size:12px;color:var(--txt2)}
 .kpi.lar,.kpi.az{border-top:1px solid var(--linha)}
 .kpi::after{display:none!important}
-.kpi.ok .val{color:var(--ok)} .kpi.err .val{color:var(--err)} .kpi.ale .val{color:var(--ale)} .kpi.lar .val,.kpi.az .val,.kpi.neutro .val{color:var(--txt)}
+.kpi .val,.kpi.ok .val,.kpi.err .val,.kpi.ale .val,.kpi.lar .val,.kpi.az .val,.kpi.neutro .val{color:var(--txt)}   /* número neutro: o estado vai na borda */
 .sec{margin:28px 0 10px;gap:12px;border-bottom:1px solid var(--linha);padding-bottom:6px}
 .sec h3{color:var(--txt)!important;font-size:15px;letter-spacing:0;text-transform:none;font-weight:650}
 .sec h3::before{content:"";display:inline-block;width:3px;height:13px;background:var(--marca);margin-right:8px;vertical-align:-1px}
@@ -996,7 +1006,7 @@ table td{font-size:12.5px}
 /* menu lateral */
 .rail{width:224px;flex:0 0 224px}
 .rail button{font-size:13px;padding:8px 10px;border-radius:4px}
-.rail button.on{background:var(--lar-suave)!important;color:var(--lar)!important;font-weight:650;box-shadow:inset 3px 0 0 var(--marca)}
+.rail button.on{background:var(--lar-suave)!important;color:var(--lar-txt)!important;font-weight:650;box-shadow:inset 3px 0 0 var(--marca)}
 .nav-bloco{font-size:10.5px!important;letter-spacing:.1em!important;color:var(--txt3)!important;font-weight:650}
 .rail .rec{all:unset;cursor:pointer;margin:6px 8px 0 auto;padding:4px 8px;color:var(--txt3);font-size:12px;border:1px solid var(--linha);border-radius:4px}
 .app.rail-min .rail{width:58px;flex-basis:58px} .app.rail-min .rail .nm,.app.rail-min .rail .marca div,.app.rail-min .nav-bloco,.app.rail-min .rail .rodape{display:none}
@@ -1005,7 +1015,7 @@ table td{font-size:12.5px}
 .seg button.on{background:var(--txt)!important;color:var(--bg2)!important}
 .topo{padding:8px 20px;gap:10px}
 .topo .tit{font-size:16px} .topo .tit small{font-size:12px;color:var(--txt2)}
-.acoes .prim,.btn:not(.sec){background:var(--lar)!important;color:#fff!important;border-color:var(--lar)!important}
+.acoes .prim,.btn:not(.sec){background:var(--lar)!important;color:#fff!important;border-color:var(--lar-txt)!important}
 .acoes .dest{background:transparent!important;color:var(--txt)!important;border:1px solid var(--linha2)!important}
 .btn.sec{background:var(--card)!important;color:var(--txt)!important;border:1px solid var(--linha2)!important}
 .mini{color:var(--az)!important;border-color:var(--linha2)!important}
@@ -1021,10 +1031,24 @@ table td{font-size:12.5px}
 .gb-t b{display:block;font-size:14px;font-weight:650;color:var(--txt)} .gb-t span{font-size:12.5px;color:var(--txt2)}
 .gb-m{font-size:11.5px;color:var(--txt3);text-align:right} .gb-m .fl{display:inline-block;margin-left:6px;padding:0 6px;border-radius:3px;background:var(--ale-f);color:var(--ale);font-weight:600}
 .gb-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--txt2);margin:0 0 6px} .gb-leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.gb-leg i.lin{height:2px;width:14px;vertical-align:3px} .gb-leg i.hach{background-image:repeating-linear-gradient(45deg,currentColor 0 2px,transparent 2px 5px)!important}
-.gb-c{overflow:hidden} .gb-c svg{display:block;max-width:100%;height:auto} .gb-c svg text{font-family:inherit;font-variant-numeric:tabular-nums}
+.gb-leg i.lin{height:2px;width:14px;vertical-align:3px} .gb-leg i.hach{background-color:transparent!important;background-image:repeating-linear-gradient(45deg,currentColor 0 2px,transparent 2px 4px)!important;box-shadow:inset 0 0 0 1px currentColor}
+.gb-c{overflow:hidden} .gb-c svg{display:block;max-width:100%;height:auto}
+/* celular: o gráfico não encolhe abaixo de 520 px (as letras ficariam com 5 px); rola de lado, com sombra na borda indicando que há mais */
+@media(max-width:760px){
+  .gb-c{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+    background:linear-gradient(to right,var(--card) 30%,transparent) left/28px 100% no-repeat local,
+      linear-gradient(to left,var(--card) 30%,transparent) right/28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.22),transparent) left/10px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.22),transparent) right/10px 100% no-repeat scroll}
+  .gb,.gb-c,.card,.grid2>*,.g>*,.g2>*,.g3>*,.g4>*,.g23>*,.g32>*,.dupla>*{min-width:0}
+  .gb-c svg{min-width:520px}
+  .gb-c svg.spark{min-width:0}
+  .tw{-webkit-overflow-scrolling:touch}
+} .gb-c svg text{font-family:inherit;font-variant-numeric:tabular-nums}
 .gb-rod{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:8px;font-size:11.5px;color:var(--txt3)} .gb-rod span{margin-right:auto}
 .rel-render .grid2,.rel-render .grid3,.rel-render .grid4,.rel-pag .grid2,.rel-pag .grid3,.rel-pag .grid4{display:block!important} .rel-render .grid2>*,.rel-render .grid3>*,.rel-render .grid4>*,.rel-pag .grid2>*,.rel-pag .grid4>*{margin-bottom:10px}
+/* dois gráficos lado a lado continuam lado a lado no papel (só tabelas e painéis de texto empilham) */
+.rel-render div:not(:has(>:not(figure.gb))):has(>figure.gb+figure.gb),.rel-pag div:not(:has(>:not(figure.gb))):has(>figure.gb+figure.gb){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px;align-items:start} .rel-render div:not(:has(>:not(figure.gb))):has(>figure.gb+figure.gb)>*,.rel-pag div:not(:has(>:not(figure.gb))):has(>figure.gb+figure.gb)>*{margin-bottom:0!important}
 .gb-tab{margin-top:8px} .rel-render .gb-rod button,.rel-pag .gb-rod button{display:none} .rel-render .gb,.rel-pag .gb{break-inside:avoid} .tab.narr td{font-size:12.5px;line-height:1.5}
 .svg-cl{cursor:pointer} .svg-cl:hover{opacity:.82} .svg-cl:focus{outline:2px solid var(--foco)}
 .mob-tog{display:none}
@@ -1047,7 +1071,10 @@ table td{font-size:12.5px}
 .pnl li:first-child{border-top:0} .pnl li small{color:var(--txt3)} .pnl li .d{white-space:nowrap;color:var(--txt2)}
 .ctx-bar{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:12.5px;color:var(--txt2);margin:0 0 12px} .ctx-bar b{color:var(--txt)}
 .ctx-bar .bs{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin:0 12px 0 0} .ctx-bar .bs i{flex:0 0 8px;width:8px;height:8px;border-radius:50%;display:inline-block;position:static;margin:0}
-[hidden]{display:none!important}   /* o CSS dos botões não pode desfazer o atributo hidden (ex.: ↻ Ploomes fora do claude.ai) */
+[hidden],.acoes button[hidden],.mais>button[hidden],.topo .acoes button[hidden],.topo .mais>button[hidden],.btn[hidden]{display:none!important}   /* o CSS dos botões não pode desfazer o atributo hidden (ex.: ↻ Ploomes fora do claude.ai) */
+.filt-m{display:none}
+.pnl-rod{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 24px 24px;padding:12px 16px;border-radius:6px;background:#404040;color:#fff;font-size:11px} .pnl-rod b{letter-spacing:.08em} .pnl-rod span{color:#D0D0D0}
+@media print{.pnl-rod{display:none}}
 .ctx-bar .bs .api{font-size:9px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--lar);padding:1px 4px;border-radius:3px;margin-left:2px}
 .ctx-bar .bases{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 0}   /* cada base com o seu espaço: ponto, nome e idade não se sobrepõem */
 .kband{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
@@ -1079,8 +1106,17 @@ table td{font-size:12.5px}
 label.btn{cursor:pointer}
 /* cartões: topo uniforme; a cor do estado fica no número */
 .kpi,.kpi.kg,.kpi.ok,.kpi.err,.kpi.ale,.kpi.lar,.kpi.az,.kpi.neutro{border-top:1px solid var(--linha)!important}
+.kpi.ok{border-top:3px solid var(--ok)!important} .kpi.err{border-top:3px solid var(--err)!important} .kpi.ale{border-top:3px solid var(--ale)!important}
 .kpi.kg{display:flex;flex-direction:column}
 .kpi.kg .kg-meta{margin-top:auto;padding-top:8px}
+/* card enxuto na tela: valor, comparação e uma linha; tipo, período e fonte abrem no "i" (relatório e impressão mostram tudo) */
+.kg-i{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid var(--linha2);background:var(--card);color:var(--txt2);font:700 12px Georgia,serif;font-style:italic;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;z-index:2}
+.kg-i:hover,.kpi.meta-ab .kg-i{border-color:var(--lar);color:var(--lar-txt)}
+@media(pointer:coarse){.kg-i{width:36px;height:36px;top:4px;right:4px}}
+@media screen{.tela:not(.rel-render) .kpi.kg:not(.meta-ab) .kg-meta>:not(.kg-cond){display:none}
+  .tela:not(.rel-render) .kpi.kg:not(.meta-ab) .kg-meta:not(:has(.kg-cond)){display:none}
+  .tela:not(.rel-render) .kpi.kg:not(.meta-ab) .pe+.pe{display:none}}
+.kpi.kg .rot{padding-right:30px}
 .kpi.kg .val{min-height:34px}
 .lst-int li>div:last-child{display:flex;gap:6px;flex-wrap:nowrap}
 .relc-form{align-items:flex-end}
@@ -1134,14 +1170,15 @@ body.apres-on{overflow:hidden}
     <button class="mob-tog" onclick="document.getElementById('rail').classList.toggle('aberto')" aria-label="Abrir o menu de páginas" aria-controls="nav">☰ <span id="mob-pag">Menu</span></button>
     <nav id="nav"></nav>
     <div class="rodape">
-      <button onclick="trocarTema()" id="bt-tema">◐ Tema</button>
-      <button id="bt-print" class="so-local" onclick="window.print()">⎙ Imprimir</button>
+      <button onclick="trocarTema()" id="bt-tema" aria-label="Trocar tema claro ou escuro" title="Tema claro ou escuro"><span aria-hidden="true">◐</span><span class="rt"> Tema</span></button>
+      <button id="bt-print" class="so-local" onclick="window.print()" aria-label="Imprimir"><span aria-hidden="true">⎙</span><span class="rt"> Imprimir</span></button>
     </div>
   </aside>
   <main class="corpo">
     <header class="topo">
       <button class="seg abrir-rail" onclick="document.getElementById('rail').classList.toggle('aberto')" style="padding:6px 10px;cursor:pointer" aria-label="Abrir menu">☰</button>
       <div class="tit" id="tit">Resumo<small>carregando…</small></div>
+      <button class="filt-m" id="filt-m" onclick="filtrosMobile()" aria-expanded="false" aria-controls="seg-ano per-ctl seg-div sel-vend">Recorte <span id="filt-m-r"></span> ▾</button>
       <div class="seg" id="seg-ano"></div>
       <div class="per-ctl" id="per-ctl"></div>
       <div class="seg" id="seg-div">
@@ -1171,6 +1208,7 @@ body.apres-on{overflow:hidden}
     </header>
     <div class="filtros" id="filtros"></div>
     <div class="tela" id="tela"></div>
+    <footer class="pnl-rod"><b>A FORÇA DA ÁGUA É A NOSSA FORÇA</b><span>LS Fire · Painel Comercial · documento interno</span></footer>
   </main>
 </div>
 
@@ -1276,6 +1314,8 @@ const hojeReal=()=>{ if(_HOJE_TESTE)return new Date(+_HOJE_TESTE);
   let d; try{ const [a,m,dd]=_FMT_SP.format(new Date(t)).split('-').map(Number); d=new Date(a,m-1,dd); }catch(e){ d=new Date(new Date(t).toDateString()); }
   _hojeMemo=d; _hojeAte=t+60000; return new Date(+d); };
 const hoje=()=>REF_DATA?new Date(+REF_DATA):hojeReal();
+/* o dia (meia-noite local) de um instante, no calendário de São Paulo — o mesmo de hojeReal() */
+function diaSP(d){ if(!d||isNaN(d))return null; try{ const [a,m,dd]=_FMT_SP.format(d).split('-').map(Number); return new Date(a,m-1,dd); }catch(e){ return new Date(d.toDateString()); } }
 /* data → 'AAAA-MM-DD' no DIA LOCAL (toISOString usa UTC: depois das 21h em Brasília já é o dia seguinte) */
 function isoDia(d){ return d?new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10):''; }
 const diasEntre=(a,b)=>(a&&b)?Math.round((b-a)/864e5):null;
@@ -1486,6 +1526,14 @@ const ASSINATURAS={propCab:['codigo','numero da revisao','nome do responsavel','
  contratos:['vigencia inicial completa','vigencia final completa','total do servico','impostos retidos','total liquido'],
  os:['ordem de servico','previsao de faturamento completa','n do contrato de venda','vigencia do contrato','total do servico']};
 
+/* colunas sem as quais a base importa mas os números saem errados: avisa na importação */
+const ESSENCIAIS={negocios:['id','cliente','responsavel','valor','estagio','dataCriacao'],propostas:['codProposta','valorTotal'],
+  propCab:['cod','rev','valor','data'],os:['cliente','total'],contratos:['cliente','contrato','total'],
+  vendasOmie:['cliente','valor','data'],omie:['ov','cliente','totalMerc'],notas:['nf','dtEmissao','valor'],
+  carteira:['pv','cliente','saldo'],pedidos:['ov','cliente','valor','dtPedido'],interacoes:['cliente','data','tipo'],
+  empresas:['nome'],historico:['cliente','fase','valor']};
+const logFalha=(onde,e)=>{ try{ console.warn('[painel] '+onde+':',e&&e.message||e); }catch(_){} };
+function faltando(cols,base){ const m=mapear(cols,base); return (ESSENCIAIS[base]||[]).filter(k=>m[k]===undefined); }
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
   for(const campo in dic){ for(const alias of dic[campo]){ const i=nc.indexOf(alias); if(i>=0){mapa[campo]=i;break;} }
     if(mapa[campo]===undefined){ for(const alias of dic[campo]){ const i=nc.findIndex(c=>c===alias||(c.length>4&&(c.includes(alias)||alias.includes(c)))); if(i>=0){mapa[campo]=i;break;} } } }
@@ -1655,6 +1703,8 @@ const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao ca
 /* todo índice derivado das bases ou da configuração é refeito daqui: depois de
    importar uma planilha, mudar metas/referência oficial ou a data de referência.
    (_histUnico, _vendFallback e o fator oficial ficavam com a base antiga.) */
+/* versão dos dados: muda a cada construir(), é a chave segura dos caches (contar linhas não basta: uma base trocada por outra do mesmo tamanho manteria o cache velho) */
+let DADOS_VER=0;
 function limparCaches(){
   _IDXCAT=null; _IDX_PROPNEG=null; _IDX_NEGCLI=null; _IDX_EMP_C=null; _IDX_EMP_P=null; _vendFallback=null;
   _fatOfCache=null; _fatOfKey=''; _INI_BASE=null; _IDX_INT=null; _CONTAS_A=null; _ADIA=null;
@@ -1663,7 +1713,7 @@ function limparCaches(){
 }
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
-  limparCaches(); PROPCAB=new Map();
+  limparCaches(); DADOS_VER++; PROPCAB=new Map();
   M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
@@ -2894,7 +2944,7 @@ function leDim(d,x,tipo){
   if((v==null||v==='')&&tipo==='venda'&&x.reg){
     const t=tipoReg(x.reg);                       /* 'negocio' ou 'pedido' */
     const g=t==='pedido'?d.v.ped:t==='negocio'?d.v.neg:null;
-    if(g){ try{ v=g(x.reg); }catch(e){} }
+    if(g){ try{ v=g(x.reg); }catch(e){ logFalha('coluna da lista',e); } }
   }
   return v;
 }
@@ -3218,7 +3268,7 @@ function desenhar(id,cfg){
       const ch=CHARTS[id], lab=(ch.data.labels||[]).map(String), ds=ch.data.datasets||[];
       GTAB[id]={tit:id,tabela:{cols:['Categoria',...ds.map(d=>d.label||'valor')],linhas:lab.map((l,i)=>[l,...ds.map(d=>{ const v=d.data[i]; const x=v&&typeof v==='object'?(v.y!=null?v.y:v.x):v; return x==null?'—':(d.fmt==='n'||cfg.ehQtd?fmtN(x):d.fmt==='pct'?fmtPct(x,0):fmtBRL(x)); })])}};
       const r=document.createElement('div'); r.className='gb-rod so-tela'; r.dataset.g=id; r.innerHTML=`<span></span><div class="gb-bt"><button class="mini" onclick="gbTabela('${id}')">Ver tabela</button><button class="mini" onclick="gbCSV('${id}')">CSV</button></div>`;
-      const t=document.createElement('div'); t.className='gb-tab'; t.id='gbt-'+id; t.hidden=true; cx.after(r); r.after(t); } }catch(e){}
+      const t=document.createElement('div'); t.className='gb-tab'; t.id='gbt-'+id; t.hidden=true; cx.after(r); r.after(t); } }catch(e){ logFalha('tabela do gráfico',e); }
 }
 function rotulosCabem(el,cfg){
   const cx=el.parentElement||el, w=(cx.clientWidth||600)-24, h=(cx.clientHeight||250)-48;
@@ -3322,7 +3372,7 @@ function tirarDim(id,v){ if(EST.dims[id])EST.dims[id].delete(v); montarFiltros()
 function limparDims(){ EST.dims={}; montarFiltros(); aplicar(); }
 function setAno(a){EST.ano=String(a);montarPeriodo();marcar();aplicar();}
 function setDiv(d){EST.div=d;marcar();aplicar();}
-function setVend(v){EST.vend=v;aplicar();}
+function setVend(v){EST.vend=v;marcar();aplicar();}
 function irTela(id){ id=telaId(id); if(!VISTA[id])id='executiva'; EST.tela=id;marcar();render();document.getElementById('rail').classList.remove('aberto');window.scrollTo(0,0);}
 /* controles de período e de data de referência (barra do topo) */
 function montarPeriodo(){ const el=document.getElementById('per-ctl'); if(!el)return;
@@ -3347,13 +3397,15 @@ function setRef(v){ const d=v?data(v):null; REF_DATA=d&&+d!==+hojeReal()?d:null;
   construir(); marcarUF(); recarregarFiltros(); montarPeriodo(); aplicar();
   aviso(REF_DATA?`Referência da análise: ${fmtData(HOJE)}. Registros posteriores ficam fora; a situação dos negócios é a do último export.`:'Referência da análise: hoje.'); }
 function marcar(){
-  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===EST.tela));
+  document.querySelectorAll('#nav button').forEach(b=>{ const on=b.dataset.t===EST.tela; b.classList.toggle('on',on); if(on)b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current'); });
   document.querySelectorAll('#seg-ano button').forEach(b=>b.classList.toggle('on',b.dataset.a===EST.ano));
   document.querySelectorAll('#seg-div button').forEach(b=>b.classList.toggle('on',b.dataset.d===EST.div));
   const t=TELAS.find(x=>x.id===EST.tela)||TELAS[0];
   { const mp=document.getElementById('mob-pag'); if(mp)mp.textContent=t.nome; }
   document.getElementById('tit').innerHTML=`${t.tit}<small>${t.sub}</small>`;
+  { const r=document.getElementById('filt-m-r'); if(r)r.textContent='· '+[(typeof PER!=='undefined'&&PER&&PER.rot)||EST.ano||'',EST.div||'SEQ+SPV',EST.vend?nomeCurto(EST.vend)||EST.vend:''].filter(Boolean).join(' · '); }
 }
+function filtrosMobile(){ const t=document.querySelector('.topo'), b=document.getElementById('filt-m'), ab=t.classList.toggle('filt-ab'); b.setAttribute('aria-expanded',ab?'true':'false'); }
 function trocarTema(){
   const h=document.documentElement;
   h.dataset.t=h.dataset.t==='claro'?'':'claro';
@@ -5847,7 +5899,7 @@ function dataPerda(x){ if(x.dtFim)return {dt:x.dtFim,aprox:false}; if(x.dtVenda)
 function cardG(o){
   const cond=o.cond?`<span class="kg-cond ${o.condCls||'ale'}">${o.cond}</span>`:'';
   const tipo=o.tipo==='mov'?'<span class="kg-tipo" title="Soma do que aconteceu dentro do período">movimento no período</span>':o.tipo==='pos'?'<span class="kg-tipo pos" title="Fotografia na data de referência, não depende do período">posição na data</span>':o.tipo==='prev'?'<span class="kg-tipo prev" title="Estimativa a partir do pipeline, não realizado">estimativa</span>':'';
-  return `<div class="kpi kg ${o.cls||''}"><div class="rot">${o.rot}</div>
+  return `<div class="kpi kg ${o.cls||''}"><button class="kg-i so-tela" onclick="event.stopPropagation();this.closest('.kpi').classList.toggle('meta-ab');this.setAttribute('aria-expanded',this.closest('.kpi').classList.contains('meta-ab'))" aria-expanded="false" aria-label="Mostrar tipo, período e fonte do indicador" title="Tipo, período e fonte">i</button><div class="rot">${o.rot}</div>
     <div class="val">${o.val}${o.unid?`<small class="kg-unid">${o.unid}</small>`:''}</div>
     ${o.sub?`<div class="pe">${o.sub}</div>`:''}
     <div class="kg-meta">${tipo}<span>⏱ ${o.per}</span>${o.base?`<span>↔ ${o.base}</span>`:''}${o.fonte?`<span class="kg-fonte">fonte: ${o.fonte}</span>`:''}${cond}</div></div>`; }
@@ -6133,7 +6185,7 @@ VISTA.executiva=function(){
     ${temFiltroParcial()?`<span class="kg-cond ale">recorte filtrado: ${[EST.div,EST.vend,...filtrosForaDaMeta()].filter(Boolean).map(esc).join(' · ')}</span>`:''}
     <span class="so-tela">Horizonte da previsão: <select class="campo" onchange="EST.horiz=+this.value;render()">${HORIZONTES.map(([k,n])=>`<option value="${k}"${(EST.horiz||3)===k?' selected':''}>${n}</option>`).join('')}</select></span></div>`;
   h+=`<div class="g g3 kpis-exec">${ks.join('')}</div>`;
-  if(al.length)h+=`<div class="exec-alertas" data-sid="exec-alertas">${al.map(x=>`<div class="al">⚠ ${x}</div>`).join('')}</div>`;
+  if(al.length)h+=`<details class="exec-alertas" data-sid="exec-alertas"><summary>⚠ ${al.length} aviso${al.length>1?'s':''} sobre a qualidade dos dados <span>— conciliações e cadastros a corrigir; abrir</span></summary>${al.map(x=>`<div class="al">⚠ ${x}</div>`).join('')}</details>`;
   h+=sec('Resultado contra a meta','Como o acumulado do ano se compara com a meta e com o ano anterior.','exec-meta');
   h+=graficoRealMeta('x-acum');
   h+=sec('SEQ × SPV','As duas divisões de registro atuais nos mesmos indicadores. Clique num valor para ver os registros. SEQ e SPV não são as futuras divisões Fire, Water e Industry: não há correspondência definida entre elas.','exec-div')+tabelaDivisoes();
@@ -6396,7 +6448,7 @@ function ctrPloomes(nCli,nomeCtr){
 const CTR_RENOV=60;   /* janela de renovação, em dias até o fim da vigência */
 let _CTR=null;
 function contratosModelo(){
-  const R=hoje(), chave=+R+'|'+(M.os||[]).length+'|'+(M.contratos||[]).length;
+  const R=hoje(), chave=+R+'|'+DADOS_VER;
   if(_CTR&&_CTR.chave===chave)return _CTR;
   /* OS incluídas depois da data de referência ficam fora, como nas outras bases */
   const os=(M.os||[]).filter(o=>!o.dtI||o.dtI<=R), base=M.contratos||[], G=new Map();
@@ -7617,7 +7669,7 @@ function adiamentos(id){ const S=snapsOrd(); if(!_ADIA||_ADIA.k!==S.length){ con
 
 /* ---------- interações por negócio e por cliente ---------- */
 var _IDX_INT=null;
-function idxInter(){ const k=+hoje()+'|'+M.interacoes.length+'|'+M.negocios.length; if(_IDX_INT&&_IDX_INT.k===k)return _IDX_INT;
+function idxInter(){ const k=+hoje()+'|'+DADOS_VER; if(_IDX_INT&&_IDX_INT.k===k)return _IDX_INT;
   const R=hoje(), ult=new Map(), fut=new Map(), ultCli=new Map();
   M.interacoes.forEach(i=>{ if(!i.dt)return; const id=i.neg&&i.neg.id!=null?String(i.neg.id):null;
     if(i.dt<=R){ if(id&&(!ult.has(id)||ult.get(id)<i.dt))ult.set(id,i.dt); if(!ultCli.has(i.nCli)||ultCli.get(i.nCli)<i.dt)ultCli.set(i.nCli,i.dt); }
@@ -7901,7 +7953,7 @@ function formModal(tit,campos,onOk,txtOk){ let m=document.getElementById('m-form
     if(onOk(fd,e.target)!==false)fecharModal('m-form'); };
   abrirModal('m-form'); }
 function pessoasTodas(){ const s=new Set(); (todasMetasVend()||[]).forEach(m=>s.add(m.vend)); (todasMetasOrc()||[]).forEach(m=>s.add(m.orc));
-  M.negocios.forEach(n=>{ if(n.resp&&!/^\(/.test(n.resp))s.add(n.resp); }); try{ contatos().forEach(c=>s.add(c)); }catch(e){}
+  M.negocios.forEach(n=>{ if(n.resp&&!/^\(/.test(n.resp))s.add(n.resp); }); try{ contatos().forEach(c=>s.add(c)); }catch(e){ logFalha('contatos',e); }
   return [...s].filter(Boolean).sort(); }
 function vendedoresAtivos(){ const s=new Set(); (metasDoAno(PER.ano||hoje().getFullYear())||{metas:[]}).metas.forEach(m=>s.add(m.vend));
   F.ab.forEach(n=>{ if(n.resp&&!/^\(/.test(n.resp))s.add(n.resp); }); return [...s].filter(Boolean).sort(); }
@@ -7940,92 +7992,6 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
     `<small>${esc((extra||pendenciasNeg(n)).join(' · '))}</small>`,`<button class="mini so-tela" onclick="novoPasso(${jsq(n.id)})" title="Registrar próximo passo">＋ passo</button>`]; }
 
 /* ======================= CENTRAL DE SUPERVISÃO ======================= */
-VISTA.supervisao=function(){
-  const R=hoje(), K=CRITS(), P=PER, ab=F.ab, vS=a=>somar(a,n=>n.vNum||0), iv=intervencao(), sla=num(CFG.slaCot)||7, ref=refNegocios();
-  const crit=iv.filter(x=>x.score>=K.limiarCritico);
-  const passosV=recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&p.prazo&&p.prazo<isoD(R));
-  const semP=ab.filter(n=>!proximaAtividade(n)), fila=F.neg.filter(naFilaOrc), filaAtr=fila.filter(n=>n.dtCri&&diasDe(n.dtCri,ref)>sla);
-  const prevV=ab.filter(n=>n.dtPrev&&n.dtPrev<R), acV=recorte('acao',CFG.plano).filter(a=>prazoSit(a)==='vencida');
-  regLista('crit',`Pendências críticas — pontuação ≥ ${K.limiarCritico}`,crit.map(x=>[...linhaNeg(x.n,[`${x.score} pts`,...x.mot])]),COLS_NEG);
-  regLista('passosV','Próximos passos vencidos (registrados no painel)',passosV.map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),fmtData(data(p.prazo)),fmtN(diasDe(data(p.prazo),R))+' dias',`<button class="mini so-tela" onclick="passoEditar(${jsq(p.id)})">atualizar</button>`]),['Cliente','Passo','Responsável','Prazo','Atraso','']);
-  regLista('semP','Oportunidades sem próximo passo',semP.sort((a,b)=>(b.vNum||0)-(a.vNum||0)).map(n=>linhaNeg(n)),COLS_NEG);
-  regLista('filaAtr',`Propostas atrasadas — fila de cotação acima do SLA de ${sla} dias`,filaAtr.map(n=>[esc(n.cli),esc(analista(n.orc)),esc(n.resp),fmtBRL(n.vNum||0),fmtData(n.dtCri),fmtN(diasDe(n.dtCri,ref))+' dias',esc(n.est)]),['Cliente','Analista','Vendedor','Valor','Entrou em','Espera','Etapa']);
-  regLista('prevV','Previsões de fechamento vencidas',prevV.sort((a,b)=>a.dtPrev-b.dtPrev).map(n=>linhaNeg(n)),COLS_NEG);
-  regLista('acV','Ações gerenciais vencidas',acV.map(a=>[esc(a.prioridade||'—'),esc(a.acao||a.evidencia||'—'),esc(a.resp||'(sem responsável)'),fmtData(data(a.prazo)),esc(a.status),fmtN((a.hist||[]).filter(h=>h.campo==='prazo').length)]),['Prioridade','Ação','Responsável','Prazo','Status','Reprogramações']);
-  const t=(k,n,rot,sub,cls)=>`<div class="st-tile ${cls||''}" role="button" tabindex="0" onclick="abrirLista('${k}')"><b>${n==null?'—':fmtN(n)}</b><span>${rot}</span><small>${sub||''}</small></div>`;
-  let h=`<div class="exec-cab"><span>Referência: <b>${fmtData(R)}</b></span><span>Período: <b>${esc(P.rot)}</b></span>
-    <span>Priorização: valor ${K.pValor} · prazo ${K.pPrazo} · inatividade ${K.pInativ} · reincidência ${K.pReinc} · conta ${K.pConta} <a class="td-link so-tela" onclick="irPara('dados','crit')">ajustar</a></span></div>`;
-  /* área 1 — exige atenção */
-  const semInt=ab.filter(n=>semAcompanhamento(n,K.diasSemAtiv));
-  const S2=snapsOrd(), mAd=S2.length>1?mudancas(S2[S2.length-2],PER,S2[S2.length-1]):null;
-  const adiados=mAd&&mAd.ok?ab.filter(n=>(mAd.out.get(String(n.id))||[]).some(x=>x.k==='adiado')):null;
-  const CA=contasA(), contas=[...agrupa(ab.filter(n=>CA.has(n.nCli)),n=>n.nCli).values()].filter(a=>a.every(n=>semAcompanhamento(n,K.diasSemAtiv)));
-  regLista('semInt',`Negócios sem interação registrada no próprio negócio há mais de ${K.diasSemAtiv} dias`,semInt.sort((a,b)=>(b.vNum||0)-(a.vNum||0)).map(n=>linhaNeg(n)),COLS_NEG);
-  if(adiados)regLista('adiados',`Previsões adiadas entre as cargas de ${fmtData(new Date(S2[S2.length-2].carga))} e ${fmtData(new Date(S2[S2.length-1].carga))}`,adiados.map(n=>linhaNeg(n,(mAd.out.get(String(n.id))||[]).map(x=>x.t))),COLS_NEG);
-  regLista('contas',`Contas A (80% dos pedidos em 24 meses) com negócio aberto e nenhum acompanhamento no negócio há mais de ${K.diasSemAtiv} dias`,contas.map(a=>[esc(a[0].cli),esc([...new Set(a.map(n=>nomeCurto(n.resp)))].join(', ')),fmtN(a.length),fmtBRL(vS(a)),(u=>u?fmtData(u.dt):'nenhuma')(ultimaInter(a[0]))]),['Conta','Responsáveis','Negócios abertos','Valor','Última interação com a conta']);
-  h+=sec('Exige atenção','Cada número abre a lista de origem. Posição na data de referência. A pontuação de intervenção prioriza NEGÓCIOS; não é avaliação de pessoas.','sup-topo');
-  h+=`<div class="st-tiles">${t('passosV',passosV.length,'Atividades vencidas','próximos passos do painel; tarefas do Ploomes não vêm no export',passosV.length?'err':'ok')}
-    ${t('semP',semP.length,'Sem próximo passo',`${fmtCompacto(vS(semP))} · ${ab.length?fmtPct(semP.length/ab.length,0):'—'} dos abertos`,semP.length?'ale':'ok')}
-    ${t('semInt',semInt.length,'Sem interação recente',`no próprio negócio > ${K.diasSemAtiv} dias · ${fmtCompacto(vS(semInt))}`,semInt.length?'ale':'ok')}
-    ${t('filaAtr',filaAtr.length,'Propostas atrasadas',`fila de cotação > ${sla} dias`,filaAtr.length?'ale':'ok')}
-    ${t('prevV',prevV.length,'Previsões vencidas',fmtCompacto(vS(prevV)),prevV.length?'ale':'ok')}
-    ${adiados?t('adiados',adiados.length,'Previsões adiadas',`entre as duas últimas cargas · ${fmtCompacto(vS(adiados))}`,adiados.length?'ale':'ok'):`<div class="st-tile"><b>—</b><span>Previsões adiadas</span><small>${esc(MSG_SEM_HIST())}</small></div>`}
-    ${t('acV',acV.length,'Ações vencidas','plano de ação — não concluídas',acV.length?'err':'ok')}
-    ${t('contas',contas.length,'Contas importantes sem acompanhamento',`conta A com negócio aberto sem interação > ${K.diasSemAtiv} dias`,contas.length?'err':'ok')}
-    ${t('crit',crit.length,'Negócios críticos',`prioridade ≥ ${K.limiarCritico} pts · ${fmtCompacto(vS(crit.map(x=>x.n)))}`,crit.length?'err':'ok')}</div><div class="drill" id="sup-lista"></div>`;
-  /* área 2 — compromissos */
-  const reuDe=id=>CFG.reunioes.find(r=>r.id===id), cmp=[];
-  recorte('acao',CFG.plano).filter(a=>a.status!=='Concluída'&&a.status!=='Cancelada').forEach(a=>{ const r=a.reuniao?reuDe(a.reuniao):null, rp=(a.hist||[]).filter(h=>h.campo==='prazo');
-    cmp.push([a.prazo||'9','Ação',esc(a.acao||a.evidencia||'—'),esc(a.resp||'(sem responsável)'),a.prazo?fmtData(data(a.prazo)):'sem prazo',esc(prazoSit(a)||a.status),esc(a.obs||(r&&r.bloqueadores)||'—'),esc(r&&r.apoio||'—'),rp.length?`${rp.length}× — ${esc(rp[rp.length-1].just)}`:'—']); });
-  recorte('passo',CFG.passos).filter(p=>p.status==='Aberto').forEach(p=>{ const rp=(p.hist||[]).filter(h=>h.campo==='prazo');
-    cmp.push([p.prazo||'9','Próximo passo',`${esc(p.cli)} — ${esc(p.texto)}`,esc(p.resp||'—'),p.prazo?fmtData(data(p.prazo)):'sem prazo',esc(situacaoPasso(p)),'—','—',rp.length?`${rp.length}× — ${esc(rp[rp.length-1].just)}`:'—']); });
-  cmp.sort((a,b)=>a[0]<b[0]?-1:1);
-  h+=sec('Compromissos','O que ficou combinado: ações do plano e próximos passos em aberto, com responsável, prazo, situação, bloqueador, apoio necessário e a justificativa da última reprogramação.','sup-comp');
-  h+=card('','',cmp.length?tab([{t:'Tipo'},{t:'O que ficou combinado',f:1},{t:'Responsável'},{t:'Prazo'},{t:'Situação'},{t:'Bloqueador'},{t:'Apoio necessário'},{t:'Reprogramação'}],cmp.map(r=>r.slice(1))):'<p class="pl-vazio">Nenhum compromisso em aberto. Registre ações em Reuniões e planos de ação ou próximos passos nos negócios.</p>');
-  /* agenda: o que tem data na semana da referência (ou no período, se for curto) */
-  const ini=P.modo==='dia'||P.modo==='semana'?P.ini:segundaDe(R), fim=P.modo==='dia'||P.modo==='semana'?(P.fimCal||P.fim):addDias(segundaDe(R),6);
-  const ag=[]; const den=d=>d&&d>=ini&&d<=fim;
-  recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&den(data(p.prazo))).forEach(p=>ag.push([data(p.prazo),'Próximo passo',`${esc(p.cli)} — ${esc(p.texto)}`,esc(p.resp||'—')]));
-  recorte('acao',CFG.plano).filter(a=>a.status!=='Concluída'&&a.status!=='Cancelada'&&den(data(a.prazo))).forEach(a=>ag.push([data(a.prazo),'Ação do plano',esc(a.acao||a.evidencia),esc(a.resp||'(sem responsável)')]));
-  ab.filter(n=>den(n.dtPrev)).forEach(n=>ag.push([n.dtPrev,'Fechamento previsto',`${esc(n.cli)} · ${fmtBRL(n.vNum||0)}`,esc(n.resp)]));
-  recorte('reuniao',CFG.reunioes).filter(r=>den(data(r.data))).forEach(r=>ag.push([data(r.data),'Reunião',esc(r.titulo),esc(r.participantes||'')]));
-  recorte('inter',M.interacoes).filter(i=>i.futura&&den(i.dt)).forEach(i=>ag.push([i.dt,'Interação agendada (Ploomes)',esc(i.cli),esc(i.resp)]));
-  ag.sort((a,b)=>a[0]-b[0]);
-  h+=sec('Agenda',`De ${fmtData(ini)} a ${fmtData(fim)}: passos, ações, fechamentos previstos, reuniões e interações agendadas.`,'sup-agenda');
-  h+=card('','',ag.length?tab([{t:'Data'},{t:'Tipo'},{t:'O quê',f:1},{t:'Responsável'}],ag.map(x=>[`${DIAS_SEM[x[0].getDay()]} ${fmtData(x[0])}`,x[1],x[2],x[3]])):'<p class="pl-vazio">Nada com data neste intervalo.</p>');
-  /* situação por vendedor */
-  const vs=vendedoresAtivos().filter(v=>!EST.vend||v===EST.vend);
-  const lin=vs.map(v=>{ const a=ab.filter(n=>n.resp===v), sp=a.filter(n=>!proximaAtividade(n)), pvv=a.filter(n=>n.dtPrev&&n.dtPrev<R),
-      ina=a.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), it=dedupInter(F.inter.filter(i=>i.resp===v&&noPer(i.dt))).out,
-      ped=(F.todas||[]).filter(x=>x.resp===v&&noPer(x.dt)&&(!EST.div||x.div===EST.div)), mt=metaPedidos(PER,v), pv=somar(ped,x=>x.valorDet!==undefined?x.valorDet:x.valor),
-      cp=CFG.comp.filter(c=>c.vend===v&&c.tipo==='vendedor').sort((x,y)=>x.em<y.em?1:-1)[0], acv=(CFG.plano||[]).filter(x=>x.resp===v&&prazoSit(x)==='vencida'), k=norm(v).replace(/ /g,'_');
-    regLista('v_sp_'+k,`${v} — sem próximo passo`,sp.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_pv_'+k,`${v} — previsões vencidas`,pvv.map(n=>linhaNeg(n)),COLS_NEG);
-    regLista('v_in_'+k,`${v} — negócios sem interação registrada no próprio negócio há mais de ${K.diasSemAtiv} dias`,ina.map(n=>linhaNeg(n)),COLS_NEG);
-    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/[&"<>]/g,_escA)})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,
-      sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',pvv.length?lnk('v_pv_'+k,fmtN(pvv.length)):'0',ina.length?lnk('v_in_'+k,fmtN(ina.length)):'0',fmtN(it.length),
-      `${fmtCompacto(pv)}${mt&&mt.valor?` <small>(${fmtPct(pv/mt.valor,0)} da meta)</small>`:''}`,cp?`${fmtCompacto(cp.total)} <small>em ${fmtData(new Date(cp.em))}</small>`:'<span class="nd-m">não registrado</span>',acv.length?`<b style="color:var(--err)">${acv.length}</b>`:'0']; });
-  h+=sec('Situação por vendedor','Posição do pipeline na referência e movimento no período. Os números abrem a lista; o nome abre a ficha individual. Sem ranking: a comparação depende de carteira, região e divisão de cada um.','sup-vend');
-  h+=card('','',tab([{t:'Vendedor',f:1},{t:'Abertos',n:1},{t:'Sem próximo passo',n:1},{t:'Previsão vencida',n:1},{t:`Negócio sem interação > ${K.diasSemAtiv} d`,n:1},{t:'Interações vinculadas à carteira',n:1},{t:'Pedidos no período',n:1},{t:'Compromisso declarado',n:1},{t:'Ações vencidas',n:1}],lin)+'<div class="drill" id="sup-lista2"></div>');
-  /* engenharia */
-  const an=[...new Set(fila.map(n=>analista(n.orc)))].sort();
-  h+=sec('Engenharia de aplicação','Fila de cotação por analista na referência. Detalhe em Propostas e engenharia de aplicação.','sup-eng');
-  h+=card('','',an.length?tab([{t:'Analista',f:1},{t:'Na fila',n:1},{t:'Valor na fila',n:1},{t:`Acima de ${sla} dias`,n:1},{t:'Espera mais antiga',n:1}],an.map(a=>{ const f=fila.filter(n=>analista(n.orc)===a), at=f.filter(n=>diasDe(n.dtCri,ref)>sla);
-      return [esc(a),fmtN(f.length),fmtBRL(vS(f)),at.length?`<b style="color:var(--err)">${at.length}</b>`:'0',f.length?fmtN(Math.max(...f.map(n=>diasDe(n.dtCri,ref))))+' dias':'—']; })):'<p class="pl-vazio">Fila de cotação vazia.</p>');
-  /* intervenção */
-  h+=sec('Negócios que precisam de intervenção',`Ordenados pela pontuação (0–100) com os critérios ao lado: valor (até ${fmtCompacto(K.valorRef)}), prazo/proximidade do fechamento (${K.diasFech} dias), tempo sem atividade (> ${K.diasSemAtiv} dias), reincidência (adiamentos observados entre cargas e compromissos não cumpridos) e importância da conta (conta A).`,'sup-int');
-  h+=card('','',tab([{t:'Pontos',n:1},...COLS_NEG.slice(0,-1),{t:''}],iv.slice(0,K.topN).map(x=>{ const l=linhaNeg(x.n,x.mot);
-      return [`<b title="${esc(x.comp.map(c=>`${c[0]}: ${fmtD(c[1],0)}${c[2]?' ('+c[2]+')':''}`).join('\n'))}">${x.score}</b>`,...l.slice(0,-1),`${l[l.length-1]}<button class="mini so-tela" onclick="planoNovoNeg(${jsq(x.n.id)})">＋ ação</button>`]; })));
-  /* compromissos da última reunião */
-  const ur=recorte('reuniao',CFG.reunioes).filter(r=>r.status==='Realizada'||data(r.data)<=R).sort((a,b)=>a.data<b.data?1:-1)[0];
-  h+=sec('Compromissos da última reunião',ur?`${esc(ur.titulo)} — ${fmtData(data(ur.data))}`:'Nenhuma reunião registrada ainda (Reuniões e planos de ação).','sup-reu');
-  if(ur){ const ac=recorte('acao',CFG.plano).filter(a=>a.reuniao===ur.id); h+=card('','',ac.length?tabAcoes(ac):'<p class="pl-vazio">A reunião não registrou ações.</p>'); }
-  /* prioridades da semana */
-  const fimS=addDias(segundaDe(R),6), pr=[];
-  recorte('acao',CFG.plano).filter(a=>a.status!=='Concluída'&&a.status!=='Cancelada'&&a.prazo&&data(a.prazo)<=fimS).forEach(a=>pr.push([prazoSit(a)==='vencida'?'vencida':'esta semana','Ação',esc(a.acao||a.evidencia),esc(a.resp||'(sem responsável)'),fmtData(data(a.prazo))]));
-  iv.filter(x=>x.score>=K.limiarCritico).slice(0,8).forEach(x=>pr.push(['crítico','Negócio',`${esc(x.n.cli)} · ${fmtBRL(x.n.vNum||0)} — ${esc(x.mot.slice(0,2).join(', '))}`,esc(x.n.resp),x.n.dtPrev?fmtData(x.n.dtPrev):'—']));
-  h+=sec('Prioridades da semana',`Até ${fmtData(fimS)}: ações com prazo, ações vencidas e negócios críticos.`,'sup-prio');
-  h+=card('','',pr.length?tab([{t:'Situação'},{t:'Tipo'},{t:'O quê',f:1},{t:'Responsável'},{t:'Prazo / fechamento'}],pr):'<p class="pl-vazio">Sem prioridades pelos critérios.</p>');
-  return h; };
 function abrirFicha(v){ EST.ficha=v; irTela('desempenho'); }
 function planoNovoNeg(id){ const n=M.negocios.find(x=>String(x.id)===String(id)); if(!n)return; const p=prioridadeNeg(n);
   CFG.plano=(CFG.plano||[]).concat([{id:novoId('a'),prioridade:p.score>=CRITS().limiarCritico?'Alta':'Média',tema:'Outro',origem:`Negócio ${n.id} — ${n.cli}`,evidencia:`${fmtBRL(n.vNum||0)} · ${p.mot.join(' · ')}`,acao:'',resp:'',prazo:'',status:'Não iniciada',obs:'',criado:fmtData(hojeReal()),neg:String(n.id),hist:[]}]);
@@ -8268,7 +8234,7 @@ function secIndicadoresPeriodo(){ const P=PER; if(!P.ini)return '';
 /* ======================= CENTRAL DE RELATÓRIOS ======================= */
 const REL_MODELOS=[
  {k:'rA',nome:'Acompanhamento diário',per:'hoje',desc:'Pendências, agenda, negócios para intervenção e execução do dia.',telas:{supervisao:['sup-topo','sup-exec','sup-agenda'],atividades:['atv-kpi','atv-passos']}},
- {k:'rB',nome:'Supervisão semanal da equipe',per:'semAnt',desc:'Resumo, execução, mudanças do pipeline, propostas e pedidos, pendências, compromissos anteriores e prioridades da próxima semana.',
+ {k:'rB',nome:'Supervisão semanal da equipe',per:'semAnt',off:['res-evo','atv-sem','pipe-aging','pipe-mud'],desc:'Resumo, execução, mudanças do pipeline, propostas e pedidos, pendências, compromissos anteriores e prioridades da próxima semana.',
    telas:{resultados:['res-ind','res-evo'],supervisao:['sup-topo','sup-exec','sup-agenda','sup-pend','sup-vend'],atividades:['atv-kpi','atv-pessoa','atv-sem'],pipeline:['pipe-casc','pipe-mud','pipe-aging','pipe-comp'],reunioes:['reu-ant','plano']}},
  {k:'rC',nome:'Reunião individual do vendedor',per:'estaSemana',pessoa:true,desc:'Ficha do vendedor, negócios em risco, compromisso de previsão e ações.',telas:{desempenho:['des-ficha'],pipeline:['pipe-comp'],reunioes:['reu-ant','plano']}},
  {k:'rD',nome:'Acompanhamento semanal da engenharia',per:'semAnt',desc:'Fila, propostas entregues, tempo até a proposta, revisões e carga por analista.',telas:{engenharia:'*'}},
@@ -8429,7 +8395,11 @@ async function relcGerar(oExt){ const m=REL_MODELOS.find(x=>x.k===RELC.modelo), 
   if(ehAnal){ EST.vend=''; EST.dims=Object.assign({},EST.dims,{orc:new Set([o.vend])}); } else EST.vend=o.vend||'';
   if(m.pessoa)EST.ficha=o.vend; aplicar();
   const abertura=m.tema?'':narrativaRel(m.k);
-  REL_PUB[m.k]={nome:m.nome,tit:`${m.tema?'Relatório — ':''}${m.nome}${o.vend?' — '+o.vend:''}`,lim:m.k==='rE'||m.k==='rF'||m.k==='rG'?REL_LIM_LINHAS:null,desc:m.desc,telas,tema:!!m.tema};
+  /* rotina (diário, semanal, individual, engenharia): curto — 8 linhas por tabela e sem anexo
+     (a lista completa fica no CSV da tela); fechamentos: síntese de 18 linhas + anexo.
+     O título leva o período analisado (ex.: a semana passada, não a atual). */
+  const rotina=['rA','rB','rC','rD'].includes(m.k);
+  REL_PUB[m.k]={nome:m.nome,tit:`${m.tema?'Relatório — ':''}${m.nome}${PER&&PER.rot?' — '+PER.rot:''}${o.vend?' — '+o.vend:''}`,lim:rotina?REL_LIM_ROTINA:m.k==='rE'||m.k==='rF'||m.k==='rG'?REL_LIM_LINHAS:null,semAnexo:rotina,desc:m.desc,telas,tema:!!m.tema};
   try{ await gerarRelatorio({pub:m.k,telas:Object.keys(telas),tit:REL_PUB[m.k].tit,obs:o.obs||'',abertura}); }
   finally{ EST.ano=salvo.ano; EST.per=salvo.per; EST.vend=salvo.vend; EST.div=salvo.div; EST.ficha=salvo.ficha; EST.fichaTipo=salvo.fichaTipo; EST.dims=salvo.dims; recarregarFiltros(); montarPeriodo(); aplicar(); } }
 /* planilha de detalhamento: as mesmas regras e filtros do relatório */
@@ -8625,7 +8595,7 @@ function svgFaixa(partes,o){ o=o||{}; const W=o.W||640, tot=somar(partes,p=>p.va
 function svgCascata(passos,o){ o=o||{}; const W=o.W||720, H=220, pl=8, pb=40, pt=18, n=passos.length, bw=(W-pl*2)/n; let acc=0;
   const pts=passos.map(p=>{ let a,b; if(p.tot){ a=0; b=p.val; acc=p.val; } else { a=acc; acc+=p.val; b=acc; } return Object.assign({},p,{a,b}); });
   const mx=Math.max(1,...pts.map(p=>Math.max(p.a,p.b)))*1.1, Y=v=>H-pb-(H-pb-pt)*(v/mx);
-  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cascata do pipeline"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${pts.map((p,i)=>{ const x=pl+i*bw, y1=Y(Math.max(p.a,p.b)), y2=Y(Math.min(p.a,p.b)), c=p.tot?corV('--g-real'):p.val>=0?corV('--g1'):corV('--g4');
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cascata do pipeline"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${pts.map((p,i)=>{ const x=pl+i*bw, y1=Y(Math.max(p.a,p.b)), y2=Y(Math.min(p.a,p.b)), c=p.tot?corV('--spv'):p.val>=0?corV('--ok'):corV('--txt3');   /* total cinza-escuro, entrada verde, saída cinza: laranjas vizinhos confundiam */
     return `<g${clique(p.k)}>${p.k?`<rect x="${sx(x)}" y="0" width="${sx(bw)}" height="${H}" fill="transparent"/>`:''}<rect x="${sx(x+bw*.15)}" y="${sx(y1)}" width="${sx(bw*.7)}" height="${sx(Math.max(1,y2-y1))}" fill="${c}"${p.ajuste?` fill-opacity=".45" stroke="${c}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,y1-4,(p.tot?'':p.val>=0?'+':'−')+fmtCompacto(Math.abs(p.val)),{a:'middle',fs:11,c:corV('--txt')})}
       ${txtSvg(x+bw/2,H-pb+14,p.rot.split(' ')[0],{a:'middle',fs:10.5,c:corV('--txt2')})}${txtSvg(x+bw/2,H-pb+27,p.rot.split(' ').slice(1).join(' '),{a:'middle',fs:10.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
 /* mapa de calor pessoa × semana: escala sequencial azul, número escrito na célula */
@@ -8692,7 +8662,7 @@ function cascataPipeline(a,b,o){ o=o||{}; const A=snapMapa(a), B=snapMapa(b), li
 var HEAT={m:'inter'};
 function situacaoBases(){ const imp=(BRUTO._meta&&BRUTO._meta.imp)||{}, R=hojeReal();
   return [['negocios','Negócios'],['interacoes','Interações'],['vendasOmie','Pedidos Ploomes'],['pedidos','Controle de pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
-    const d=em&&!isNaN(em)?diasDe(new Date(em.toDateString()),R):null, c=d==null?corV('--txt3'):d<=7?corV('--ok'):d<=14?corV('--ale'):corV('--err');
+    const d=em&&!isNaN(em)?Math.max(0,diasDe(diaSP(em),R)):null, c=d==null?corV('--txt3'):d<=7?corV('--ok'):d<=14?corV('--ale'):corV('--err');
     const api=imp[k]&&/^API-Ploomes/i.test(imp[k].arq||'');   /* lida direto da API do Ploomes (ferramentas/ploomes_coletar.py) */
     return `<span class="bs" title="${esc(n)}: ${api?'lida da API do Ploomes':'importada'} ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}${api?'<b class="api">API</b>':''}</span>`; }).join(''); }
 VISTA.supervisao=function(){
@@ -8829,7 +8799,7 @@ function secPipelineAnalitico(){ const R=hoje(), ab=F.ab, vS=a=>somar(a,n=>n.vNu
          R$ 148 mi e o card mostrava R$ 161 mi. */
       ...(b===S[S.length-1]&&Math.abs(vS(F.ab)-C.fim)>=1?[{rot:'Valor pela proposta atual',val:vS(F.ab)-C.fim,ajuste:1},{rot:'Pipeline exibido no painel',val:vS(F.ab),tot:1}]:[])];
     h+=blocoGraf({id:'g-casc',tit:'Cascata do pipeline aberto',perg:'O que fez o pipeline crescer ou encolher entre as duas últimas cargas?',per:`${fmtData(new Date(a.carga))} → ${fmtData(new Date(b.carga))}`,unid:'R$',
-      flags:['mudanças observadas entre cargas'],fonte:'fotografias das cargas do export de negócios',nota:'"Fora da carga" = negócio que não veio na carga nova: não é tratado como perda',leg:[[corV('--g-real'),'posição'],[corV('--g1'),'aumenta'],[corV('--g4'),'reduz']],
+      flags:['mudanças observadas entre cargas'],fonte:'fotografias das cargas do export de negócios',nota:'"Fora da carga" = negócio que não veio na carga nova: não é tratado como perda',leg:[[corV('--spv'),'posição'],[corV('--ok'),'aumenta'],[corV('--txt3'),'reduz']],
       corpo:svgCascata(passos),tabela:{cols:['Etapa','Valor','Negócios'],linhas:passos.map(p=>[p.rot,fmtBRL(p.val),p.k?fmtN(C.cat[p.k.slice(3)].length):''])}}); }
   /* D) distribuição por etapa */
   const g=[...agrupa(ab,n=>n.est||'(sem etapa)').entries()].sort((x,y)=>(typeof ordemEstagio==='function'?ordemEstagio(x[0])-ordemEstagio(y[0]):0)||vS(y[1])-vS(x[1]));
@@ -9100,7 +9070,7 @@ function relMeta(rv,meta,fr){
 const REL_PAG={W:1123,H:794,padX:34,padT:24,padB:18,cab:46,rod:26,gap:12};
 REL_PAG.uW=REL_PAG.W-2*REL_PAG.padX;
 REL_PAG.uH=REL_PAG.H-REL_PAG.padT-REL_PAG.padB-REL_PAG.cab-REL_PAG.rod-10;   /* 10 = respiro abaixo do cabeçalho */
-const REL_LIM_LINHAS=18, REL_ANEXO_MAX=80;
+const REL_LIM_LINHAS=18, REL_ANEXO_MAX=80, REL_LIM_ROTINA=8;
 const REL_CAPS=[['sintese','Síntese executiva'],['supervisao','Supervisão e pendências'],['execucao','Execução e atividades'],['resultados','Resultados e metas'],['desvios','Desvios e causas'],['pipeline','Pipeline e previsão de pedidos'],
   ['carteira','Carteira a faturar'],['contratos','Contratos de serviço'],['equipes','Desempenho das equipes'],['clientes','Clientes e concentração'],['decisoes','Decisões e plano de ação'],['metodologia','Metodologia e anexos']];
 /* em que capítulo cai cada seção (tela, sid) — o primeiro que casar */
@@ -9158,6 +9128,7 @@ function relLimpar(el,lim,anexos,rotTela){
   /* campos do plano de ação viram texto (o papel não tem formulário) */
   el.querySelectorAll('.plano-t select,.plano-t input,.plano-t textarea').forEach(x=>{ const s=document.createElement('span');
     s.textContent=x.tagName==='SELECT'?(x.options[x.selectedIndex]||{}).text||'':x.type==='date'&&x.value?fmtData(data(x.value)):x.value; x.replaceWith(s); });
+  el.querySelectorAll('details').forEach(d=>{ d.open=true; });
   el.querySelectorAll('.drill,button,input,select,.so-tela,datalist').forEach(x=>x.remove());
   el.querySelectorAll('[onclick]').forEach(x=>x.removeAttribute('onclick'));
   el.querySelectorAll('.tw').forEach(x=>{x.style.maxHeight='none';x.style.overflow='visible';});
@@ -9168,7 +9139,7 @@ function relLimpar(el,lim,anexos,rotTela){
     const cd=t.closest('.card'), tit=(cd&&cd.querySelector('h4')?cd.querySelector('h4').textContent:'')||((t.closest('.rel-blk')||{}).dataset||{}).tit||'Tabela';
     /* até 80 linhas a tabela completa vai para o anexo; acima disso, o anexo
        viraria um catálogo — a lista completa fica na exportação (CSV/Excel) */
-    const cabe=rs.length<=REL_ANEXO_MAX, n=anexos.length+1;
+    const cabe=!!anexos&&rs.length<=REL_ANEXO_MAX, n=anexos?anexos.length+1:0;
     if(cabe)anexos.push({tit:`A.${n} ${rotTela} — ${tit}`,html:`<div class="card"><h4>A.${n} ${esc(rotTela)} — ${esc(tit)}</h4><div class="tw">${t.outerHTML}</div></div>`});
     rs.slice(lim).forEach(r=>r.remove());
     const m=document.createElement('div'); m.className='rel-mais';
@@ -9195,7 +9166,10 @@ function relAjustaLargura(el){
 function relPartes(blk,U,cx){
   cx.appendChild(blk); const h=blk.offsetHeight; if(h<=U){ blk.remove(); return [blk]; }
   const filhos=[...blk.children], partes=[]; let cur=null, livre=0;
-  const nova=()=>{ cur=blk.cloneNode(false); cur.classList.add('cont'); partes.push(cur); livre=U-24; };   /* folga para o preenchimento do bloco */
+  const soTit=p=>p&&p.children.length&&[...p.children].every(c=>c.classList&&['rel-tela','rel-cap','sec','exec-cab'].some(k=>c.classList.contains(k)));
+  /* parte nova; se a anterior só tem títulos, eles vão junto (título não fica sozinho no pé da folha) */
+  const nova=()=>{ const ant=cur, usado=ant?(U-24)-livre:0; cur=blk.cloneNode(false); cur.classList.add('cont'); partes.push(cur); livre=U-24;
+    if(soTit(ant)){ [...ant.children].forEach(c=>cur.appendChild(c)); livre-=usado; } };   /* folga para o preenchimento do bloco */
   nova();
   filhos.forEach((f,ix)=>{ cx.appendChild(f); const hf=f.offsetHeight+8; f.remove();
     /* título de seção não fica sozinho no pé da folha */
@@ -9301,7 +9275,7 @@ async function gerarRelatorio(opt){
       const sel=P.telas?(P.telas[t.id]||'*'):'*';
       PEND.length=0; EST.tela=t.id; off.innerHTML=VISTA[t.id]();
       await frame(); desenharPendentes(); await frame();
-      relLimpar(off,P.lim,anexos,t.nome);
+      relLimpar(off,P.lim,P.semAnexo?null:anexos,t.nome);
       relBlocos(off,t.id,sel).forEach(b=>{ const w=document.createElement('div'); w.className='rel-blk';
         w.dataset.cap=P.tema?'t:'+t.id:capDe(t.id,b.sid); w.dataset.sid=b.sid; w.dataset.tit=b.tit;
         w.innerHTML=`<div class="rel-tela">${esc(t.nome)}</div>`; b.nos.forEach(n=>w.appendChild(n)); blocos.push(w); });
@@ -9338,7 +9312,7 @@ async function gerarRelatorio(opt){
   const rod=`<footer class="rel-rod" style="--lsf-simb:url('${LSF_SIMB}')"><b>A FORÇA DA ÁGUA É A NOSSA FORÇA</b><span>lsfire.com.br · documento interno${pub==='diretoria'?' · diretoria':''}</span></footer>`;
   const sumario=caps.map(c=>`<li>${c.num}. ${esc(c.n)}</li>`).join('');
   const capa=`<section class="rel-pag rel-capa"><div class="rel-capa-faixa">${logo?`<img src="${logo}" alt="">`:''}<span>LS FIRE · COMERCIAL</span></div>
-    <div class="rel-capa-corpo"><small>${esc(P.nome)} · Semana ${sem}</small><h1>${(t=>{ const w=String(t).trim().split(/\s+/); return w.length>1?esc(w.slice(0,-1).join(' '))+' <span style="color:var(--lar)">'+esc(w[w.length-1])+'</span>':`<span style="color:var(--lar)">${esc(t)}</span>`; })(tit)}</h1>
+    <div class="rel-capa-corpo"><small>${esc(P.nome)} · Semana ${sem}</small><h1>${(t=>{ const w=String(t).trim().split(/\s+/); return w.length>1?esc(w.slice(0,-1).join(' '))+' <span style="color:var(--lar-txt)">'+esc(w[w.length-1])+'</span>':`<span style="color:var(--lar-txt)">${esc(t)}</span>`; })(tit)}</h1>
       <p><b>Período:</b> ${esc(PER.rot)} · <b>Referência:</b> ${fmtData(hoje())}${REF_DATA?' (fixada)':''} · ${esc(recorteTexto())}</p>
       <ol class="rel-sum">${sumario}</ol>
       <p class="rel-capa-data">Gerado em ${fmtData(agora)} às ${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')} · ${esc(relDataBase())}</p></div>${rod}</section>`;
@@ -9402,7 +9376,7 @@ function _carregar(src,sri){ return new Promise((ok,erro)=>{ const s=document.cr
 async function _libsPDF(){
   for(const [nome,sri,urls] of _LIB_PDF){
     if(nome==='html2canvas'&&window.html2canvas)continue; if(nome==='jspdf'&&window.jspdf)continue;
-    let foi=false; for(const u of urls){ try{ await _carregar(u,sri); foi=true; break; }catch(e){} }
+    let foi=false; for(const u of urls){ try{ await _carregar(u,sri); foi=true; break; }catch(e){ logFalha('biblioteca '+u,e); } }
     if(!foi)throw new Error('sem acesso à biblioteca '+nome);
   }
 }
@@ -9648,12 +9622,14 @@ function receber(files){
       BRUTO._meta=Object.assign({},BRUTO._meta); BRUTO._meta.imp=Object.assign({},BRUTO._meta.imp,{[base]:{em:new Date().toISOString(),arq:f.name,linhas:rows.length}});
       const al=antes>rows.length*1.05
         ? ` <span style="color:var(--ale)">(a anterior tinha ${fmtN(antes)} linhas — export menor)</span>`:'';
+      const falt=faltando(cols,base);
       construir(); marcarUF(); listarBases(); recarregarFiltros(); aplicar();
       const u=ultimaData(base), velho=u&&(HOJE-u)/864e5>3;
       div.querySelector('.st').innerHTML=`<span style="color:var(--ok)">✓ ${NOMES_BASE[base]} · ${fmtN(rows.length)} linhas</span>`
         +(u?` <span style="color:var(--${velho?'ale':'txt3'})">· registro mais recente ${fmtData(u)}${velho?' — o arquivo não tem nada depois disso':''}</span>`:'')+al
         +(VALIDACAO.datas.length?` <span style="color:var(--err)">· ${fmtN(VALIDACAO.datas.length)} data(s) impossível(is) ignorada(s) (ex.: ${esc(VALIDACAO.datas[0])}) — ver Dados e configurações</span>`:'')
-        +(VALIDACAO.numeros.length?` <span style="color:var(--ale)">· ${fmtN(VALIDACAO.numeros.length)} número(s) ambíguo(s) lido(s) como milhar</span>`:''); };
+        +(VALIDACAO.numeros.length?` <span style="color:var(--ale)">· ${fmtN(VALIDACAO.numeros.length)} número(s) ambíguo(s) lido(s) como milhar</span>`:'')
+        +(falt.length?` <span style="color:var(--err)">· faltam colunas: ${esc(falt.join(', '))} — confira o modelo de exportação</span>`:''); };
     /* CSV não passa pelo SheetJS: ele lê "11/09/2026" como 9 de novembro */
     if(/\.(csv|tsv|txt)$/i.test(f.name)){
       fr.onload=e=>{ try{
@@ -9990,7 +9966,7 @@ function comCarregando(nome){ const f=window[nome]; if(typeof f!=='function'||f.
 function arrancar(){ lerSeed().then(iniciar).catch(e=>{ console.error(e);
   document.getElementById('tela').innerHTML=`<div class="nota">Não consegui abrir a base embutida (${esc(e.message)}).
     Use um navegador atualizado (Chrome, Edge, Firefox ou Safari recentes) ou carregue as planilhas em ↑ Planilhas.</div>`;
-  try{ iniciar(); }catch(_){} }); }
+  try{ iniciar(); }catch(e){ logFalha('iniciar',e); } }); }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arrancar);
 else arrancar();
 </script>
