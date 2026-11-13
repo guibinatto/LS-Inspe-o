@@ -8553,9 +8553,39 @@ function baixarBlob(b,nome){
   a.href=u; a.download=nome; document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},1500); }
 /* aviso na própria página — alert() não aparece dentro do Claude */
-function aviso(msg){ let t=document.getElementById('aviso');
+/* ---------- botão "↻ Ploomes": atualização pedida pelo próprio painel ----------
+   No painel publicado no claude.ai, o botão aciona a tarefa "Atualizar painel pelo
+   Ploomes" pelo conector Claude Code Remote (capacidade mcp, com o login de quem
+   clica). A tarefa abre uma sessão no ambiente com a chave de LEITURA do Ploomes:
+   coleta, importa, testa e republica painel e apresentação nos mesmos links.
+   Fora do claude.ai (arquivo baixado) ou sem o conector, o botão não aparece. */
+const PLOOMES_TAREFA='trig_01Gnfu1KEQotBL5ReXgpS7DV', CCR_CONECTOR='Claude Code Remote';
+let _MCP=null, _ploomesConf=0;
+(async()=>{ try{ if(!window.claude||typeof claude.use!=='function')return; const m=await claude.use('mcp'); if(!m)return; _MCP=m;
+  const b=document.getElementById('bt-ploomes'); if(b)b.hidden=false; }catch(e){} })();
+async function atualizarPloomes(){ const b=document.getElementById('bt-ploomes'); if(!_MCP||!b)return;
+  /* confirmação no próprio botão (janelas de confirmação são bloqueadas no visualizador) */
+  if(!_ploomesConf){ _ploomesConf=1; b.textContent='Confirmar: atualizar agora?'; b.classList.add('prim');
+    setTimeout(()=>{ if(_ploomesConf===1){ _ploomesConf=0; b.textContent='↻ Ploomes'; b.classList.remove('prim'); } },8000); return; }
+  _ploomesConf=2; b.disabled=true; b.textContent='⏳ Pedindo…';
+  try{
+    await _MCP.callTool(CCR_CONECTOR,'fire_trigger',{trigger_id:PLOOMES_TAREFA,text:'Pedido pelo botão do painel em '+new Date().toLocaleString('pt-BR')},{cache:false});
+    b.textContent='✓ Atualização pedida'; b.classList.remove('prim');
+    aviso('Atualização pedida. Em 5 a 10 minutos o painel e a apresentação são republicados com os dados do Ploomes e você recebe uma notificação. Depois, recarregue a página: a barra "Bases" mostra "hoje" com o selo API.',15000);
+  }catch(err){ const c=err&&err.code; _ploomesConf=0; b.disabled=false; b.textContent='↻ Ploomes'; b.classList.remove('prim');
+    const amb='O pedido pode ter chegado mesmo assim: aguarde 10 minutos antes de tentar de novo.';
+    aviso(({server_not_connected:'O conector "Claude Code Remote" não está ativo na sua conta: adicione em claude.ai → Configurações → Conectores.',
+      needs_reauth:'Reconecte o conector "Claude Code Remote" em claude.ai → Configurações → Conectores.',
+      selection_required:'Escolha qual conector "Claude Code Remote" usar no aviso do claude.ai e clique de novo.',
+      not_in_manifest:'O acesso ao conector foi recusado para esta página. Para liberar, use o menu Permissões do artefato.',
+      approval_required:'A atualização precisa da sua aprovação: clique de novo e aprove no aviso do claude.ai.',
+      blocked_by_policy:'A política da organização bloqueia esta ação para o seu usuário.',
+      tool_error:'A tarefa não aceitou o pedido: '+String(err.message||'').slice(0,160),
+      server_unavailable:'O serviço não respondeu. '+amb, upstream_error:'O serviço não respondeu. '+amb, cancelled:'Pedido cancelado. '+amb
+    })[c]||('Não foi possível pedir a atualização ('+(c||'erro')+'). '+amb),15000); } }
+function aviso(msg,ms){ let t=document.getElementById('aviso');
   if(!t){ t=document.createElement('div'); t.id='aviso'; t.setAttribute('role','status'); document.body.appendChild(t); }
-  t.textContent=msg; t.classList.add('on'); clearTimeout(aviso._t); aviso._t=setTimeout(()=>t.classList.remove('on'),4200); }
+  t.textContent=msg; t.classList.add('on'); clearTimeout(aviso._t); aviso._t=setTimeout(()=>t.classList.remove('on'),ms||4200); }
 function baixarCSV(){
   const tbs=[...document.querySelectorAll('#tela table')];
   if(!tbs.length){aviso('Esta tela não tem tabela para exportar.');return;}

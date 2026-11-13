@@ -139,3 +139,18 @@ Em seguida, `ferramentas/ploomes_importar.js` importa essas planilhas pelo impor
 python3 -I ferramentas/ploomes_coletar.py <pasta>
 node ferramentas/ploomes_importar.js Painel-Executivo-LS-Fire-2026-10-26.html <pasta>
 ```
+
+## Botão "↻ Ploomes" (12/11/2026)
+
+**O que faz:** no painel publicado no claude.ai, o botão aciona a tarefa "Atualizar painel pelo Ploomes" (`trig_01Gnfu1KEQotBL5ReXgpS7DV`). A tarefa não tem horário: só roda quando é acionada.
+
+**Como aciona:** pelo conector Claude Code Remote, usando a capacidade `mcp` do artefato com o login de quem clica.
+
+**O que a tarefa faz:**
+1. Abre uma sessão no ambiente "LS-Inspe-o (Ploomes)", que guarda a chave de leitura.
+2. Roda `ploomes_coletar.py`, `ploomes_importar.js`, os testes e `publicaveis.js`.
+3. Confere se houve salvamento pela página. Se houver, não publica.
+4. Republica o painel e a apresentação nos mesmos links.
+5. Faz commit e push na branch e envia uma notificação no fim.
+
+**Quando não aparece:** fora do claude.ai (arquivo baixado) ou sem o conector, o botão fica oculto.

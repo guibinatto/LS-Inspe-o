@@ -37,6 +37,7 @@
       </div>
       <select class="campo" id="sel-vend" onchange="setVend(this.value)"></select>
       <div class="acoes">
+        <button id="bt-ploomes" hidden onclick="atualizarPloomes()" title="Atualiza o painel e a apresentação com os dados do Ploomes (somente leitura). Leva de 5 a 10 minutos.">↻ Ploomes</button>
         <button onclick="irTela('relatorios')" title="Relatórios prontos" class="dest">Relatórios</button>
         <button onclick="salvarHTML()" title="Cópia completa, com todas as bases carregadas — para arquivar" class="prim">↓ Salvar</button>
         <div class="mais"><button onclick="toggleMais(event)" aria-haspopup="true" title="Importação, metas, dados e exportações secundárias">⋯ Mais</button>
