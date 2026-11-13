@@ -1,4 +1,5 @@
 const {chromium}=require('playwright'); const fs=require('fs');
+const __T=require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'lsf-teste-')), __FIX=require('path').join(__dirname,'..','dados','fixtures');   /* temporários próprios; planilhas de teste em dados/fixtures (fora do git) */
 const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA',n,d||''].join(' | '));
 (async()=>{ const b=await chromium.launch(); const errs=[];
  const p=await b.newPage({viewport:{width:1400,height:1000},acceptDownloads:true}); p.on('pageerror',e=>errs.push(e.message)); p.on('dialog',d=>d.accept('Cliente pediu nova data'));
@@ -58,11 +59,11 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
    rel.push(m+': '+r.pags+' pág., '+r.fora+' fora; '+r.tit+' | '+r.per+' | caps: '+r.caps); ok(`Relatório ${m} gerado sem erro e sem nada fora da margem`,errs.length===e1&&r.pags>1&&r.fora===0,r.pags+' págs '+r.estado); }
  // planilha
  const [dl]=await Promise.all([p.waitForEvent('download',{timeout:30000}),p.evaluate(()=>{ RELC.modelo='rB'; irTela('relatorios'); relcPlanilha(); })]);
- const pth='/tmp/lsval/t/plan.xlsx'; await dl.saveAs(pth); ok('Planilha de detalhamento (.xlsx) gerada',fs.statSync(pth).size>5000,dl.suggestedFilename());
+ const pth=__T+'/plan.xlsx'; await dl.saveAs(pth); ok('Planilha de detalhamento (.xlsx) gerada',fs.statSync(pth).size>5000,dl.suggestedFilename());
  // salvar → reabrir mantém registros
- const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.writeFileSync('/tmp/lsval/t/c.html',html);
+ const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.writeFileSync(__T+'/c.html',html);
  const p2=await b.newPage(); p2.on('pageerror',e=>errs.push('p2 '+e.message)); await p2.evaluate(()=>localStorage.clear()).catch(()=>{});
- await p2.goto('file:///tmp/lsval/t/c.html'); await p2.waitForFunction(()=>typeof F!=='undefined'&&F.todas,null,{timeout:60000});
+ await p2.goto('file://'+__T+'/c.html'); await p2.waitForFunction(()=>typeof F!=='undefined'&&F.todas,null,{timeout:60000});
  const s2=await p2.evaluate(()=>({snaps:CFG.snaps.length,passos:CFG.passos.length,comp:CFG.comp.length,reu:CFG.reunioes.length,plano:(CFG.plano||[]).length}));
  ok('Salvar → reabrir (sem cache do navegador) preserva cargas, passos, compromissos, reuniões e plano',s2.snaps>=1&&s2.passos>=1&&s2.comp>=2&&s2.reu>=2&&s2.plano>=1,JSON.stringify(s2));
  // nova carga de negócios: snapshot e mudanças

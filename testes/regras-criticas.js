@@ -1,4 +1,5 @@
 const {chromium}=require('playwright'); const fs=require('fs'); const {execSync}=require('child_process');
+const __T=require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'lsf-teste-')), __FIX=require('path').join(__dirname,'..','dados','fixtures');   /* temporários próprios; planilhas de teste em dados/fixtures (fora do git) */
 const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA',n,d==null?'':typeof d==='string'?d:JSON.stringify(d)].join(' | '));
 (async()=>{ const b=await chromium.launch(); const errs=[];
  const ctx=await b.newContext({viewport:{width:1400,height:1000},acceptDownloads:true});
@@ -21,8 +22,8 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
  const rc=await p.evaluate(async()=>{ irTela('relatorios'); RELC.modelo='rC'; render(); document.getElementById('relc-vend').value='Fábio Dalagnolo'; await relcGerar(); const t=document.querySelector('#rel-view .rel-folhas').innerText; fecharRelatorio(); return {f:t.includes('AÇÃO DO FÁBIO'),g:t.includes('AÇÃO DO GUILHERME'),vend:EST.vend}; });
  ok('Relatório individual não traz ações de outra pessoa; filtros voltam ao estado anterior',rc.f&&!rc.g&&rc.vend==='',rc);
  const [dl]=await Promise.all([p.waitForEvent('download'),p.evaluate(()=>{ irTela('relatorios'); RELC.modelo='rB'; render(); document.getElementById('relc-vend').value='Fábio Dalagnolo'; relcPlanilha(); })]);
- await dl.saveAs('/tmp/lsval/t/fab.xlsx');
- const pl=execSync(`python3 -I -c "import openpyxl;wb=openpyxl.load_workbook('/tmp/lsval/t/fab.xlsx');ws=wb['Plano de ação'];print('|'.join(str(r[4]) for r in ws.iter_rows(min_row=2,values_only=True)));ws=wb['Pedidos'];print(set(r[3] for r in ws.iter_rows(min_row=2,values_only=True)))"`).toString();
+ await dl.saveAs(__T+'/fab.xlsx');
+ const pl=execSync(`python3 -I -c "import openpyxl;wb=openpyxl.load_workbook('${__T}/fab.xlsx');ws=wb['Plano de ação'];print('|'.join(str(r[4]) for r in ws.iter_rows(min_row=2,values_only=True)));ws=wb['Pedidos'];print(set(r[3] for r in ws.iter_rows(min_row=2,values_only=True)))"`).toString();
  ok('Planilha com vendedor: plano e pedidos só da pessoa (mesmo contexto da tela)',/AÇÃO DO FÁBIO/.test(pl)&&!/GUILHERME/.test(pl)&&/(\{'Fábio Dalagnolo'\}|set\(\))/.test(pl),pl.trim());
  // seções vazias e nomes amigáveis
  const sv=await p.evaluate(async()=>{ irTela('relatorios'); RELC.modelo='rB'; render(); const lab=[...document.querySelectorAll('.relc-pers label')].map(l=>l.textContent.trim());
@@ -68,8 +69,8 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
  const js=await p.evaluate(()=>{ const antigo={versao:1,passos:[{id:'pOld',neg:String(F.ab[0].id),cli:'X',texto:'passo antigo',status:'Aberto',prazo:'2026-10-01'}],plano:[{id:'aOld',acao:'ação antiga',status:'Não iniciada'}],fotos:[{id:'fOld',em:'2026-10-01T00:00:00Z',rot:'set/2026',v:{ped:1}}]};
    const fr=new File([JSON.stringify(antigo)],'a.json'); centralImportar(fr); return new Promise(r=>setTimeout(()=>r({p:CFG.passos.some(x=>x.id==='pOld'),a:CFG.plano.some(x=>x.id==='aOld'),f:CFG.fotos.some(x=>x.id==='fOld'),av:document.getElementById('aviso').textContent}),300)); });
  ok('JSON antigo (sem versão) é incorporado e validado',js.p&&js.a&&js.f&&/novo/.test(js.av),js);
- const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.writeFileSync('/tmp/lsval/t/e.html',html);
- const p2=await abre('file:///tmp/lsval/t/e.html');
+ const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.writeFileSync(__T+'/e.html',html);
+ const p2=await abre('file://'+__T+'/e.html');
  const re=await p2.evaluate(()=>({fe:CFG.fechamentos.length,ret:CFG.fechamentos.some(f=>f.retifica),conf:CFG.conflitos.length,exc:CFG.excluidos.length,ver:(CFG.plano.find(x=>x.id==='tA')||{}).ver}));
  ok('Reabrir o arquivo salvo preserva fechamentos, retificação, conflitos, exclusões e versões',re.fe>=2&&re.ret&&re.conf>=2&&re.exc>=1&&re.ver>=1,re);
  // base vazia, ausente, zero, negativo

@@ -137,7 +137,7 @@ Em seguida, `ferramentas/ploomes_importar.js` importa essas planilhas pelo impor
 **Uso:**
 ```
 python3 -I ferramentas/ploomes_coletar.py <pasta>
-node ferramentas/ploomes_importar.js Painel-Executivo-LS-Fire-2026-10-26.html <pasta>
+node ferramentas/ploomes_importar.js dados/painel-completo.html <pasta>
 ```
 
 ## Botão "↻ Ploomes" (12/11/2026)
@@ -154,3 +154,27 @@ node ferramentas/ploomes_importar.js Painel-Executivo-LS-Fire-2026-10-26.html <p
 5. Faz commit e push na branch e envia uma notificação no fim.
 
 **Quando não aparece:** fora do claude.ai (arquivo baixado) ou sem o conector, o botão fica oculto.
+
+## Dados fora do git (13/11/2026)
+
+O repositório guarda **só o código**. `Painel-Executivo-LS-Fire.html` vai para o git com `seed-dados` vazio e `seed-config` `{}`; aberto assim, o painel vem vazio e pede importação.
+
+**Onde ficam os dados de clientes:**
+- no painel publicado (privado) no claude.ai, que é a fonte oficial;
+- numa cópia local em `dados/` (ignorada pelo git).
+
+**Montar o painel completo** (código atual + dados):
+```
+node ferramentas/dados.js extrair <painel publicado.html> dados/painel-dados.json
+node ferramentas/dados.js injetar Painel-Executivo-LS-Fire.html dados/painel-dados.json dados/painel-completo.html
+```
+
+**Toda atualização** (manual ou pelo botão):
+1. Lê o painel publicado.
+2. Extrai os dados dele.
+3. Injeta esses dados no código do repositório.
+4. Importa o Ploomes, testa e republica.
+
+Como os dados de partida são sempre os do painel publicado, um salvamento feito pela página nunca é perdido.
+
+**O que não pode ir para o git**, nem para o histórico: planilhas (`*.xlsx`, `*.csv`), `versao-separada/` (gerada com dados), `evidencias/` (capturas com dados) e `apresentacao-teste/` com dados.

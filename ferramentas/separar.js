@@ -12,7 +12,7 @@
    - Os <script> da aplicação são concatenados na mesma ordem em app.js. Scripts
      clássicos compartilham o escopo global, então o comportamento é o mesmo. */
 const fs = require('fs'), path = require('path');
-const src = process.argv[2] || path.join(__dirname, '..', 'Painel-Executivo-LS-Fire-2026-10-26.html');
+const src = process.argv[2] || path.join(__dirname, '..', 'dados', 'painel-completo.html');
 const out = process.argv[3] || path.join(__dirname, '..', 'versao-separada');
 let h = fs.readFileSync(src, 'utf8').replace(/^﻿/, '');
 

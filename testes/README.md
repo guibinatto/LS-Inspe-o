@@ -1,23 +1,20 @@
-# Testes automatizados (Playwright + Chromium)
+# Testes do Painel Executivo
 
-Rodar com: `node testes/<arquivo>.js <painel.html>`
+Rode tudo com um comando. A saída é 1 se algum teste falhar:
 
-**Base de teste.** `regras-criticas`, `graficos-interface`, `totais`, `central` e `contratos` conferem números da base de 26/10/2026. Depois de importar planilhas novas, rode-os na base de teste (código atual + dados de 26/10): `python3 -I ferramentas/base-de-teste.py /tmp/base.html` e `node testes/<arquivo>.js /tmp/base.html`. `apresentacao`, `clica-tudo` e `versao-separada` rodam também no arquivo com os dados do dia.
+```
+LANG=C.UTF-8 node testes/todos.js
+```
 
-| Arquivo | O que verifica | Resultado em 31/10/2026 |
+## Duas bases, ambas fora do git porque têm dados de clientes
+
+| Base | Arquivo de dados | O que testa |
 |---|---|---|
-| periodos.js | comparativos: semana parcial, mês completo, fevereiro, bissexto, trimestres, virada ISO, últimos 7 dias, intervalo | 13/13 |
-| regras-criticas.js | deduplicação, prazo não avaliável, acompanhamento do negócio, recorte em tela/relatório/planilha, seções vazias, período específico, fotografia ausente/presente, fechamento e retificação, rateio por dias úteis, versão/conflito/exclusão, JSON antigo, reabertura, base vazia, ausente/zero/negativo | 18/18 |
-| central.js | telas × atalhos, ISO, passos, compromissos, reuniões, 7 relatórios, planilha, salvar→reabrir, nova carga, celular | 26/26 |
-| totais.js | totais conciliados (pedidos, faturamento, carteira, NFs), filtros, data de referência, bases vazias, celular | 19/19 |
-| graficos-interface.js | cascata reconcilia, cascata só com histórico, padrão dos gráficos (título, pergunta, período, unidade, fonte, tabela, nome acessível), Ver tabela, clique e teclado abrem a lista filtrada, mapa de calor, ficha do negócio, cores e tipografia, menu recolhível, botões com ação, 390/768 px | 11/11 |
-| revisao-visual.js `<pasta>` | gera os 7 relatórios, mede margens, folhas altas, fonte mínima e salva imagens | 0 fora da margem |
+| **Base de teste** | `dados/base-teste.json` (dados congelados de 26/10/2026; "hoje" fixo em 10/11/2026 pelo atributo `data-hoje-teste`) | Números conhecidos: regras críticas, totais, central, contratos, gráficos. Montada por `ferramentas/base-de-teste.py`. |
+| **Painel completo** | `dados/painel-dados.json` (dados do painel publicado) | Apresentação, capa, clique em todas as telas, períodos, versão separada. Montado por `ferramentas/dados.js injetar`. |
 
-`central.js` e `totais.js` importam as planilhas de 30/10 de `/tmp/lsin/{a,b,c}` (comparativo, faturamento mensal, carteira); ajuste o caminho para rodar em outra máquina.
-| clica-tudo.js `[limite] [largura] [escuro]` | percorre as 14 páginas e o topo clicando em cada elemento interativo; registra erros de JavaScript, erros de console, diálogos nativos, cliques sem efeito e texto com contraste abaixo de 3:1 | desktop 315, celular 246, tema escuro 203 cliques: 0 erros, 0 sem efeito, 0 contraste baixo |
-| consulta.js | buscas por nome, código de proposta, cidade e frase ("SC acima de 500 mil") na Consulta detalhada | resultados conferidos |
-| desfecho-manual.js | registrar perda pelo painel: sai do pipeline e da previsão, alerta, desfazer | ok |
-| leitura-celular.js | leitura do relatório no celular, modo claro e escuro do aparelho: contraste e largura | contraste mínimo 4,7:1, sem rolagem lateral |
-| versao-separada.js `<Painel.html> <pasta>` | versão em arquivos separados (index.html + styles.css + app.js, Chart.js e SheetJS por CDN) contra o arquivo único: mesmas telas, sem erros, giro no botão de exportação, planilha válida, CSS nos relatórios baixados, "↓ Salvar", tabelas com rolagem lateral e 1ª coluna fixa no celular. Rodar com `LANG=C.UTF-8` | 31/31 (04/11/2026) |
-| contratos.js `[Contratos.xlsx OS.xlsx]` | contratos de serviço: importação das planilhas do Omie, vigência com e sem ano, número do contrato, toda OS contada uma vez, meses sem OS, vencimento e renovação no Ploomes, referência no passado, tela, cliques, Excel, capítulo nos relatórios mensal e trimestral, celular. pedidos ITM do Controle (FA Maringá, SEPAC, Legrand, BEPE), 8 relatórios por tema. Rodar com `LANG=C.UTF-8` | 33/33 com as bases embutidas (05/11/2026) |
-| apresentacao.js | aba Apresentação: prévia com 12 capítulos, números iguais ao motor, sem ciclo de redesenho, menu de capítulos, tela cheia (Esc e saída pelo navegador), filtro SPV, arquivo baixado autônomo, celular sem internet | 13/13 (09/11/2026) |
+As planilhas usadas por alguns testes ficam em `dados/fixtures/`. Cada teste grava seus temporários numa pasta própria (`os.tmpdir()`).
+
+Sem a pasta `dados/`, os testes que dependem dela aparecem como **PULADO**. Peça a cópia a quem mantém o painel; ela não vai para o repositório.
+
+Para rodar um teste isolado: `LANG=C.UTF-8 node testes/<nome>.js <arquivo.html>`.

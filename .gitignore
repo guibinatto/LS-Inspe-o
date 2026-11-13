@@ -1,1 +1,11 @@
+# DADOS DE CLIENTES NUNCA ENTRAM NO GIT.
+# O repositório guarda só o código do painel (seed vazio). Os dados vivem no
+# painel publicado (privado) no claude.ai e numa cópia local em dados/.
+dados/
 ploomes-coleta/
+versao-separada/
+evidencias/
+apresentacao-teste/fonte/dados.json
+apresentacao-teste/*.html
+*.xlsx
+*.csv

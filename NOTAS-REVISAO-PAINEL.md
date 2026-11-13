@@ -1,6 +1,6 @@
 # Revisão do Painel Executivo LS Fire — relatório gerencial comercial
 
-Arquivo: `Painel-Executivo-LS-Fire-2026-10-26.html` (HTML único; bases, metas, carteira e configurações preservadas).
+Arquivo: `Painel-Executivo-LS-Fire.html` (só o código; os dados ficam fora do git — ver ARQUITETURA.md, "Dados fora do git").
 Referência dos números abaixo: **ano 2026, até 30/10/2026**, sem filtros.
 
 ---

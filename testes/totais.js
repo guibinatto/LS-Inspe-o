@@ -1,4 +1,5 @@
 const {chromium}=require('playwright'); const fs=require('fs');
+const __T=require('fs').mkdtempSync(require('path').join(require('os').tmpdir(),'lsf-teste-')), __FIX=require('path').join(__dirname,'..','dados','fixtures');   /* temporários próprios; planilhas de teste em dados/fixtures (fora do git) */
 const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>{R.push([c?'OK ':'FALHA',n,d||''].join(' | '));};
 (async()=>{ const b=await chromium.launch(); const errs=[];
  const abre=async(url,vp)=>{ const p=await b.newPage({viewport:vp||{width:1400,height:1000}}); p.on('pageerror',e=>errs.push(url.slice(-20)+': '+e.message));
@@ -36,13 +37,13 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>{R.push([c?'OK ':'FALHA
  ok('Ref 15/10: faturamento de outubro = notas até 15/10',r15.fat<47373343&&r15.fat>41101780,r15.fat);
  // plano + salvar → reabrir
  await p.evaluate(()=>{irTela('executiva');planoNovo(0);CFG.plano[CFG.plano.length-1].resp='Teste';CFG.plano[CFG.plano.length-1].prazo='2026-11-02';planoGuardar();setCrit('metaRisco',80);});
- const refSalva=await p.evaluate(()=>isoD(hoje())); const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO)); fs.mkdirSync('/tmp/lsval/t',{recursive:true}); fs.writeFileSync('/tmp/lsval/t/salvo.html',html);
- const p2=await abre('file:///tmp/lsval/t/salvo.html');
+ const refSalva=await p.evaluate(()=>isoD(hoje())); const html=await p.evaluate(async()=>CAB_LOCAL+await corpoComDados(BRUTO));  fs.writeFileSync(__T+'/salvo.html',html);
+ const p2=await abre('file://'+__T+'/salvo.html');
  const s2=await p2.evaluate(()=>({pl:(CFG.plano||[]).map(a=>a.resp+'|'+a.prazo+'|'+a.origem),crit:CRIT().metaRisco,ref:CFG.dataRefSalva,ped:realizado().c.total,fat:faturamentoRealizado().total,nf:M.notas.length}));
  ok('Salvar → reabrir: plano (origem, responsável, prazo), critérios, dados e referência',s2.pl.some(x=>x.startsWith('Teste|2026-11-02|'))&&s2.crit===80&&s2.ref===refSalva&&near(s2.ped,36730682.39)&&s2.nf===22,JSON.stringify(s2));
  await p2.close();
  // reimportação idempotente
- await p.setInputFiles('#inp-arq','/tmp/lsin/b/fatmensal.xlsx'); await p.waitForTimeout(2500);
+ await p.setInputFiles('#inp-arq',__FIX+'/b/fatmensal.xlsx'); await p.waitForTimeout(2500);
  const nN=await p.evaluate(()=>M.notas.length); ok('Reimportar o mesmo mês de NF não duplica',nN===22,nN);
  // bases vazias
  const p3=await abre('file://'+src); const e1=errs.length;

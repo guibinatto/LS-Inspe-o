@@ -7,6 +7,6 @@ Esta é uma versão de teste da apresentação: uma página longa e escura, com 
 
 ## Como atualizar com dados novos
 
-1. `node apresentacao-teste/fonte/extrai.js "$PWD/Painel-Executivo-LS-Fire-2026-10-26.html" apresentacao-teste/fonte/dados.json`
+1. `node apresentacao-teste/fonte/extrai.js "$PWD/dados/painel-completo.html" apresentacao-teste/fonte/dados.json`
 2. `node apresentacao-teste/fonte/build.js apresentacao-teste/fonte`
 3. Copie o `fonte/pulso-comercial-ls-fire.html` gerado para cá.
