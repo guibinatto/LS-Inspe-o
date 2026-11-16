@@ -8594,12 +8594,17 @@ function svgBarrasH(items,o){ o=o||{}; const W=o.W||600, lw=o.lw||200, rw=o.rw||
 function svgFaixa(partes,o){ o=o||{}; const W=o.W||640, tot=somar(partes,p=>p.val||0)||1; let x=0;
   return `<svg width="${W}" viewBox="0 0 ${W} 54" role="img" aria-label="${esc(o.aria||'distribuição')}">${partes.filter(p=>p.val>0).map(p=>{ const w=(W)*(p.val/tot), g=`<g${clique(p.k)}><rect x="${sx(x)}" y="4" width="${sx(Math.max(1,w-1))}" height="22" fill="${p.cor}"/>${w>46?txtSvg(x+5,19,fmtN(p.val),{fs:11.5,c:'#fff',w:600}):''}${w>70?txtSvg(x+5,44,String(p.rot).slice(0,Math.floor(w/6.5)),{fs:11,c:corV('--txt2')}):''}</g>`; x+=w; return g; }).join('')}</svg>`; }
 /* cascata: início, movimentos e fim — reconcilia por construção */
-function svgCascata(passos,o){ o=o||{}; const W=o.W||720, H=220, pl=8, pb=40, pt=18, n=passos.length, bw=(W-pl*2)/n; let acc=0;
+function svgCascata(passos,o){ o=o||{}; const n=passos.length, W=o.W||Math.max(720,n*96), pl=8, pt=18, bw=(W-pl*2)/n; let acc=0;
+  /* rótulo quebrado pela largura da coluna (≈5,7 px por caractere a 10,5 px), até 4 linhas */
+  const porLin=Math.max(6,Math.floor((bw-6)/5.7));
+  const quebra=t=>{ const L=[]; let cur=''; String(t).split(/\s+/).forEach(w=>{ if(cur&&(cur+' '+w).length>porLin){ L.push(cur); cur=w; } else cur=cur?cur+' '+w:w; }); if(cur)L.push(cur);
+    return L.length>4?[...L.slice(0,3),L.slice(3).join(' ')]:L; };
+  const rots=passos.map(p=>quebra(p.rot)), nl=Math.max(2,...rots.map(r=>r.length)), pb=12+nl*13, H=180+pb;
   const pts=passos.map(p=>{ let a,b; if(p.tot){ a=0; b=p.val; acc=p.val; } else { a=acc; acc+=p.val; b=acc; } return Object.assign({},p,{a,b}); });
   const mx=Math.max(1,...pts.map(p=>Math.max(p.a,p.b)))*1.1, Y=v=>H-pb-(H-pb-pt)*(v/mx);
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Cascata do pipeline"><line x1="${pl}" x2="${W-pl}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${pts.map((p,i)=>{ const x=pl+i*bw, y1=Y(Math.max(p.a,p.b)), y2=Y(Math.min(p.a,p.b)), c=p.tot?corV('--spv'):p.val>=0?corV('--ok'):corV('--txt3');   /* total cinza-escuro, entrada verde, saída cinza: laranjas vizinhos confundiam */
     return `<g${clique(p.k)}>${p.k?`<rect x="${sx(x)}" y="0" width="${sx(bw)}" height="${H}" fill="transparent"/>`:''}<rect x="${sx(x+bw*.15)}" y="${sx(y1)}" width="${sx(bw*.7)}" height="${sx(Math.max(1,y2-y1))}" fill="${c}"${p.ajuste?` fill-opacity=".45" stroke="${c}" stroke-dasharray="3 2"`:''}/>${txtSvg(x+bw/2,y1-4,(p.tot?'':p.val>=0?'+':'−')+fmtCompacto(Math.abs(p.val)),{a:'middle',fs:11,c:corV('--txt')})}
-      ${txtSvg(x+bw/2,H-pb+14,p.rot.split(' ')[0],{a:'middle',fs:10.5,c:corV('--txt2')})}${txtSvg(x+bw/2,H-pb+27,p.rot.split(' ').slice(1).join(' '),{a:'middle',fs:10.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
+      ${rots[i].map((l,j)=>txtSvg(x+bw/2,H-pb+14+j*13,l,{a:'middle',fs:10.5,c:corV('--txt2')})).join('')}<title>${esc(p.rot)}</title></g>`; }).join('')}</svg>`; }
 /* mapa de calor pessoa × semana: escala sequencial azul, número escrito na célula */
 function svgHeat(linhas,cols,M,o){ o=o||{}; const lw=150, cw=Math.max(44,Math.min(64,Math.floor(560/Math.max(1,cols.length)))), ch=24, W=lw+cols.length*cw+4, H=28+linhas.length*ch, mx=Math.max(1,...M.flat().filter(v=>v!=null));
   const cor=v=>{ if(v==null)return corV('--card2'); const t=v/mx; return `rgba(255,102,0,${(0.08+t*0.8).toFixed(2)})`; };
