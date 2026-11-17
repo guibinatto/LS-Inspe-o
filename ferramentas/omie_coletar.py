@@ -2,12 +2,13 @@
 """Coletor do Omie — SOMENTE LEITURA.
 
 Lê pedidos de venda (com itens), clientes, produtos, projetos, vendedores, notas fiscais,
-ordens de serviço e contratos pela API do Omie e grava cada um em JSON, para o painel importar.
+ordens de serviço, contratos, departamentos, categorias, etapas de faturamento e famílias pela
+API do Omie e grava cada um em JSON, para o painel importar.
 
 Segurança
 - As chaves vêm só das variáveis de ambiente OMIE_APP_KEY e OMIE_APP_SECRET (configuradas no
   ambiente do Claude, nunca no código, no git ou em arquivo). O coletor nunca as imprime.
-- Só chama métodos da lista PERMITIDOS abaixo, todos de consulta (Listar…/Consultar…).
+- Só chama métodos da lista PERMITIDOS abaixo, todos de consulta (Listar…/Consultar…/Pesquisar…).
   Qualquer outro método é recusado antes de sair — não há como incluir, alterar ou excluir.
 - A mesma chave é usada pela integração Ploomes ↔ Omie (webhook): NÃO gere chave nova sem
   atualizar também a integração do Ploomes.
@@ -30,8 +31,14 @@ PERMITIDOS = {
     'notas':      ('produtos/nfconsultar/', 'ListarNF',        'nfCadastro',               100, {}),
     'os':         ('servicos/os/',         'ListarOS',         'osCadastro',               100, {}),
     'contratos':  ('servicos/contrato/',   'ListarContratos',  'contratoCadastro',         100, {}),
+    # cadastros auxiliares, para traduzir códigos em nomes (omie_para_planilha.py)
+    'departamentos': ('geral/departamentos/', 'ListarDepartamentos',     'departamentos',      500, {}),
+    'categorias':    ('geral/categorias/',    'ListarCategorias',        'categoria_cadastro', 500, {}),
+    'etapas':        ('produtos/etapafat/',   'ListarEtapasFaturamento', 'cadastros',          100, {}),
+    'familias':      ('geral/familias/',      'PesquisarFamilias',       'famCadastro',        500, {}),
 }
 METODOS_OK = {m for _, m, _, _, _ in PERMITIDOS.values()}
+PREFIXOS_CONSULTA = ('Listar', 'Consultar', 'Pesquisar')
 
 
 def chaves():
@@ -43,7 +50,7 @@ def chaves():
 
 def chamar(caminho, metodo, param, tentativas=6):
     """Uma chamada à API. Recusa qualquer método fora da lista de consulta."""
-    if metodo not in METODOS_OK or not (metodo.startswith('Listar') or metodo.startswith('Consultar')):
+    if metodo not in METODOS_OK or not metodo.startswith(PREFIXOS_CONSULTA):
         raise PermissionError(f'método {metodo!r} não é de consulta — recusado')
     k, s = chaves()
     corpo = json.dumps({'call': metodo, 'app_key': k, 'app_secret': s, 'param': [param]}).encode()
@@ -77,7 +84,10 @@ def coletar_base(nome):
     while True:
         r = chamar(caminho, metodo, dict(extra, pagina=pag, registros_por_pagina=por_pag))
         total = r.get('total_de_paginas', 0) or 0
-        regs += r.get(lista, []) or []
+        achou = r.get(lista)
+        if not isinstance(achou, list):   # chave diferente da esperada: usa a primeira lista da resposta
+            achou = next((v for v in r.values() if isinstance(v, list)), [])
+        regs += achou
         print(f'  {nome}: página {pag}/{total} · {len(regs)} registros', flush=True)
         if pag >= total:
             break
