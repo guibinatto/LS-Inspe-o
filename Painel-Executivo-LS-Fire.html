@@ -8339,15 +8339,7 @@ VISTA.produtos=function(){
       h+=`<div class="g g3">${card('Por acionamento','Unidades no período (todos os acionamentos).',`<div class="gb-c">${svgBarrasH(porAc,{fmt:v=>fmtU(v)+' un.',W:400,lw:80,rw:130,aria:'Motores por acionamento'})}</div>`)}
         ${card('Por potência','Diesel e elétrico; clique para ver os motores.',`<div class="gb-c">${svgBarrasH(porFx,{fmt:v=>fmtU(v)+' un.',W:400,lw:120,rw:60,aria:'Motores por faixa de potência'})}</div>`)}
         ${card('Por marca do motor','Diesel e elétrico, pela descrição do item no ERP.',`<div class="gb-c">${svgBarrasH(marcas,{fmt:v=>fmtU(v)+' un.',W:400,lw:140,rw:60,aria:'Motores por marca'})}</div>`)}</div>`;
-      if(CAT.length){ const D=MT.filter(r=>r.acion==='Diesel'), conf=r=>r.cat&&r.cat.c&&r.cat.como!=='sugestão por potência e rotação', sug=r=>r.cat&&r.cat.c&&r.cat.como==='sugestão por potência e rotação';
-        const linhasC=CAT.map(c=>{ const v=D.filter(r=>conf(r)&&r.cat.c===c), g=D.filter(r=>sug(r)&&(r.cat.c===c||(r.cat.alt||[]).includes(c)));
-            return {c,v,g,q:somar(v,r=>r.q),qg:somar(g,r=>r.q)}; }).sort((a,b)=>b.q-a.q||b.qg-a.qg||(a.c.hpN||0)-(b.c.hpN||0));
-        const lk=(a,t)=>a.length?`<a class="td-link" onclick="abrirLista('${regLista('prd-catv'+t+a[0].cat.c.i,`${a[0].cat.c.nome} — ${t==='v'?'vendidos (confirmados)':'sugeridos por potência'}`,a.map(lin),cols)}')">${fmtU(somar(a,r=>r.q))}</a>`:'—';
-        const nC=somar(D.filter(conf),r=>r.q), nS=somar(D.filter(sug),r=>r.q), nF=somar(D.filter(r=>!r.cat||r.cat.fora),r=>r.q);
-        h+=card('Catálogo de motores padronizados × motores diesel vendidos',`${fmtU(nC)} motor(es) diesel casados com o catálogo pelo modelo ou pela marca + potência · ${fmtU(nS)} só por potência e rotação (sugestão — o ERP não diz a marca) · ${fmtU(nF)} fora do catálogo. Clique no motor para a ficha técnica e no número para os pedidos.`,
-          tab([{t:'Motor do catálogo',f:1},{t:'Potência',n:1},{t:'Rotação',n:1},{t:'Arrefecimento'},{t:'Aspiração'},{t:'Preço de referência',n:1},{t:'Vendidos (confirmados)',n:1},{t:'Sugeridos',n:1}],
-            linhasC.map(x=>[fichaLk(x.c),x.c.hpN?fmtN(x.c.hpN)+' HP':'—',x.c.rpmN?fmtN(x.c.rpmN)+' rpm':'—',esc(x.c.arref||'—'),esc(x.c.aspiracao||'—'),x.c.precoN?fmtBRL(x.c.precoN):'—',lk(x.v,'v'),lk(x.g,'s')]),400)); }
-      else h+=card('','','<p class="nd-m">Para ver a ficha técnica de cada motor diesel (cilindros, aspiração, consumo, peso, preço de referência), importe a planilha <b>Motores Padronizados LS Fire</b> em ⋯ Mais → Importar planilhas.</p>');
+      if(!CAT.length)h+=card('','','<p class="nd-m">Para ver a ficha técnica de cada motor diesel (cilindros, aspiração, consumo, peso, preço de referência), importe a planilha <b>Motores Padronizados LS Fire</b> em ⋯ Mais → Importar planilhas.</p>');
       h+=card(`Listagem — ${fmtN(ML.length)} motor(es)${ac?' — '+ac:''}`,`Do mais recente ao mais antigo. "Não descrita no ERP": o item não tem a descrição técnica; o código traz potência e rotação, mas não a marca.`,
         tab(cols.map(c=>typeof c==='string'?{t:c}:c),[...ML].sort((a,b)=>b.x.dt-a.x.dt).map(lin),420));
     } else h+=card('','','<p class="pl-vazio">Nenhum conjunto com motor vendido no período.</p>'); }
