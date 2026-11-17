@@ -3204,7 +3204,17 @@ function desenhar(id,cfg){
   if(cfg.type==='bar'&&cfg.options.indexAxis!=='y'){ const sc=cfg.options.scales=cfg.options.scales||{}, n=(cfg.data.labels||[]).length;
     sc.x=Object.assign({},sc.x); sc.x.ticks=Object.assign({},sc.x.ticks,{maxRotation:0,minRotation:0,autoSkip:n>16});
     if(!sc.x.ticks.callback&&!cfg.semQuebra)sc.x.ticks.callback=function(v){ const r=this.getLabelForValue(v); if(Array.isArray(r))return r; const l=String(r); if(l.length<=10||n>14)return l; const w=l.split(' '), o=[]; let c='';
-      w.forEach(x=>{ if((c+' '+x).trim().length>11&&c){ o.push(c); c=x; } else c=(c+' '+x).trim(); }); if(c)o.push(c); return o.slice(0,2); }; }
+      w.forEach(x=>{ if((c+' '+x).trim().length>11&&c){ o.push(c); c=x; } else c=(c+' '+x).trim(); }); if(c)o.push(c); return o.slice(0,2); };
+    /* coluna estreita (celular): "dez/25" vira duas linhas ("dez" / "25"); outro rótulo que não cabe inclina e pula */
+    const larg=(el.parentElement&&el.parentElement.clientWidth)||el.clientWidth||600, porRot=(larg-50)/Math.max(1,n);
+    if(!REL_GERANDO&&porRot<46){ const cb0=sc.x.ticks.callback, mes=/^([A-Za-zçÇ]{3})\/(\d{2})(\*?)$/;
+      const todosMes=(cfg.data.labels||[]).every(l=>mes.test(String(l)));
+      if(todosMes&&porRot>=22){ sc.x.ticks.callback=function(v){ const m=String(this.getLabelForValue(v)).match(mes); return m?[m[1],m[2]+m[3]]:this.getLabelForValue(v); }; sc.x.ticks.font=Object.assign({size:10.5},sc.x.ticks.font); }
+      else { sc.x.ticks=Object.assign(sc.x.ticks,{maxRotation:55,minRotation:0,autoSkip:true,autoSkipPadding:4}); if(cb0)sc.x.ticks.callback=cb0; } } }
+  /* linha no celular: a mesma regra dos meses em duas linhas */
+  if(cfg.type==='line'&&!REL_GERANDO){ const n=(cfg.data.labels||[]).length, larg=(el.parentElement&&el.parentElement.clientWidth)||600, mes=/^([A-Za-zçÇ]{3})\/(\d{2})(\*?)$/;
+    if((larg-50)/Math.max(1,n)<46&&n&&(cfg.data.labels||[]).every(l=>mes.test(String(l)))){ const sc=cfg.options.scales=cfg.options.scales||{};
+      sc.x=Object.assign({},sc.x); sc.x.ticks=Object.assign({},sc.x.ticks,{maxRotation:0,autoSkip:true,autoSkipPadding:2,callback:function(v){ const m=String(this.getLabelForValue(v)).match(mes); return m?[m[1],m[2]+m[3]]:this.getLabelForValue(v); }}); } }
   /* linhas e barras: grade discreta, só horizontal */
   if(cfg.type==='bar'||cfg.type==='line'){ const sc=cfg.options.scales=cfg.options.scales||{}, cl=cssVar('--linha');
     ['x','y'].forEach(ax=>{ if(!sc[ax])return; sc[ax]=Object.assign({},sc[ax]); sc[ax].border=Object.assign({display:false},sc[ax].border);
