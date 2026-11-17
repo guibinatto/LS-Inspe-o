@@ -8009,7 +8009,7 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
    - cotado × ganho: itens das propostas do Ploomes, só a revisão mais recente de cada proposta.
    O código do produto descreve o equipamento: "CMB LSF J MB BT4-0715E14 1,5 35 38T NFPA20" =
    conjunto motobomba · LSF · Jockey · Multiestágio · modelo BT4-0715E14 · ... · NFPA 20. */
-const PRD={mbPor:'modelo',mbFonte:'vendido',abcPor:'valor',motAc:''};
+const PRD={mbPor:'modelo',mbFonte:'vendido',abcPor:'valor',motAc:'',motAbc:'un'};
 const PRD_ACION={E:'Elétrica',D:'Diesel',J:'Jockey',G:'Gasolina'};
 const PRD_TIPO={MB:'Multiestágio',SC:'Bipartida (split case)',ES:'Sucção axial (end suction)',VT:'Turbina vertical',IL:'In-line',
   AUTOESCORVANTE:'Autoescorvante',MBV:'Multiestágio vertical'};
@@ -8058,8 +8058,11 @@ function prdBase(){ if(_PRD_BASE&&_PRD_BASE.v===DADOS_VER)return _PRD_BASE.L;
   const chave=x=>{ const pj=prdProjeto(x), cp=(x.nCli||'')+'|'+prdTxt(x.produto); return (pj.startsWith('P:')?pj:daProj.get(cp)||pj)+'|'+prdTxt(x.produto); };
   const L=[]; for(const [k,a] of agrupa(B,chave)){
     const porOV=[...agrupa(a,x=>String(x.ov).trim()).entries()].map(([ov,l])=>({ov,l,v:somar(l,x=>x.vNum),q:somar(l,x=>x.qNum||0)})).sort((p,q)=>q.v-p.v||q.q-p.q);
-    const pr=porOV[0], dt=new Date(Math.min(...a.filter(x=>x.dt).map(x=>+x.dt)));
-    L.push(Object.assign({},pr.l[0],{vNum:pr.v,qNum:pr.q,dt:isNaN(dt)?pr.l[0].dt:dt,projeto:k.split('|')[0],ovPrincipal:pr.ov,ovsOutras:porOV.slice(1).map(o=>o.ov),linhas:a})); }
+    /* quantidade fracionada (1/3, 0,5…) = o ERP rateou o item em parcelas espalhadas pelas OVs do projeto: aí SOMA.
+       Quantidade inteira repetida em várias OVs = reemissão/medição da mesma venda: vale a OV de maior valor. */
+    const frac=porOV.some(o=>Math.abs(o.q-Math.round(o.q))>.01), pr=porOV[0], dt=new Date(Math.min(...a.filter(x=>x.dt).map(x=>+x.dt)));
+    const qT=frac?Math.round(somar(porOV,o=>o.q)*100)/100:pr.q, vT=frac?somar(porOV,o=>o.v):pr.v;
+    L.push(Object.assign({},pr.l[0],{vNum:vT,qNum:qT,dt:isNaN(dt)?pr.l[0].dt:dt,projeto:k.split('|')[0],ovPrincipal:pr.ov,ovsOutras:frac?[]:porOV.slice(1).map(o=>o.ov),ovsSomadas:frac?porOV.map(o=>o.ov):[],linhas:a})); }
   _PRD_BASE={v:DADOS_VER,L}; return L; }
 /* itens vendidos no período (uma vez por projeto), com os filtros do painel */
 function prdItens(){ return prdBase().filter(x=>x.dt&&noPer(x.dt)&&(x.vNum||0)>0&&(!EST.div||x.div===EST.div)&&(!EST.vend||x.resp===EST.vend)); }
@@ -8072,25 +8075,25 @@ function prdABC(itens,chave,val,qtd){ const g=[...agrupa(itens,chave).entries()]
   return {g,tot}; }
 /* Pareto: barras na cor da classe e curva do acumulado, com as linhas de 80% e 95% */
 function svgPareto(g,tot,o){ o=o||{}; const n=Math.min(g.length,o.max||30); if(!n)return '<p class="pl-vazio">Sem itens no período.</p>';
-  const pl=58, pr=44, pt=24, pb=92, W=Math.max(640,pl+pr+n*30), H=300, bw=(W-pl-pr)/n, mx=Math.max(1,...g.slice(0,n).map(x=>x.t)), cor=PRD_COR_ABC();
-  const Y=v=>H-pb-(H-pb-pt)*(v/mx), Yp=p=>H-pb-(H-pb-pt)*p, rot=s=>{ s=String(s); return s.length>16?s.slice(0,15)+'…':s; };
+  const lr=(o.rotMax||16)*6.2*.77, pl=Math.max(58,Math.round(lr)+8), pr=44, pt=24, pb=Math.max(92,Math.round(lr)+20), W=Math.max(640,pl+pr+n*30), H=208+pb, bw=(W-pl-pr)/n, mx=Math.max(1,...g.slice(0,n).map(x=>x.t)), cor=PRD_COR_ABC();
+  const Y=v=>H-pb-(H-pb-pt)*(v/mx), Yp=p=>H-pb-(H-pb-pt)*p, rot=s=>{ s=String(s); const L=o.rotMax||16; return s.length>L?s.slice(0,L-1)+'…':s; };
   const ref=[.8,.95].map(p=>`<line x1="${pl}" x2="${W-pr}" y1="${sx(Yp(p))}" y2="${sx(Yp(p))}" stroke="${corV('--txt3')}" stroke-dasharray="4 4"/>${txtSvg(W-pr+4,Yp(p)+4,fmtPct(p,0),{fs:10.5,c:corV('--txt3')})}`).join('');
   const barras=g.slice(0,n).map((x,i)=>{ const X=pl+i*bw, y=Y(x.t);
-    return `<g${clique(x.lista)}>${x.lista?`<rect x="${sx(X)}" y="${pt}" width="${sx(bw)}" height="${H-pb-pt}" fill="transparent"/>`:''}<title>${esc(x.k)} · ${fmtBRL(x.t)} · ${fmtPct(x.pct,1)} · acumulado ${fmtPct(x.acum,0)} · classe ${x.cls}</title><rect x="${sx(X+bw*.14)}" y="${sx(y)}" width="${sx(bw*.72)}" height="${sx(Math.max(1,H-pb-y))}" fill="${cor[x.cls]}"/>
+    return `<g${clique(x.lista)}>${x.lista?`<rect x="${sx(X)}" y="${pt}" width="${sx(bw)}" height="${H-pb-pt}" fill="transparent"/>`:''}<title>${esc(x.k)} · ${(o.fmt||fmtBRL)(x.t)} · ${fmtPct(x.pct,1)} · acumulado ${fmtPct(x.acum,0)} · classe ${x.cls}</title><rect x="${sx(X+bw*.14)}" y="${sx(y)}" width="${sx(bw*.72)}" height="${sx(Math.max(1,H-pb-y))}" fill="${cor[x.cls]}"/>
       <text transform="translate(${sx(X+bw/2+3)},${H-pb+8}) rotate(-50)" text-anchor="end" font-size="10.5" fill="${corV('--txt2')}">${esc(rot(x.k))}</text></g>`; }).join('');
   const pts=g.slice(0,n).map((x,i)=>`${sx(pl+i*bw+bw/2)},${sx(Yp(x.acum))}`).join(' ');
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Curva ABC')}">
     <line x1="${pl}" x2="${W-pr}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${ref}
-    ${txtSvg(pl-6,pt+4,fmtCompacto(mx),{a:'end',fs:10.5,c:corV('--txt3')})}${txtSvg(pl-6,H-pb,'0',{a:'end',fs:10.5,c:corV('--txt3')})}
+    ${txtSvg(pl-6,pt+4,(o.fmtEixo||fmtCompacto)(mx),{a:'end',fs:10.5,c:corV('--txt3')})}${txtSvg(pl-6,H-pb,'0',{a:'end',fs:10.5,c:corV('--txt3')})}
     ${txtSvg(W-pr+4,pt+4,'100%',{fs:10.5,c:corV('--txt3')})}${barras}
     <polyline points="${pts}" fill="none" stroke="${corV('--txt')}" stroke-width="2"/>${g.slice(0,n).map((x,i)=>`<circle cx="${sx(pl+i*bw+bw/2)}" cy="${sx(Yp(x.acum))}" r="2.6" fill="${corV('--txt')}"/>`).join('')}
     ${n<g.length?txtSvg(W-pr-40,pt-4,`os ${n} maiores de ${fmtN(g.length)} · a curva segue até 100% nos demais`,{a:'end',fs:10.5,c:corV('--txt3')}):''}</svg>`; }
 /* cartões A/B/C ao lado do gráfico (o mesmo visual da curva ABC de clientes) */
-function prdLadoABC(g,tot,unid){ const cor=PRD_COR_ABC(), n=g.length||1;
+function prdLadoABC(g,tot,unid,fmt,rotT){ const cor=PRD_COR_ABC(), n=g.length||1;
   return ['A','B','C'].map(k=>{ const a=g.filter(x=>x.cls===k); if(!a.length)return '';
     const t=somar(a,x=>x.t);
     return `<div class="abc-cl" style="border-color:${cor[k]}"><div class="abc-cab"><b style="background:${cor[k]}">${k}</b><span><b>${fmtN(a.length)}</b> ${unid} · ${fmtPct(a.length/n,0)} do total</span></div>
-      <div class="abc-v"><b>${fmtCompacto(t)}</b> · ${fmtPct(t/tot,0)} do valor</div>
+      <div class="abc-v"><b>${(fmt||fmtCompacto)(t)}</b> · ${fmtPct(t/tot,0)} ${rotT||'do valor'}</div>
       <small>${esc(a.slice(0,k==='A'?5:3).map(x=>String(x.k).slice(0,30)).join(' · '))}${a.length>(k==='A'?5:3)?` e mais ${fmtN(a.length-(k==='A'?5:3))}`:''}</small></div>`; }).join(''); }
 const prdColsItens=['Pedido (ERP)','Data','Cliente','Produto','Qtd.',{t:'Valor',n:1},'Conta?'];
 const prdLinhaItem=x=>[esc(x.ov||'—'),fmtData(x.dt),esc(String(x.cli||'').slice(0,30)),esc(String(x.produto||'').slice(0,60)),fmtD(x.qNum||0,x.qNum%1?2:0),fmtBRL(x.vNum||0),
@@ -8194,6 +8197,39 @@ function prdFicha(c){ const B=BRUTO.motoresCat; if(!B||!B.cols)return null;
 function prdSituacao(x){ const L=x.linhas||[x], fat=L.some(l=>/^faturado$/i.test(String(l.sit||'').trim()));
   return /^faturado$/i.test(String(x.sit||'').trim())?'Faturado':fat?'Faturado em parte (medições)':(x.sit||'—'); }
 
+/* ---------- identidade do motor, para o ranking e a curva ABC ----------
+   Motor = marca + modelo + potência (ex.: "Baudouin 6M16G308/6 · 483 HP").
+   - descrito: marca e/ou modelo vêm da descrição do item no ERP (o catálogo padroniza o nome quando casa pelo modelo);
+   - inferido: o ERP não diz a marca, mas TODOS os motores com marca descrita na mesma potência, rotação e acionamento
+     (em qualquer período) são um só motor — ex.: 483 HP @1800 diesel → Baudouin 6M16G308/6;
+   - sem marca: nem descrição nem inferência possível — fica "Diesel 625 HP (marca não descrita)". */
+let _PRD_MOTREF=null;
+function prdMotorRef(){ if(_PRD_MOTREF&&_PRD_MOTREF.v===DADOS_VER)return _PRD_MOTREF.m;
+  const m=new Map(); prdMotores(prdBase()).forEach(r=>{ const id=prdMotorDescrito(r); if(!id)return; const k=r.acion+'|'+r.hp+'|'+(r.rpm||'');
+    if(!m.has(k))m.set(k,new Map()); const g=m.get(k); g.set(id.id,id); });
+  _PRD_MOTREF={v:DADOS_VER,m}; return m; }
+/* marca de um modelo: a mais citada nas descrições do mesmo modelo (ou do mesmo prefixo de 3 letras, se for única) */
+let _PRD_MARCAMOD=null;
+function prdMarcaDoModelo(km){ if(!_PRD_MARCAMOD||_PRD_MARCAMOD.v!==DADOS_VER){ const m=new Map(), p=new Map();
+    prdMotores(prdBase()).forEach(r=>{ const k=prdChaveMod(r.modelo); if(!k||!r.marca)return; m.set(k,r.marca);
+      const q=k.slice(0,3); if(/^[A-Z]{3}/.test(q)){ if(!p.has(q))p.set(q,new Set()); p.get(q).add(r.marca); } });
+    prdCatalogo().forEach(c=>c.chaves.forEach(k=>{ if(!m.has(k))m.set(k,c.marca); }));
+    _PRD_MARCAMOD={v:DADOS_VER,m,p}; }
+  const M_=_PRD_MARCAMOD; if(M_.m.has(km))return M_.m.get(km); const s=M_.p.get(km.slice(0,3)); return s&&s.size===1?[...s][0]:''; }
+function prdMotorDescrito(r){ if(r.acion==='Jockey'||!(r.marca||r.modelo))return null;
+  const c=r.cat===undefined?prdCasaCatalogo(r):r.cat, ok=c&&c.c&&(c.como==='modelo'||c.como==='marca + potência');
+  let modelo=ok?c.c.modelo:r.modelo, marca=ok?c.c.marca:r.marca; const km=prdChaveMod(modelo);
+  if(!marca&&km)marca=prdMarcaDoModelo(km);
+  marca=marca?(marca.length<=3?marca.toUpperCase():prdTitulo(marca)):'';
+  const hp=r.hp!=null?` · ${fmtD(r.hp,r.hp%1?1:0)} HP`:'', id=km?'m|'+km+'|'+r.hp:'b|'+prdMarcaN(marca)+'|'+r.hp;
+  return {id,rot:`${[marca,modelo].filter(Boolean).join(' ')}${hp}`,marca,modelo:modelo||''}; }
+function prdMotorId(r){ const hp=r.hp!=null?`${fmtD(r.hp,r.hp%1?1:0)} HP`:'potência não informada';
+  if(r.acion==='Jockey')return {id:'j|'+r.hp,rot:`Jockey monobloco · ${hp}`,como:'jockey',marca:'',modelo:''};
+  const d=prdMotorDescrito(r); if(d)return Object.assign(d,{como:'descrito'});
+  const g=prdMotorRef().get(r.acion+'|'+r.hp+'|'+(r.rpm||'')); if(g&&g.size===1){ const x=[...g.values()][0]; return Object.assign({},x,{como:'inferido'}); }
+  const sg=r.acion==='Diesel'?prdCasaCatalogo(r):null;
+  return {id:norm(r.acion+'|'+hp),rot:`${r.acion} · ${hp} (marca não descrita${sg&&sg.c?' — catálogo sugere '+sg.c.nome:''})`,como:'sem marca',marca:'',modelo:''}; }
+const PRD_MOT_ABC=[['un','Unidades'],['valor','Valor dos conjuntos']];
 const PRD_MOT_AC=[['','Todos'],['Diesel','Diesel'],['Elétrica','Elétrica'],['Jockey','Jockey']];
 VISTA.produtos=function(){
   const I=prdItens(), V=F.vendas||[], P=prdPropostas(), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
@@ -8286,6 +8322,20 @@ VISTA.produtos=function(){
       const marcas=[...agrupa(ML.filter(m=>m.acion!=='Jockey'),m=>m.marca||'não descrita no ERP').entries()].map(([k,a])=>({rot:k,val:somar(a,m=>m.q),k:regLista('prd-motm'+norm(k).replace(/ /g,''),`Motores ${k}`,a.map(lin),cols)})).sort((a,b)=>b.val-a.val).slice(0,10);
       h+=`<div class="pq-linhas so-tela" style="margin:0 0 10px"><div><label>Acionamento</label><div class="seg">${PRD_MOT_AC.map(([k,n])=>`<button class="${ac===k?'on':''}" onclick="prdSet('motAc','${k}')">${n}</button>`).join('')}</div></div>
         <div><button class="btn sec so-tela" onclick="abrirLista('${kL}')">Abrir a listagem completa (↓ CSV)</button></div></div>`;
+      /* ranking por motor + curva ABC */
+      { const porVal=PRD.motAbc==='valor';
+        ML.forEach(r=>{ r.id=prdMotorId(r); r.vRat=(r.x.vNum||0)/(r.de||1); });   /* valor do conjunto rateado entre os motores dele */
+        const A=prdABC(ML,r=>r.id.id,r=>porVal?r.vRat:r.q,r=>r.q);
+        A.g.forEach((x,i)=>{ const f=x.itens[0].id; x.rot=f.rot; x.k=f.rot; x.conf=somar(x.itens.filter(r=>r.id.como==='descrito'),r=>r.q); x.inf=somar(x.itens.filter(r=>r.id.como==='inferido'),r=>r.q);
+          x.lista=regLista('prd-motr'+i,`${f.rot} — motores vendidos`,[...x.itens].sort((a,b)=>b.x.dt-a.x.dt).map(lin),cols); });
+        const fU=v=>fmtU(v)+' un.';
+        h+=`<div class="pq-linhas so-tela" style="margin:0 0 10px"><div><label>Curva ABC por</label><div class="seg">${PRD_MOT_ABC.map(([k,n])=>`<button class="${PRD.motAbc===k?'on':''}" onclick="prdSet('motAbc','${k}')">${n}</button>`).join('')}</div></div></div>`;
+        h+=`<div class="card abc"><div class="abc-g gb-c">${svgPareto(A.g,A.tot,{aria:'Curva ABC dos motores vendidos',max:25,rotMax:22,fmt:porVal?fmtBRL:fU,fmtEixo:porVal?fmtCompacto:fU})}</div><div class="abc-lado">${prdLadoABC(A.g,A.tot,'motores',porVal?null:fU,porVal?'do valor':'das unidades')}
+          <p class="nd-m">${porVal?'Valor do conjunto vendido, rateado igualmente entre os motores dele (o ERP não separa o preço do motor).':'Unidades vendidas no período.'}</p></div></div>`;
+        h+=card('Ranking dos motores vendidos',`Motor = marca + modelo + potência. <b>Confirmados</b>: marca ou modelo na descrição do item no ERP. <b>Inferidos</b>: o ERP não diz a marca, mas todos os motores descritos com a mesma potência, rotação e acionamento são esse. Clique no motor para ver os pedidos.`,
+          tab([{t:'#',n:1},{t:'Motor',f:1},{t:'Acionamento'},{t:'Rotação',n:1},{t:'Vendidos',n:1},{t:'Confirmados',n:1},{t:'Inferidos',n:1},{t:'Clientes',n:1},{t:'Valor dos conjuntos (rateado)',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
+            A.g.map((x,i)=>{ const r0=x.itens[0], vr=somar(x.itens,r=>r.vRat);
+              return [fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(x.rot)}</a>`,esc(r0.acion),r0.rpm?fmtN(r0.rpm)+' rpm':'—',`<b>${fmtU(x.q)}</b>`,x.conf?fmtU(x.conf):'—',x.inf?fmtU(x.inf):'—',fmtN(new Set(x.itens.map(r=>r.x.nCli)).size),fmtBRL(vr),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]; }),400)); }
       h+=`<div class="g g3">${card('Por acionamento','Unidades no período (todos os acionamentos).',`<div class="gb-c">${svgBarrasH(porAc,{fmt:v=>fmtU(v)+' un.',W:400,lw:80,rw:130,aria:'Motores por acionamento'})}</div>`)}
         ${card('Por potência','Diesel e elétrico; clique para ver os motores.',`<div class="gb-c">${svgBarrasH(porFx,{fmt:v=>fmtU(v)+' un.',W:400,lw:120,rw:60,aria:'Motores por faixa de potência'})}</div>`)}
         ${card('Por marca do motor','Diesel e elétrico, pela descrição do item no ERP.',`<div class="gb-c">${svgBarrasH(marcas,{fmt:v=>fmtU(v)+' un.',W:400,lw:140,rw:60,aria:'Motores por marca'})}</div>`)}</div>`;

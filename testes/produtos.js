@@ -51,6 +51,19 @@ const { chromium } = require('playwright'), path = require('path');
       DADOS_VER++; const L = prdBase(), q = L.reduce((s, x) => s + x.qNum, 0), v = L.reduce((s, x) => s + x.vNum, 0);
       t(q === 3 && Math.round(v) === 3391842, `mesma venda em 5 OVs conta uma vez: ${q} containers, R$ ${Math.round(v)} (esperado 3 e R$ 3.391.842)`);
       M.omie = orig; DADOS_VER++; }
+    /* item rateado em frações por várias OVs do projeto (estilo Alunorte): soma */
+    { const orig = M.omie, d = new Date(2026, 6, 1), it = (ov, q, v) => ({ ov, qNum: q, vNum: v, departamento: '002-ALU-09120', pedidoCli: 'N/D', nCli: 'alu', cli: 'ALUNORTE', produto: 'CMB LSF D SC 8AEF20A 490 21 TR 11M ULFM', dt: d });
+      M.omie = [it('500163', 1 / 3, 663875), it('500163', 1 / 3, 663875), it('500170', 1 / 3, 663875)]; DADOS_VER++;
+      const L = prdBase(); t(L.length === 1 && Math.round(L[0].qNum) === 1 && Math.round(L[0].vNum) === 1991625, `frações em OVs diferentes somam: ${L.map(x => x.qNum + ' un. R$ ' + Math.round(x.vNum)).join()}`);
+      M.omie = orig; DADOS_VER++; }
+    /* identidade do motor: modelo sem marca no ERP herda a marca do mesmo modelo; sem marca nem modelo, infere pela potência */
+    { const orig = M.omie, d = new Date(2026, 6, 1), it = (ov, cli, prod, obs) => ({ ov, qNum: 1, vNum: 300000, departamento: 'N/D', pedidoCli: 'N/D', nCli: cli, cli, produto: prod, obsItem: obs, dt: d });
+      const P = 'CMB LSF D SC SCE 150-460 483 18 RD 22M NFPA20';
+      M.omie = [it('1', 'a', P, '01 x Motor Diesel BAUDOUIN ou similar, modelo 6M16G308/6 483hp'), it('2', 'b', P, '01 x Motor Diesel 483HP@1800 6M16G308/6 6CIL'), it('3', 'c', P, 'N/D')]; DADOS_VER++;
+      const ids = prdMotores(prdBase()).map(r => prdMotorId(r));
+      t(new Set(ids.map(i => i.id)).size === 1 && ids.map(i => i.como).sort().join() === 'descrito,descrito,inferido' && /^Baudouin 6M16G308\/6 · 483 HP$/.test(ids[0].rot),
+        'mesmo motor com e sem marca no ERP é um só; o sem descrição é inferido: ' + ids.map(i => i.rot + ' (' + i.como + ')').join(' / '));
+      M.omie = orig; DADOS_VER++; }
     /* curva ABC: classes coerentes e total igual à soma dos itens */
     const I = prdItens(), A = prdABC(I, x => prdTxt(x.produto), x => x.vNum, x => x.qNum || 0);
     const soma = I.reduce((s, x) => s + x.vNum, 0), tA = A.g.filter(x => x.cls === 'A').reduce((s, x) => s + x.t, 0);
