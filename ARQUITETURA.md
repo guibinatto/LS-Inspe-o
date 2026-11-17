@@ -184,7 +184,7 @@ Como os dados de partida são sempre os do painel publicado, um salvamento feito
 Aba `produtos` (`VISTA.produtos`, funções `prd*`). Três fontes:
 
 - **Famílias:** pedidos do período (`F.vendas`), pela família do Controle de Pedidos (`solucao` → `CAT_NOME`).
-- **Itens e curva ABC:** linhas de item das ordens de venda do ERP (`M.omie`). O ERP rateia o item em parcelas (quantidade 1/3 em três linhas); somar por produto dá o total, e as unidades são exibidas arredondadas.
+- **Itens e curva ABC:** linhas de item das ordens de venda do ERP (`M.omie`). A mesma venda aparece em várias OVs (a do pedido, a reemissão e as de faturamento/medição, cada uma com o item e "quantidade 1"): `prdBase` conta cada produto uma vez por projeto (campo departamento do ERP; sem ele, o pedido do cliente; OV sem nenhum dos dois, do mesmo cliente e produto de um projeto, entra nele), com a OV de maior valor e a data da primeira. Caso Irricom: 9 containers e R$ 5,7 mi somando OVs → 3 e R$ 3,4 mi. O ERP rateia o item em parcelas (quantidade 1/3 em três linhas); somar por produto dá o total, e as unidades são exibidas arredondadas.
 - **Cotado × ganho e faixas:** itens das propostas (`M.propostas`), só a revisão mais recente de cada proposta e só itens com valor.
 
 `prdAnalisa` lê o código do produto (`CMB LSF <acionamento> <tipo> <modelo> … <norma>`); descrições livres são lidas por palavras-chave. Curva ABC: A até 80% do valor (o item que cruza a linha ainda é A), B até 95%, C o resto. Relatório por tema `tPRD`. Teste: `testes/produtos.js`.

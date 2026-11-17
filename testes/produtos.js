@@ -19,6 +19,15 @@ const { chromium } = require('playwright'), path = require('path');
     t(prdEhMB('CMB LSF E SC 4HF10 40 35 38T ULFM') && prdEhMB('BOMBA CENTRIFUGA MULTIESTAGIO JOCKEY MHE 10') && !prdEhMB('ROTOR PARA BOMBA PERRLESS') && !prdEhMB('Manutenção em Motobombas - Corretiva'),
       'motobomba × peça/serviço');
     t(Math.abs(prdVazao('300 USgpm') - 68.13) < .1 && Math.abs(prdPressao('142 psi') - 99.84) < .1 && prdVazao('1,85m³/h') === 1.85, 'conversão USgpm→m³/h e psi→mca');
+    /* a mesma venda em várias OVs (pedido, reemissão, medições) conta uma vez — caso Irricom */
+    { const orig = M.omie, v0 = DADOS_VER, d = new Date(2026, 4, 6), it = (ov, q, v, dep, prod) => ({ ov, qNum: q, vNum: v, departamento: dep, pedidoCli: 'N/D', nCli: 'irr', cli: 'IRRICOM', produto: prod, dt: d });
+      const A = 'CON LSF DEJ ES TKF 100-400 217 TKF-M 75', B = 'CON LSF DEJ ES TKF 100-400 217 TKF 125';
+      M.omie = [it('500095', 1, 1130614, '017-IRR-09544', A), it('500095', 1, 1130614, '017-IRR-09544', A), it('500095', 1, 1130614, '017-IRR-09544', B),
+        it('500107', 1, 1130614, '017-IRR-09544', A), it('500107', 1, 1130614, '017-IRR-09544', A), it('500107', 1, 1130614, '017-IRR-09544', B),
+        it('500158', 1, 406966, '017-IRR-09544', A), it('500113', 1, 100000, 'N/D', A), it('500121', 1, 125564, 'Comercial', A)];
+      DADOS_VER++; const L = prdBase(), q = L.reduce((s, x) => s + x.qNum, 0), v = L.reduce((s, x) => s + x.vNum, 0);
+      t(q === 3 && Math.round(v) === 3391842, `mesma venda em 5 OVs conta uma vez: ${q} containers, R$ ${Math.round(v)} (esperado 3 e R$ 3.391.842)`);
+      M.omie = orig; DADOS_VER++; }
     /* curva ABC: classes coerentes e total igual à soma dos itens */
     const I = prdItens(), A = prdABC(I, x => prdTxt(x.produto), x => x.vNum, x => x.qNum || 0);
     const soma = I.reduce((s, x) => s + x.vNum, 0), tA = A.g.filter(x => x.cls === 'A').reduce((s, x) => s + x.t, 0);
