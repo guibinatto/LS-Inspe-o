@@ -18,3 +18,5 @@ As planilhas usadas por alguns testes ficam em `dados/fixtures/`. Cada teste gra
 Sem a pasta `dados/`, os testes que dependem dela aparecem como **PULADO**. Peça a cópia a quem mantém o painel; ela não vai para o repositório.
 
 Para rodar um teste isolado: `LANG=C.UTF-8 node testes/<nome>.js <arquivo.html>`.
+
+- `produtos.js` — aba Produtos e mix: leitura do código do produto (acionamento, tipo, modelo, norma), conversões de vazão/pressão, curva ABC (total, classes e ordem) e as 15 combinações de base × agrupamento.

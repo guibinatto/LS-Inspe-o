@@ -178,3 +178,13 @@ node ferramentas/dados.js injetar Painel-Executivo-LS-Fire.html dados/painel-dad
 Como os dados de partida são sempre os do painel publicado, um salvamento feito pela página nunca é perdido.
 
 **O que não pode ir para o git**, nem para o histórico: planilhas (`*.xlsx`, `*.csv`), `versao-separada/` (gerada com dados), `evidencias/` (capturas com dados) e `apresentacao-teste/` com dados.
+
+## Produtos e mix
+
+Aba `produtos` (`VISTA.produtos`, funções `prd*`). Três fontes:
+
+- **Famílias:** pedidos do período (`F.vendas`), pela família do Controle de Pedidos (`solucao` → `CAT_NOME`).
+- **Itens e curva ABC:** linhas de item das ordens de venda do ERP (`M.omie`). O ERP rateia o item em parcelas (quantidade 1/3 em três linhas); somar por produto dá o total, e as unidades são exibidas arredondadas.
+- **Cotado × ganho e faixas:** itens das propostas (`M.propostas`), só a revisão mais recente de cada proposta e só itens com valor.
+
+`prdAnalisa` lê o código do produto (`CMB LSF <acionamento> <tipo> <modelo> … <norma>`); descrições livres são lidas por palavras-chave. Curva ABC: A até 80% do valor (o item que cruza a linha ainda é A), B até 95%, C o resto. Relatório por tema `tPRD`. Teste: `testes/produtos.js`.

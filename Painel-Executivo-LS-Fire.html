@@ -2971,6 +2971,7 @@ const TELAS=[
  {id:'carteira',bloco:'Análise',ic:'◷',nome:'Carteira e faturamento',tit:'Carteira e faturamento',sub:'Faturamento realizado, saldo a faturar, atrasos e vínculos',fase:''},
  {id:'contratos',bloco:'Análise',ic:'⟳',nome:'Contratos de serviço',tit:'Contratos de serviço',sub:'Vigência, faturamento mês a mês pelas OS, vencimentos e renovação no Ploomes',fase:''},
  {id:'clientes',bloco:'Análise',ic:'◍',nome:'Clientes e mercado',tit:'Clientes e mercado',sub:'Quem compra, quem volta, concentração e regiões',fase:''},
+ {id:'produtos',bloco:'Análise',ic:'⬢',nome:'Produtos e mix',tit:'Produtos e mix',sub:'Famílias e itens mais vendidos, curva ABC, motobombas e cotado × ganho',fase:''},
  {id:'relatorios',bloco:'Apoio',ic:'▣',nome:'Relatórios prontos',tit:'Relatórios prontos',sub:'Diário, semanal, individual, engenharia, mensal, trimestral e anual',fase:''},
  {id:'apresentacao',bloco:'Apoio',ic:'▶',nome:'Apresentação',tit:'Apresentação',sub:'A história do período em capítulos, para projetar ou enviar — com o período e os filtros do painel',fase:''},
  {id:'busca',bloco:'Apoio',ic:'⌕',nome:'Consulta detalhada',tit:'Consulta detalhada',sub:'Qualquer cliente, vendedor, analista, cidade ou estado, em todas as bases',fase:''},
@@ -7993,6 +7994,185 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
     `${n.dtPrev?`<span style="color:${n.dtPrev<R?'var(--err)':'inherit'}">${fmtData(n.dtPrev)}</span>`:'sem data'}<br><small>${esc(ROT_CAMADA[camadaNeg(n)]||camadaNeg(n)||'—')}</small>`,
     `<small>${esc((extra||pendenciasNeg(n)).join(' · '))}</small>`,`<button class="mini so-tela" onclick="novoPasso(${jsq(n.id)})" title="Registrar próximo passo">＋ passo</button>`]; }
 
+/* ======================= PRODUTOS E MIX =======================
+   O que se vende e o que se cota, por família e por item.
+   Fontes:
+   - famílias: pedidos do período (Controle de Pedidos + Vendas Ploomes), pela família do pedido;
+   - itens: linhas de item das ordens de venda do ERP (base "OMIE"); uma linha pode vir
+     rateada em parcelas (quantidade 1/3 em três linhas) — somar por produto dá o total certo;
+   - cotado × ganho: itens das propostas do Ploomes, só a revisão mais recente de cada proposta.
+   O código do produto descreve o equipamento: "CMB LSF J MB BT4-0715E14 1,5 35 38T NFPA20" =
+   conjunto motobomba · LSF · Jockey · Multiestágio · modelo BT4-0715E14 · ... · NFPA 20. */
+const PRD={mbPor:'modelo',mbFonte:'vendido',abcPor:'valor'};
+const PRD_ACION={E:'Elétrica',D:'Diesel',J:'Jockey',G:'Gasolina'};
+const PRD_TIPO={MB:'Multiestágio',SC:'Bipartida (split case)',ES:'Sucção axial (end suction)',VT:'Turbina vertical',IL:'In-line',
+  AUTOESCORVANTE:'Autoescorvante',MBV:'Multiestágio vertical'};
+const PRD_COR_ABC=()=>({A:COR().lar,B:'#FF9A52',C:'#9E9E9E'});
+const PRD_MB_POR=[['modelo','Modelo da bomba'],['produto','Produto (código)'],['acion','Acionamento'],['tipo','Tipo de bomba'],['norma','Norma']];
+const PRD_MB_FONTE=[['vendido','Vendido (ERP)'],['cotado','Cotado (propostas)'],['ganho','Ganho (propostas)']];
+/* unidades: o ERP rateia o item em parcelas e nem todas caem no período — mostra inteiro (mínimo 1) */
+const fmtU=q=>!(q>0)?'0':fmtN(Math.max(1,Math.round(q)));
+const prdTxt=s=>String(s==null?'':s).toUpperCase().replace(/\s+/g,' ').trim();
+const prdTitulo=s=>String(s||'').toLowerCase().replace(/(^|\s|\/)(\S)/g,(m,a,b)=>a+b.toUpperCase());
+function prdNorma(s){ s=prdTxt(s);
+  if(/NFPA ?20/.test(s))return 'NFPA 20'; if(/UL ?\/? ?FM|ULFM/.test(s))return 'UL/FM'; if(/\bUL\b/.test(s))return 'UL';
+  if(/NBR ?16\.?704/.test(s))return 'NBR 16704'; if(/NBR ?13\.?714/.test(s))return 'NBR 13714'; if(/\bNF\b/.test(s))return 'Sem listagem (NF)'; return 'Não informada'; }
+/* é motobomba (conjunto ou bomba)? peças de bomba (rotor, selo, tampa…) e serviços não são */
+function prdEhMB(s){ s=prdTxt(s); if(/^(CMB|BMB)\b/.test(s))return true;
+  if(/ROTOR|SELO|TAMPA|FILTRO|VALVULA|V[ÁA]LVULA|RESIST|MANUTEN|SERVI|KIT|GAXETA|ROLAMENTO|ACOPLAMENTO|LUVA|MANGOTE|CABO/.test(s))return false;
+  return /MOTOBOMBA|^BOMBA\b/.test(s); }
+/* lê o código do produto: acionamento, tipo de bomba, modelo e norma */
+function prdAnalisa(desc){ const s=prdTxt(desc), r={acion:'Não identificado',tipo:'Não identificado',modelo:'(descrição sem modelo)',norma:prdNorma(s)};
+  const m=s.match(/^(CMB|BMB|SKD|CON)\s+LSF\s+([A-Z]+)\s+(.*)$/);
+  if(m){ const ac=m[2]; r.acion=ac.length===1?(PRD_ACION[ac]||ac):'Conjunto '+ac.split('').join('+');
+    const t=m[3].split(' '); let i=0; if(PRD_TIPO[t[0]]||/^[A-Z]{2,}$/.test(t[0])&&!/\d/.test(t[0])){ r.tipo=PRD_TIPO[t[0]]||prdTitulo(t[0]); i=1; }
+    const mod=[t[i]]; if(t[i+1]&&/^\d+[-\/]\d+/.test(t[i+1]))mod.push(t[i+1]); if(mod[0])r.modelo=mod.join(' ');
+    return r; }
+  r.acion=/JOCKEY/.test(s)?'Jockey':/DIESEL/.test(s)?'Diesel':/GASOLINA/.test(s)?'Gasolina':/EL[ÉE]TRIC|TRIF[AÁ]SIC|MONOF[AÁ]SIC|\bCV\b|\d\s*CV\b/.test(s)?'Elétrica':'Não identificado';
+  r.tipo=/MULTIEST/.test(s)?'Multiestágio':/BIPARTID|SPLIT/.test(s)?'Bipartida (split case)':/END ?SUCTION|SUC[ÇC][ÃA]O AXIAL|CENTR[ÍI]FUGA/.test(s)?'Sucção axial (end suction)':/VERTICAL/.test(s)?'Turbina vertical':/AUTOESCORV/.test(s)?'Autoescorvante':'Não identificado';
+  const md=s.match(/\b(MHE|MHI|MBV|BT4|VSSE|VME|TKF|ETA|SCE|KUBE|4HF)[- ]?[\w.\/-]*/); if(md)r.modelo=md[0];
+  return r; }
+/* família do ITEM: a do cadastro do ERP; sem ela, a do prefixo do código */
+function prdFamItem(x){ const f=String(x.famNome||x.familiaNome||'').trim(); if(f&&!/^N\/?D$/i.test(f))return prdTitulo(f);
+  const p=prdTxt(x.produto).split(' ')[0]; return CAT_NOME[p]||'Sem família no cadastro'; }
+/* itens vendidos no período, com os filtros do painel */
+function prdItens(){ return (M.omie||[]).filter(x=>x.dt&&noPer(x.dt)&&(x.vNum||0)>0&&(!EST.div||x.div===EST.div)&&(!EST.vend||x.resp===EST.vend)); }
+/* agrupa itens por uma chave e classifica A/B/C (A = até 80% do valor; B = até 95%; C = o resto).
+   O item que cruza a linha dos 80% ainda é A. */
+function prdABC(itens,chave,val,qtd){ const g=[...agrupa(itens,chave).entries()].map(([k,a])=>({k,itens:a,t:somar(a,val),q:somar(a,qtd||(()=>0))}))
+    .filter(x=>x.t>0).sort((a,b)=>b.t-a.t||b.q-a.q);
+  const tot=somar(g,x=>x.t)||1; let acc=0;
+  g.forEach(x=>{ const antes=acc/tot; acc+=x.t; x.pct=x.t/tot; x.acum=acc/tot; x.cls=antes<.8?'A':antes<.95?'B':'C'; });
+  return {g,tot}; }
+/* Pareto: barras na cor da classe e curva do acumulado, com as linhas de 80% e 95% */
+function svgPareto(g,tot,o){ o=o||{}; const n=Math.min(g.length,o.max||30); if(!n)return '<p class="pl-vazio">Sem itens no período.</p>';
+  const pl=58, pr=44, pt=24, pb=92, W=Math.max(640,pl+pr+n*30), H=300, bw=(W-pl-pr)/n, mx=Math.max(1,...g.slice(0,n).map(x=>x.t)), cor=PRD_COR_ABC();
+  const Y=v=>H-pb-(H-pb-pt)*(v/mx), Yp=p=>H-pb-(H-pb-pt)*p, rot=s=>{ s=String(s); return s.length>16?s.slice(0,15)+'…':s; };
+  const ref=[.8,.95].map(p=>`<line x1="${pl}" x2="${W-pr}" y1="${sx(Yp(p))}" y2="${sx(Yp(p))}" stroke="${corV('--txt3')}" stroke-dasharray="4 4"/>${txtSvg(W-pr+4,Yp(p)+4,fmtPct(p,0),{fs:10.5,c:corV('--txt3')})}`).join('');
+  const barras=g.slice(0,n).map((x,i)=>{ const X=pl+i*bw, y=Y(x.t);
+    return `<g${clique(x.lista)}>${x.lista?`<rect x="${sx(X)}" y="${pt}" width="${sx(bw)}" height="${H-pb-pt}" fill="transparent"/>`:''}<title>${esc(x.k)} · ${fmtBRL(x.t)} · ${fmtPct(x.pct,1)} · acumulado ${fmtPct(x.acum,0)} · classe ${x.cls}</title><rect x="${sx(X+bw*.14)}" y="${sx(y)}" width="${sx(bw*.72)}" height="${sx(Math.max(1,H-pb-y))}" fill="${cor[x.cls]}"/>
+      <text transform="translate(${sx(X+bw/2+3)},${H-pb+8}) rotate(-50)" text-anchor="end" font-size="10.5" fill="${corV('--txt2')}">${esc(rot(x.k))}</text></g>`; }).join('');
+  const pts=g.slice(0,n).map((x,i)=>`${sx(pl+i*bw+bw/2)},${sx(Yp(x.acum))}`).join(' ');
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'Curva ABC')}">
+    <line x1="${pl}" x2="${W-pr}" y1="${H-pb}" y2="${H-pb}" stroke="${corV('--linha2')}"/>${ref}
+    ${txtSvg(pl-6,pt+4,fmtCompacto(mx),{a:'end',fs:10.5,c:corV('--txt3')})}${txtSvg(pl-6,H-pb,'0',{a:'end',fs:10.5,c:corV('--txt3')})}
+    ${txtSvg(W-pr+4,pt+4,'100%',{fs:10.5,c:corV('--txt3')})}${barras}
+    <polyline points="${pts}" fill="none" stroke="${corV('--txt')}" stroke-width="2"/>${g.slice(0,n).map((x,i)=>`<circle cx="${sx(pl+i*bw+bw/2)}" cy="${sx(Yp(x.acum))}" r="2.6" fill="${corV('--txt')}"/>`).join('')}
+    ${n<g.length?txtSvg(W-pr-40,pt-4,`os ${n} maiores de ${fmtN(g.length)} · a curva segue até 100% nos demais`,{a:'end',fs:10.5,c:corV('--txt3')}):''}</svg>`; }
+/* cartões A/B/C ao lado do gráfico (o mesmo visual da curva ABC de clientes) */
+function prdLadoABC(g,tot,unid){ const cor=PRD_COR_ABC(), n=g.length||1;
+  return ['A','B','C'].map(k=>{ const a=g.filter(x=>x.cls===k); if(!a.length)return '';
+    const t=somar(a,x=>x.t);
+    return `<div class="abc-cl" style="border-color:${cor[k]}"><div class="abc-cab"><b style="background:${cor[k]}">${k}</b><span><b>${fmtN(a.length)}</b> ${unid} · ${fmtPct(a.length/n,0)} do total</span></div>
+      <div class="abc-v"><b>${fmtCompacto(t)}</b> · ${fmtPct(t/tot,0)} do valor</div>
+      <small>${esc(a.slice(0,k==='A'?5:3).map(x=>String(x.k).slice(0,30)).join(' · '))}${a.length>(k==='A'?5:3)?` e mais ${fmtN(a.length-(k==='A'?5:3))}`:''}</small></div>`; }).join(''); }
+const prdColsItens=['Pedido (ERP)','Data','Cliente','Produto','Qtd.',{t:'Valor',n:1}];
+const prdLinhaItem=x=>[esc(x.ov||'—'),fmtData(x.dt),esc(String(x.cli||'').slice(0,30)),esc(String(x.produto||'').slice(0,60)),fmtD(x.qNum||0,x.qNum%1?2:0),fmtBRL(x.vNum||0)];
+/* propostas: só a revisão mais recente de cada proposta, sem itens sem valor (documentos, opcionais) */
+function prdPropostas(){ const P=(M.propostas||[]).filter(x=>x.dt&&noPer(x.dt)&&(x.total||0)>0&&(!EST.vend||x.respProp===EST.vend||x.responsavel===EST.vend));
+  const mx=new Map(); P.forEach(x=>{ const r=Number(x.rev)||0; if(!mx.has(x.cod)||r>mx.get(x.cod))mx.set(x.cod,r); });
+  return P.filter(x=>(Number(x.rev)||0)===mx.get(x.cod)); }
+const prdGanha=x=>x.fase==='Ganha', prdPerdida=x=>x.fase==='Perdida'||x.fase===FASE_ALT;
+/* vazão em m³/h e pressão em mca (USgpm × 0,2271; psi × 0,7031; bar × 10,2) */
+function prdNum(s){ const m=String(s||'').replace(/\./g,'').replace(',','.').match(/[\d.]+/); return m?parseFloat(m[0]):null; }
+function prdVazao(s){ const v=prdNum(s); if(v==null)return null; return /gpm/i.test(s)?v*0.2271:v; }
+function prdPressao(s){ const v=prdNum(s); if(v==null)return null; return /psi/i.test(s)?v*0.7031:/bar/i.test(s)?v*10.2:v; }
+const PRD_FX_VZ=[[0,10,'até 10 m³/h'],[10,100,'10–100'],[100,300,'100–300'],[300,600,'300–600'],[600,1e9,'acima de 600']];
+const PRD_FX_PR=[[0,80,'até 80 mca'],[80,100,'80–100'],[100,120,'100–120'],[120,1e9,'acima de 120']];
+function prdSet(k,v){ PRD[k]=v; render(); }
+
+VISTA.produtos=function(){
+  const I=prdItens(), V=F.vendas||[], P=prdPropostas(), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
+  const nomeFam=c=>CAT_NOME[c]||c||'(sem família)';
+  let h='';
+  /* ---------- resumo ---------- */
+  const tI=somar(I,x=>x.vNum), MB=I.filter(x=>prdEhMB(x.produto)), uMB=somar(MB,x=>x.qNum||0), tMB=somar(MB,x=>x.vNum);
+  const fam=prdABC(V,v=>nomeFam(v.solucao),val,()=>1), lider=fam.g[0];
+  const abcI=prdABC(I,x=>prdTxt(x.produto),x=>x.vNum,x=>x.qNum||0), nA=abcI.g.filter(x=>x.cls==='A').length;
+  h+=`<div class="g g4 kpis-2" data-sid="prd-kpi">
+    ${kpi('Vendido em itens',fmtCompacto(tI),`${fmtN(abcI.g.length)} produtos distintos · ${fmtN(new Set(I.map(x=>x.ov)).size)} pedidos no ERP`,'lar')}
+    ${kpi('Motobombas vendidas',fmtU(uMB)+' un.',`${fmtCompacto(tMB)} · ${tI?fmtPct(tMB/tI,0):'—'} do valor em itens`,'neutro')}
+    ${kpi('Família que mais vende',lider?esc(lider.k):'—',lider?`${fmtCompacto(lider.t)} · ${fmtPct(lider.pct,0)} do valor dos pedidos do período`:'sem pedidos no período','neutro')}
+    ${kpi('Curva A dos produtos',nA?fmtN(nA)+' produtos':'—',nA?`somam ${fmtPct(somar(abcI.g.filter(x=>x.cls==='A'),x=>x.t)/abcI.tot,0)} do valor (${fmtPct(nA/(abcI.g.length||1),0)} dos produtos)`:'','neutro')}
+  </div>`;
+  /* ---------- famílias ---------- */
+  h+=sec('Famílias mais vendidas',`Pedidos do período pela família do Controle de Pedidos (motobomba, skid, container, peças, serviços…). ${fmtN(V.length)} pedidos, ${fmtCompacto(fam.tot)}.`,'prd-fam');
+  if(fam.g.length){
+    h+=parQV('prd-fam','Famílias — em R$ e em pedidos','À esquerda, o valor; à direita, quantos pedidos. Clique numa barra para ver os pedidos.',grupos(V,v=>nomeFam(v.solucao),val,12),
+      {rotQ:'pedidos',horiz:true,stackDiv:true,subQ:'as famílias com mais pedidos',gruposQ:topQtd(V,v=>nomeFam(v.solucao),val,12)});
+    /* mês a mês: as 5 maiores famílias + "outras" */
+    const ms=[...new Set(V.filter(v=>v.dt).map(v=>mesKey(v.dt)))].sort();
+    if(ms.length>1){ const top=fam.g.slice(0,5).map(x=>x.k), cores=['#FF6600','#404040','#FF9A52','#8A3700','#BDBDBD','#E2E2E2'];
+      const serie=(f,i)=>{ const it=k=>V.filter(v=>v.dt&&mesKey(v.dt)===k&&(f?nomeFam(v.solucao)===f:!top.includes(nomeFam(v.solucao))));
+        return {label:f||'outras',data:ms.map(k=>somar(it(k),val)),itens:ms.map(it),backgroundColor:cores[i],borderRadius:2,maxBarThickness:38,stack:'f'}; };
+      const ds=top.map(serie); if(fam.g.length>5)ds.push(serie(null,5));
+      agendar('prd-fam-mes',{type:'bar',data:{labels:ms.map(kMes),datasets:ds},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{callback:v=>fmtCompacto(v)}}},
+        plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}}}}});
+      h+=card('Famílias mês a mês','As 5 maiores famílias do período e as demais somadas. Clique numa barra para ver os pedidos.',graf('prd-fam-mes','alt')); }
+    h+=card('',`Ticket médio = valor ÷ pedidos da família.`,tab([{t:'Família',f:1},{t:'Pedidos',n:1},{t:'Valor',n:1},{t:'% do valor',n:1},{t:'Ticket médio',n:1},{t:'Clientes',n:1}],
+      fam.g.map(x=>[esc(x.k),fmtN(x.itens.length),fmtBRL(x.t),fmtPct(x.pct,0),fmtBRL(x.t/(x.itens.length||1)),fmtN(new Set(x.itens.map(v=>v.nCli)).size)])));
+  } else h+=card('','','<p class="pl-vazio">Nenhum pedido no período com os filtros escolhidos.</p>');
+  /* ---------- curva ABC dos produtos ---------- */
+  h+=sec('Curva ABC dos produtos vendidos',`Itens das ordens de venda do ERP no período, agrupados pelo produto. A = os que somam os primeiros 80% do valor; B = os próximos 15%; C = os últimos 5%.<span class="so-tela"> Clique numa barra para ver os pedidos do produto.</span>`,'prd-abc');
+  if(abcI.g.length){
+    abcI.g.forEach((x,i)=>{ x.lista=regLista('prd-p'+i,`Produto: ${x.k}`,x.itens.sort((a,b)=>b.dt-a.dt).map(prdLinhaItem),prdColsItens); });
+    h+=`<div class="card abc"><div class="abc-g gb-c">${svgPareto(abcI.g,abcI.tot,{aria:'Curva ABC dos produtos vendidos'})}</div><div class="abc-lado">${prdLadoABC(abcI.g,abcI.tot,'produtos')}</div></div>`;
+    const porQ=[...abcI.g].sort((a,b)=>b.q-a.q).slice(0,12);
+    const famI=prdABC(I,prdFamItem,x=>x.vNum,x=>x.qNum||0);
+    famI.g.forEach((x,i)=>{ x.lista=regLista('prd-fi'+i,`Família do item: ${x.k}`,x.itens.sort((a,b)=>b.vNum-a.vNum).map(prdLinhaItem),prdColsItens); });
+    h+=`<div class="dupla">${card('Mais vendidos em quantidade','Unidades no período, arredondadas (o ERP rateia itens em parcelas). Clique para ver os pedidos.',`<div class="gb-c">${svgBarrasH(porQ.map(x=>({rot:x.k.slice(0,30),val:x.q,k:x.lista,extra:fmtCompacto(x.t)})),{fmt:v=>fmtU(v)+' un.',lw:230,aria:'Produtos mais vendidos em quantidade'})}</div>`)}
+      ${card('Itens por família do cadastro','Família do produto no ERP (a do pedido pode ser outra: um pedido de skid leva bombas, painéis e conexões).',`<div class="gb-c">${svgBarrasH(famI.g.slice(0,12).map(x=>({rot:x.k,val:x.t,k:x.lista,extra:fmtPct(x.pct,0)})),{lw:200,aria:'Itens por família do cadastro'})}</div>`)}</div>`;
+    h+=card('Todos os produtos vendidos',`${fmtN(abcI.g.length)} produtos, do maior para o menor valor.`,
+      tab([{t:'#',n:1},{t:'Produto',f:1},{t:'Família'},{t:'Qtd.',n:1},{t:'Pedidos',n:1},{t:'Valor',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
+        abcI.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(x.k.slice(0,70))}</a>`,esc(prdFamItem(x.itens[0])),fmtU(x.q),fmtN(new Set(x.itens.map(y=>y.ov)).size),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),
+          `<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]),420));
+  } else h+=card('','','<p class="pl-vazio">Sem itens de venda do ERP no período. A curva por produto usa a base de itens do OMIE (Importar planilhas).</p>');
+  /* ---------- motobombas ---------- */
+  const fonteMB=PRD.mbFonte, porMB=PRD.mbPor;
+  const baseMB=fonteMB==='vendido'?MB.map(x=>({x,desc:x.produto,v:x.vNum,q:x.qNum||0,linha:prdLinhaItem(x)}))
+    :P.filter(x=>prdEhMB(x.produto)&&(fonteMB==='cotado'||prdGanha(x))).map(x=>({x,desc:x.produto,v:x.total,q:x.q||1,
+      linha:[esc(String(x.cod)),fmtData(x.dt),esc(String(x.cli||'').slice(0,30)),esc(String(x.produto).slice(0,60)),fmtN(x.q||1),fmtBRL(x.total),esc(x.fase||'—')]}));
+  const chMB=o=>{ const a=prdAnalisa(o.desc); return porMB==='produto'?prdTxt(o.desc):porMB==='acion'?a.acion:porMB==='tipo'?a.tipo:porMB==='norma'?prdNorma(o.x.norma||o.desc):a.modelo; };
+  const abcM=prdABC(baseMB,chMB,o=>o.v,o=>o.q);
+  const colsMB=fonteMB==='vendido'?prdColsItens:['Proposta','Data','Cliente','Produto','Qtd.',{t:'Valor',n:1},'Fase'];
+  abcM.g.forEach((x,i)=>{ x.lista=regLista('prd-mb'+i,`Motobombas — ${x.k}`,x.itens.sort((a,b)=>b.v-a.v).map(o=>o.linha),colsMB); });
+  h+=sec('Curva ABC dos conjuntos motobomba',`Conjuntos motobomba e bombas, lidos pelo código do produto (acionamento, tipo de bomba, modelo e norma). Vendido = itens do ERP; cotado e ganho = itens das propostas (revisão mais recente).`,'prd-mb');
+  h+=`<div class="pq-linhas so-tela" style="margin:0 0 10px"><div><label>Base</label><div class="seg">${PRD_MB_FONTE.map(([k,n])=>`<button class="${fonteMB===k?'on':''}" onclick="prdSet('mbFonte','${k}')">${n}</button>`).join('')}</div></div>
+    <div><label>Agrupar por</label><div class="seg">${PRD_MB_POR.map(([k,n])=>`<button class="${porMB===k?'on':''}" onclick="prdSet('mbPor','${k}')">${n}</button>`).join('')}</div></div></div>`;
+  if(abcM.g.length){
+    const unid=PRD_MB_POR.find(x=>x[0]===porMB)[1].toLowerCase();
+    h+=`<div class="card abc"><div class="abc-g gb-c">${svgPareto(abcM.g,abcM.tot,{aria:'Curva ABC dos conjuntos motobomba',max:25})}</div><div class="abc-lado">${prdLadoABC(abcM.g,abcM.tot,porMB==='produto'?'produtos':porMB==='modelo'?'modelos':'grupos')}
+      <p class="nd-m">≈ ${fmtU(somar(abcM.g,x=>x.q))} unidades · ${fmtCompacto(abcM.tot)}</p></div></div>`;
+    /* mix: acionamento e norma, sempre visíveis (independem do agrupamento) */
+    const mix=f=>prdABC(baseMB,o=>f(o),o=>o.v,o=>o.q).g.map(x=>({rot:x.k,val:x.t,extra:`${fmtU(x.q)} un. · ${fmtPct(x.pct,0)}`}));
+    h+=`<div class="dupla">${card('Por acionamento','Elétrica, diesel ou jockey (pressurização).',`<div class="gb-c">${svgBarrasH(mix(o=>prdAnalisa(o.desc).acion),{lw:170,rw:150,aria:'Motobombas por acionamento'})}</div>`)}
+      ${card('Por norma','Listagem/norma do conjunto (código do produto ou campo da proposta).',`<div class="gb-c">${svgBarrasH(mix(o=>prdNorma(o.x.norma||o.desc)),{lw:170,rw:150,aria:'Motobombas por norma'})}</div>`)}</div>`;
+    h+=card(`Detalhe — ${esc(PRD_MB_POR.find(x=>x[0]===porMB)[1])}`,'',tab([{t:'#',n:1},{t:PRD_MB_POR.find(x=>x[0]===porMB)[1],f:1},{t:'Unidades',n:1},{t:'Valor',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
+      abcM.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(String(x.k).slice(0,70))}</a>`,fmtU(x.q),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]),360));
+  } else h+=card('','','<p class="pl-vazio">Nenhum conjunto motobomba nesta base no período.</p>');
+  /* ---------- cotado × ganho por linha ---------- */
+  h+=sec('Cotado × ganho por linha de produto',`Itens das propostas emitidas no período (revisão mais recente de cada proposta; itens sem valor, como documentação, ficam fora). Win rate = ganhos ÷ (ganhos + perdidos); alternativa não escolhida conta como perdida.`,'prd-cot');
+  if(P.length){
+    const linha=x=>prdEhMB(x.produto)?(a=>a==='Não identificado'?'Motobomba sem acionamento no código':'Motobomba '+a.toLowerCase())(prdAnalisa(x.produto).acion):(x.cat||'Não classificado');
+    const L=[...agrupa(P,linha).entries()].map(([k,a])=>{ const g=a.filter(prdGanha), p=a.filter(prdPerdida);
+      return {k,a,g,p,t:somar(a,x=>x.total),tg:somar(g,x=>x.total),wr:g.length+p.length?g.length/(g.length+p.length):null}; }).sort((a,b)=>b.t-a.t);
+    const colsP=['Proposta','Data','Cliente','Produto','Qtd.',{t:'Valor',n:1},'Fase'], linP=x=>[esc(String(x.cod)),fmtData(x.dt),esc(String(x.cli||'').slice(0,30)),esc(String(x.produto).slice(0,60)),fmtN(x.q||1),fmtBRL(x.total),esc(x.fase||'—')];
+    h+=card('',`${fmtN(P.length)} itens cotados · ${fmtCompacto(somar(P,x=>x.total))}. Clique no número para ver os itens.`,
+      tab([{t:'Linha',f:1},{t:'Itens cotados',n:1},{t:'R$ cotado',n:1},{t:'Ganhos',n:1},{t:'R$ ganho',n:1},{t:'Perdidos',n:1},{t:'Win rate',n:1},{t:'Em aberto',n:1}],
+        L.map((x,i)=>{ const lk=(s,a,t)=>a.length?`<a class="td-link" onclick="abrirLista('${regLista('prd-c'+i+s,`${x.k} — ${t}`,a.map(linP),colsP)}')">${fmtN(a.length)}</a>`:'0';
+          return [esc(x.k),lk('t',x.a,'cotados'),fmtBRL(x.t),lk('g',x.g,'ganhos'),fmtBRL(x.tg),lk('p',x.p,'perdidos'),x.wr==null?'—':fmtPct(x.wr,0),fmtN(x.a.length-x.g.length-x.p.length)]; })));
+    /* faixas de vazão × pressão das motobombas cotadas (sem jockey: vazão de pressurização distorce) */
+    const C=P.filter(x=>prdEhMB(x.produto)&&prdAnalisa(x.produto).acion!=='Jockey').map(x=>({x,vz:prdVazao(x.vazaoNom||x.vazaoProj),pr:prdPressao(x.pressao)})).filter(o=>o.vz!=null&&o.pr!=null);
+    if(C.length){ const fx=(v,F)=>F.findIndex(([a,b])=>v>a-1e-9&&v<=b), Mq=PRD_FX_PR.map(()=>PRD_FX_VZ.map(()=>null)), Mk=PRD_FX_PR.map(()=>PRD_FX_VZ.map(()=>null)), Mg=PRD_FX_PR.map(()=>PRD_FX_VZ.map(()=>[[],[]]));
+      C.forEach(o=>{ const i=fx(o.pr,PRD_FX_PR), j=fx(o.vz,PRD_FX_VZ); if(i<0||j<0)return; Mq[i][j]=(Mq[i][j]||0)+1; Mg[i][j][0].push(o.x); if(prdGanha(o.x))Mg[i][j][1].push(o.x); });
+      PRD_FX_PR.forEach((_,i)=>PRD_FX_VZ.forEach((_,j)=>{ if(Mq[i][j])Mk[i][j]=regLista(`prd-fx${i}_${j}`,`Motobombas cotadas — ${PRD_FX_PR[i][2]} × ${PRD_FX_VZ[j][2]}`,Mg[i][j][0].map(linP),colsP); }));
+      const ganhos=PRD_FX_PR.map((_,i)=>PRD_FX_VZ.map((_,j)=>Mg[i][j][1].length));
+      h+=card('Faixas de vazão e pressão das motobombas cotadas',`Quantos conjuntos (sem jockey) foram cotados em cada faixa; vazão nominal em m³/h (USgpm convertido) e pressão em mca (psi convertido). ${fmtN(C.length)} itens com vazão e pressão; ${fmtN(somar(C,o=>prdGanha(o.x)?1:0))} ganhos. Clique numa célula para ver os itens.`,
+        `<div class="gb-c">${svgHeat(PRD_FX_PR.map(x=>x[2]),PRD_FX_VZ.map(x=>x[2]),Mq,{k:Mk,aria:'Motobombas cotadas por faixa de vazão e pressão'})}</div>
+        <p class="nd-m">Ganhos por faixa: ${PRD_FX_PR.map((f,i)=>PRD_FX_VZ.map((g,j)=>ganhos[i][j]?`${f[2]} × ${g[2]}: ${ganhos[i][j]}`:'').filter(Boolean).join(' · ')).filter(Boolean).join(' · ')||'nenhum no período'}.</p>`); }
+  } else h+=card('','','<p class="pl-vazio">Nenhuma proposta com itens no período.</p>');
+  return h; };
+
 /* ======================= CENTRAL DE SUPERVISÃO ======================= */
 function abrirFicha(v){ EST.ficha=v; irTela('desempenho'); }
 function planoNovoNeg(id){ const n=M.negocios.find(x=>String(x.id)===String(id)); if(!n)return; const p=prioridadeNeg(n);
@@ -8251,6 +8431,8 @@ const REL_MODELOS=[
 const REL_TEMAS=[
  {k:'tPIP',ic:'⟐',nome:'Pipeline e previsão',per:'esteMes',desc:'Posição e mudanças do pipeline, etapas, envelhecimento, previsão de pedidos por mês, compromisso, confiabilidade e negócios para agir.',off:['pipe-insp'],
    telas:{pipeline:['kpi:pipeline','pipe-pos','pipe-casc','pipe-etapa','pipe-estagios','pipe-aging','pipe-prev','pipe-pol','pipe-mes','pipe-cob','pipe-comp','pipe-conf2','pipe-div','q:n-div','q:n-dono','t:origem-do-negocio','t:segmento-do-cliente','q:n-so','q:n-id','pipe-parados','pipe-conf','pipe-insp']}},
+ {k:'tPRD',ic:'⬢',nome:'Produtos e mix',per:'esteAno',desc:'Famílias mais vendidas, curva ABC dos produtos e dos conjuntos motobomba, cotado × ganho por linha e faixas de vazão e pressão.',
+   telas:{produtos:['prd-kpi','prd-fam','prd-abc','prd-mb','prd-cot']}},
  {k:'tRES',ic:'▤',nome:'Resultados e metas',per:'esteAno',desc:'Pedidos contra a meta, evolução, mês a mês e contra o ano anterior, vendedores, categoria fiscal, natureza, estados e principais clientes.',
    telas:{resultados:['kpi:resultados','res-bullet','res-ind','res-evo','res-rec','res-mes','res-yoy','q:v-vend','res-cat','q:v-cat','q:v-nat','m:v-mapa','q:v-uf','q:v-cli','res-spv','res-seq']}},
  {k:'tPRO',ic:'✎',nome:'Propostas e conversão',per:'esteTri',desc:'Propostas emitidas, conversão, velocidade, situação por vendedor, win rate, ciclo de venda e motivos de perda.',
