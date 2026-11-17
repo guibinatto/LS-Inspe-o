@@ -1188,7 +1188,7 @@ body.apres-on{overflow:hidden}
       </div>
       <select class="campo" id="sel-vend" onchange="setVend(this.value)"></select>
       <div class="acoes">
-        <button id="bt-ploomes" hidden onclick="atualizarPloomes()" title="Atualiza o painel e a apresentação com os dados do Ploomes (somente leitura). Leva de 5 a 10 minutos.">↻ Ploomes</button>
+        <button id="bt-ploomes" hidden onclick="atualizarPloomes()" title="Atualiza o painel e a apresentação com os dados do Ploomes e do Omie (somente leitura). Leva de 10 a 15 minutos.">↻ Atualizar</button>
         <button onclick="irTela('relatorios')" title="Relatórios prontos" class="dest">Relatórios</button>
         <button onclick="salvarHTML()" title="Cópia completa, com todas as bases carregadas — para arquivar" class="prim">↓ Salvar</button>
         <div class="mais"><button onclick="toggleMais(event)" aria-haspopup="true" title="Importação, metas, dados e exportações secundárias">⋯ Mais</button>
@@ -9043,10 +9043,10 @@ function cascataPipeline(a,b,o){ o=o||{}; const A=snapMapa(a), B=snapMapa(b), li
    bloqueadores → pendências e ações → supervisão por pessoa. */
 var HEAT={m:'inter'};
 function situacaoBases(){ const imp=(BRUTO._meta&&BRUTO._meta.imp)||{}, R=hojeReal();
-  return [['negocios','Negócios'],['interacoes','Interações'],['vendasOmie','Pedidos Ploomes'],['pedidos','Controle de pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
+  return [['negocios','Negócios'],['interacoes','Interações'],['vendasOmie','Pedidos Ploomes'],['omie','Itens Omie'],['pedidos','Controle de pedidos'],['carteira','Carteira'],['notas','Notas'],['comparativo','Comparativo']].map(([k,n])=>{ const em=imp[k]&&new Date(imp[k].em);
     const d=em&&!isNaN(em)?Math.max(0,diasDe(diaSP(em),R)):null, c=d==null?corV('--txt3'):d<=7?corV('--ok'):d<=14?corV('--ale'):corV('--err');
-    const api=imp[k]&&/^API-Ploomes/i.test(imp[k].arq||'');   /* lida direto da API do Ploomes (ferramentas/ploomes_coletar.py) */
-    return `<span class="bs" title="${esc(n)}: ${api?'lida da API do Ploomes':'importada'} ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}${api?'<b class="api">API</b>':''}</span>`; }).join(''); }
+    const api=imp[k]&&/^API-(Ploomes|Omie)/i.test(imp[k].arq||'');   /* lida direto da API do Ploomes ou do Omie (ferramentas/ploomes_coletar.py, omie_coletar.py) */
+    return `<span class="bs" title="${esc(n)}: ${api?'lida da API':'importada'} ${em&&!isNaN(em)?fmtDH(em):'—'}"><i style="background:${c}"></i>${n} ${d==null?'—':d===0?'hoje':d+' d'}${api?'<b class="api">API</b>':''}</span>`; }).join(''); }
 VISTA.supervisao=function(){
   const R=hoje(), K=CRITS(), P=PER, ab=F.ab, vS=a=>somar(a,n=>n.vNum||0), iv=intervencao(), sla=num(CFG.slaCot)||7, ref=refNegocios();
   const crit=iv.filter(x=>x.score>=K.limiarCritico), passosV=recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&p.prazo&&p.prazo<isoD(R));
@@ -10218,11 +10218,11 @@ let _MCP=null, _ploomesConf=0;
 async function atualizarPloomes(){ const b=document.getElementById('bt-ploomes'); if(!_MCP||!b)return;
   /* confirmação no próprio botão (janelas de confirmação são bloqueadas no visualizador) */
   if(!_ploomesConf){ _ploomesConf=1; b.textContent='Confirmar: atualizar agora?'; b.classList.add('prim');
-    setTimeout(()=>{ if(_ploomesConf===1){ _ploomesConf=0; b.textContent='↻ Ploomes'; b.classList.remove('prim'); } },8000); return; }
+    setTimeout(()=>{ if(_ploomesConf===1){ _ploomesConf=0; b.textContent='↻ Atualizar'; b.classList.remove('prim'); } },8000); return; }
   /* intervalo mínimo de 15 min entre pedidos (cada pedido abre uma sessão na nuvem) */
   let ult=0; try{ ult=+localStorage.getItem('lsf-ploomes-ult')||0; }catch(e){}
   const falta=ult+15*60e3-Date.now();
-  if(falta>0){ _ploomesConf=0; b.textContent='↻ Ploomes'; b.classList.remove('prim');
+  if(falta>0){ _ploomesConf=0; b.textContent='↻ Atualizar'; b.classList.remove('prim');
     aviso('Uma atualização já foi pedida há pouco. Aguarde mais '+Math.ceil(falta/60e3)+' min: ela leva de 5 a 10 minutos e você recebe uma notificação no fim.',8000); return; }
   _ploomesConf=2; b.disabled=true; b.textContent='⏳ Pedindo…';
   try{
@@ -10230,8 +10230,8 @@ async function atualizarPloomes(){ const b=document.getElementById('bt-ploomes')
     await _MCP.callTool(CCR_CONECTOR,'fire_trigger',{trigger_id:PLOOMES_TAREFA},{cache:false});
     try{ localStorage.setItem('lsf-ploomes-ult',String(Date.now())); }catch(e){}
     b.textContent='✓ Atualização pedida'; b.classList.remove('prim');
-    aviso('Atualização pedida. Em 5 a 10 minutos o painel e a apresentação são republicados com os dados do Ploomes e você recebe uma notificação. Depois, recarregue a página: a barra "Bases" mostra "hoje" com o selo API.',15000);
-  }catch(err){ const c=err&&err.code; _ploomesConf=0; b.disabled=false; b.textContent='↻ Ploomes'; b.classList.remove('prim');
+    aviso('Atualização pedida. Em 10 a 15 minutos o painel e a apresentação são republicados com os dados do Ploomes e do Omie e você recebe uma notificação. Depois, recarregue a página: a barra "Bases" mostra "hoje" com o selo API.',15000);
+  }catch(err){ const c=err&&err.code; _ploomesConf=0; b.disabled=false; b.textContent='↻ Atualizar'; b.classList.remove('prim');
     const amb='O pedido pode ter chegado mesmo assim: aguarde 10 minutos antes de tentar de novo.';
     aviso(({server_not_connected:'O conector "Claude Code Remote" não está ativo na sua conta: adicione em claude.ai → Configurações → Conectores.',
       needs_reauth:'Reconecte o conector "Claude Code Remote" em claude.ai → Configurações → Conectores.',

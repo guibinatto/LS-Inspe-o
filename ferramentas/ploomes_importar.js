@@ -1,13 +1,16 @@
 /* Importa no painel as planilhas geradas por ploomes_coletar.py, pelo mesmo
    importador da tela "Dados e configurações", e grava o painel com a data de
-   referência = hoje. As bases que não vêm do Ploomes (Controle de Pedidos,
-   Omie, carteira, notas) ficam como estavam.
+   referência = hoje. Também importa API-Omie_*.xlsx (itens de venda do Omie pela API), se estiver na
+   pasta. As demais bases (Controle de Pedidos, carteira, notas) ficam como estavam.
    Uso: node ferramentas/ploomes_importar.js <Painel.html> <pasta da coleta> [saída.html] */
 const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
 (async () => {
   const [src, pasta, out] = process.argv.slice(2), alvo = path.resolve(out || src);
-  const arqs = fs.readdirSync(pasta).filter(f => /^API-Ploomes_.*\.xlsx$/.test(f)).map(f => path.resolve(pasta, f));
+  const lista = re => fs.readdirSync(pasta).filter(f => re.test(f)).map(f => path.resolve(pasta, f));
+  const arqs = lista(/^API-Ploomes_.*\.xlsx$/);
   if (arqs.length < 6) { console.error('coleta incompleta:', arqs); process.exit(1); }
+  /* itens de venda do Omie pela API (ferramentas/omie_para_planilha.py), quando a coleta do Omie rodou */
+  arqs.push(...lista(/^API-Omie_.*\.xlsx$/));
   const b = await chromium.launch(), p = await b.newPage(), erros = [];
   p.on('pageerror', e => erros.push(e.message));
   await p.goto('file://' + path.resolve(src)); await p.waitForFunction(() => typeof F !== 'undefined' && F.todas, null, { timeout: 60000 });
