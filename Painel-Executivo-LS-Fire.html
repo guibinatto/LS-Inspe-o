@@ -1394,6 +1394,11 @@ const divCurta=s=>{const d=norm(s);
 
 /* ---------- dicionário de campos (busca por NOME, nunca por posição) ---------- */
 const CAMPOS={
+ /* catálogo dos motores diesel padronizados (planilha "Motores Padronizados LS Fire") */
+ motoresCat:{codigo:['codigo'],modelo:['modelo comercial'],marca:['marca'],modeloFicha:['modelo ficha tecnica'],injecao:['tipo de injecao'],aspiracao:['aspiracao'],
+  cil:['n cil'],cilindrada:['cilindrada l'],rpm:['rotacao rpm'],hp:['pot comercial hp'],kw:['pot gross kw'],hpGross:['pot gross hp'],regime:['regime de potencia'],
+  arref:['arrefecimento'],preco:['preco r'],precoUS:['preco us'],disposicao:['disposicao'],torque:['torque max'],consumo:['consumo 100% l h'],oleo:['cap oleo l'],
+  tensao:['tensao sistema v'],bateria:['bateria'],dims:['dimensoes c l a mm'],peso:['peso seco kg'],ruido:['nivel de ruido db a'],obs:['observacoes']},
  negocios:{id:['id'],codProposta:['codigo da proposta','cod proposta','codigo proposta','proposta'],
   cliente:['cliente','cliente do negocio','nome do cliente'],titulo:['titulo','titulo do negocio','nome do negocio'],
   statusObra:['status da obra','status obra','tipo de obra'],marcadores:['marcadores','marcador','tags','etiquetas'],
@@ -1531,7 +1536,7 @@ const ESSENCIAIS={negocios:['id','cliente','responsavel','valor','estagio','data
   propCab:['cod','rev','valor','data'],os:['cliente','total'],contratos:['cliente','contrato','total'],
   vendasOmie:['cliente','valor','data'],omie:['ov','cliente','totalMerc'],notas:['nf','dtEmissao','valor'],
   carteira:['pv','cliente','saldo'],pedidos:['ov','cliente','valor','dtPedido'],interacoes:['cliente','data','tipo'],
-  empresas:['nome'],historico:['cliente','fase','valor']};
+  empresas:['nome'],historico:['cliente','fase','valor'],motoresCat:['modelo','marca','hp','rpm']};
 const logFalha=(onde,e)=>{ try{ console.warn('[painel] '+onde+':',e&&e.message||e); }catch(_){} };
 function faltando(cols,base){ const m=mapear(cols,base); return (ESSENCIAIS[base]||[]).filter(k=>m[k]===undefined); }
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
@@ -1544,6 +1549,7 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
   const tem=a=>nc.some(c=>c===a||c.includes(a));
   if(tem('nome do responsavel')&&tem('numero da revisao')&&tem('estagio do negocio'))return 'propCab';
   if(tem('codigo da proposta')&&(tem('nome do produto')||tem('valor unitario')))return 'propostas';
+  if(tem('modelo comercial')&&tem('pot comercial'))return 'motoresCat';
   if(tem('saldo a faturar')&&tem('valor faturado'))return 'carteira';
   if(tem('valor total da nf')&&(tem('data emissao')||tem('serie')))return 'notas';
   if(tem('ptc')&&tem('data do pedido'))return 'pedidos';
@@ -1695,7 +1701,7 @@ const corrValDe=ref=>{const k=norm(ref); if(!k)return null;
   const c=(CFG.corrVal||[]).find(x=>norm(x.ref)===k); return c?num(c.valor):null;};
 const foraManualOmie=chave=>(CFG.dupOmieFora||[]).some(x=>('n:'+norm(x))===chave);
 
-let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[]};
+let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[]};
 let ETAPAS={}, ORDEM_EST=[], IDX_EMP=new Map();
 let TEM_SEG_CRM=false;                          /* o export do CRM traz a coluna Segmento? */
 const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao cadastral','geracao da cotacao','envio pec engenharia','elaborando proposta','apresentacao da cotacao follow up','negociacao','fechamento','pos vendas'];
@@ -1714,7 +1720,7 @@ function limparCaches(){
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
   limparCaches(); DADOS_VER++; PROPCAB=new Map();
-  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[]};
+  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
   M.negocios.forEach(n=>{
@@ -8154,6 +8160,40 @@ function prdMotores(I){ const L=[];
       L.push({x,n:i+1,de:cj.length,acion:c.acion,hp:c.hp,rpm:c.rpm,arref:c.arref,painel:c.painel,bomba:[c.tipo,c.modelo].filter(Boolean).join(' · '),marca,modelo,q:x.qNum||0}); }); });
   return L; }
 
+/* ---------- catálogo dos motores diesel padronizados (base importada "motoresCat") ----------
+   Casa cada motor DIESEL vendido com o catálogo, em camadas, e diz como casou:
+   1. modelo     — o modelo da descrição do item no ERP é o do catálogo (modelo comercial, código ou ficha);
+   2. variante   — mesmo modelo a menos do sufixo (ex.: 6ETAA12.8-G22 vendido × 6ETAA12.8-G21 no catálogo);
+   3. marca + potência — a marca do ERP (De Maas = "Deemas" no ERP; Baudouin = Weichai) e potência ±3% / rotação ±150 rpm;
+   4. sugestão   — sem marca nem modelo no ERP: o(s) motor(es) do catálogo com a mesma potência e rotação (não confirmado).
+   Motor com marca ou modelo que não está no catálogo fica "fora do catálogo". Elétrico e jockey não entram (o catálogo é diesel). */
+const PRD_MARCA_ALIAS=[['DEEMAS','DEMAAS'],['DEMAAS','DEMAAS'],['BAUDOUIN','WEICHAI'],['WEICHAI','WEICHAI'],['SDEC','SNAT'],['KOEL','KIRLOSKAR'],['FPT','FPTINDUSTRIAL'],['IVECO','FPTINDUSTRIAL']];
+const prdChaveMod=s=>String(s||'').toUpperCase().replace(/\(.*?\)/g,'').replace(/[^A-Z0-9]/g,'');
+const prdMarcaN=s=>{ const k=String(s||'').toUpperCase().replace(/[^A-Z]/g,''); if(!k)return ''; const a=PRD_MARCA_ALIAS.find(([x])=>k.startsWith(x)); return a?a[1]:k; };
+let _PRD_CAT=null;
+function prdCatalogo(){ if(_PRD_CAT&&_PRD_CAT.v===DADOS_VER)return _PRD_CAT.L;
+  const n=v=>{ if(v==null||v==='')return null; const x=typeof v==='number'?v:parseFloat(String(v).replace(/\./g,'').replace(',','.')); return isFinite(x)&&x>0?x:null; };
+  const L=(M.motoresCat||[]).filter(c=>c.modelo).map((c,i)=>{
+    const ch=[c.modelo,c.codigo,...String(c.modeloFicha||'').split(/\s\/\s|\s—\s|;|\(|\)/)].map(prdChaveMod).filter(k=>k.length>=4);
+    return Object.assign({},c,{i,hpN:n(c.hp),rpmN:n(c.rpm),precoN:n(c.preco),marcaN:prdMarcaN(c.marca),chaves:[...new Set(ch)],
+      nome:`${c.marca||''} ${c.modelo||''}`.trim()}); });
+  _PRD_CAT={v:DADOS_VER,L}; return L; }
+function prdCasaCatalogo(r){ const C=prdCatalogo(); if(!C.length||r.acion!=='Diesel')return null;
+  const km=prdChaveMod(r.modelo), mb=prdMarcaN(r.marca);
+  if(km.length>=4){ let c=C.find(c=>c.chaves.includes(km)); if(c)return {c,como:'modelo'};
+    c=C.find(c=>c.chaves.some(k=>k.length>=7&&km.length>=7&&k.slice(0,-2)===km.slice(0,-2))); if(c)return {c,como:'variante do modelo'}; }
+  const perto=c=>r.hp&&c.hpN&&Math.abs(c.hpN-r.hp)/r.hp<=.03&&(!r.rpm||!c.rpmN||Math.abs(c.rpmN-r.rpm)<=150);
+  if(mb){ const c=C.filter(c=>c.marcaN===mb&&perto(c)); if(c.length===1&&!km)return {c:c[0],como:'marca + potência'}; return {fora:true}; }
+  if(km.length>=4)return {fora:true};
+  const c=C.filter(perto); return c.length?{c:c[0],alt:c.slice(1),como:'sugestão por potência e rotação'}:{fora:true}; }
+/* ficha técnica completa de um motor do catálogo, numa lista (Campo × Valor) */
+function prdFicha(c){ const B=BRUTO.motoresCat; if(!B||!B.cols)return null;
+  return regLista('prd-ficha'+c.i,`${c.nome} — ficha técnica (catálogo de motores padronizados)`,
+    B.cols.map((col,j)=>[esc(col),esc(c._raw&&c._raw[j]!=null&&String(c._raw[j]).trim()!==''?String(c._raw[j]):'—')]).filter(l=>l[1]!=='—'),['Campo','Valor']); }
+/* situação no ERP: faturado (levado) ou não; a venda pode ter sido faturada em OVs de medição */
+function prdSituacao(x){ const L=x.linhas||[x], fat=L.some(l=>/^faturado$/i.test(String(l.sit||'').trim()));
+  return /^faturado$/i.test(String(x.sit||'').trim())?'Faturado':fat?'Faturado em parte (medições)':(x.sit||'—'); }
+
 const PRD_MOT_AC=[['','Todos'],['Diesel','Diesel'],['Elétrica','Elétrica'],['Jockey','Jockey']];
 VISTA.produtos=function(){
   const I=prdItens(), V=F.vendas||[], P=prdPropostas(), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
@@ -8228,8 +8268,17 @@ VISTA.produtos=function(){
   { const MT=prdMotores(I), ac=PRD.motAc, ML=MT.filter(r=>!ac||r.acion===ac), hpT=r=>r.hp==null?'—':fmtD(r.hp,r.hp%1?1:0)+' HP';
     h+=sec('Motores vendidos',`Um motor por conjunto: skids e containers trazem vários (ex.: diesel + elétrica + jockey). Potência, rotação, arrefecimento e painel saem do código do produto; marca e modelo do motor, da descrição do item no ERP, quando ela existe. Jockey é monobloco: o motor vem integrado à bomba.`,'prd-mot');
     if(MT.length){
-      const cols=['Data','Cliente','Pedido (ERP)','Conjunto','Acionamento',{t:'Potência',n:1},{t:'Rotação',n:1},'Arrefecimento','Painel','Bomba','Marca do motor','Modelo do motor',{t:'Qtd.',n:1}];
-      const lin=r=>[fmtData(r.x.dt),esc(String(r.x.cli||'').slice(0,30)),esc(r.x.ovPrincipal||r.x.ov||'—'),esc(String(r.x.produto).slice(0,50))+(r.de>1?` <small>(${r.n} de ${r.de})</small>`:''),esc(r.acion),hpT(r),r.rpm?fmtN(r.rpm)+' rpm':'—',esc(r.arref||'—'),esc(r.painel||'—'),esc(r.bomba||'—'),esc(r.marca||'não descrita no ERP'),esc(r.modelo||'—'),fmtU(r.q)];
+      const CAT=prdCatalogo(); MT.forEach(r=>{ r.cat=prdCasaCatalogo(r); });
+      const COMO_COR={'modelo':'var(--ok)','variante do modelo':'var(--ok)','marca + potência':'var(--ale)','sugestão por potência e rotação':'var(--txt3)'};
+      const fichaLk=c=>{ const k=prdFicha(c); return k?`<a class="td-link" onclick="abrirLista('${k}')">${esc(c.nome)}</a>`:esc(c.nome); };
+      const cv=(r,f)=>r.cat&&r.cat.c&&r.cat.c[f]!=null&&String(r.cat.c[f]).trim()!==''&&String(r.cat.c[f]).trim()!=='—'?esc(String(r.cat.c[f])):'—';
+      const cols=['Data','Cliente','Pedido (ERP)','Situação no ERP','Conjunto','Acionamento',{t:'Potência',n:1},{t:'Rotação',n:1},'Arrefecimento','Painel','Bomba','Marca do motor','Modelo do motor',{t:'Qtd.',n:1},
+        ...(CAT.length?['Motor do catálogo','Como casou','Cil. / cilindrada','Aspiração','Injeção',{t:'Consumo 100%',n:1},{t:'Peso seco',n:1},{t:'Preço de referência',n:1}]:[])];
+      const lin=r=>[fmtData(r.x.dt),esc(String(r.x.cli||'').slice(0,30)),esc(r.x.ovPrincipal||r.x.ov||'—'),esc(prdSituacao(r.x)),esc(String(r.x.produto).slice(0,50))+(r.de>1?` <small>(${r.n} de ${r.de})</small>`:''),esc(r.acion),hpT(r),r.rpm?fmtN(r.rpm)+' rpm':'—',esc(r.arref||'—'),esc(r.painel||'—'),esc(r.bomba||'—'),esc(r.marca||'não descrita no ERP'),esc(r.modelo||'—'),fmtU(r.q),
+        ...(CAT.length?(r.acion!=='Diesel'?['— (catálogo é de motores diesel)','—','—','—','—','—','—','—']
+          :!r.cat||r.cat.fora?['<span class="nd-m">fora do catálogo</span>','—','—','—','—','—','—','—']
+          :[fichaLk(r.cat.c)+(r.cat.alt&&r.cat.alt.length?`<br><small>ou ${r.cat.alt.map(fichaLk).join(', ')}</small>`:''),`<span style="color:${COMO_COR[r.cat.como]}">${esc(r.cat.como)}</span>`,
+            `${cv(r,'cil')} cil. · ${cv(r,'cilindrada')} L`,cv(r,'aspiracao'),cv(r,'injecao'),r.cat.c.consumo?cv(r,'consumo')+' L/h':'—',r.cat.c.peso?cv(r,'peso')+' kg':'—',r.cat.c.precoN?fmtBRL(r.cat.c.precoN):'—']):[])];
       const kL=regLista('prd-mot-todos',`Motores vendidos${ac?' — '+ac:''} (${PER.rot})`,[...ML].sort((a,b)=>b.x.dt-a.x.dt).map(lin),cols);
       const porAc=['Diesel','Elétrica','Jockey'].map(a=>{ const r=MT.filter(m=>m.acion===a); return {rot:a,val:somar(r,m=>m.q),extra:r.length?`${fmtN(new Set(r.map(m=>m.x.cli)).size)} clientes`:''}; }).filter(x=>x.val>0);
       const FX=[[0,100,'até 100 HP'],[100,300,'100–300 HP'],[300,500,'300–500 HP'],[500,1e9,'acima de 500 HP']];
@@ -8240,6 +8289,15 @@ VISTA.produtos=function(){
       h+=`<div class="g g3">${card('Por acionamento','Unidades no período (todos os acionamentos).',`<div class="gb-c">${svgBarrasH(porAc,{fmt:v=>fmtU(v)+' un.',W:400,lw:80,rw:130,aria:'Motores por acionamento'})}</div>`)}
         ${card('Por potência','Diesel e elétrico; clique para ver os motores.',`<div class="gb-c">${svgBarrasH(porFx,{fmt:v=>fmtU(v)+' un.',W:400,lw:120,rw:60,aria:'Motores por faixa de potência'})}</div>`)}
         ${card('Por marca do motor','Diesel e elétrico, pela descrição do item no ERP.',`<div class="gb-c">${svgBarrasH(marcas,{fmt:v=>fmtU(v)+' un.',W:400,lw:140,rw:60,aria:'Motores por marca'})}</div>`)}</div>`;
+      if(CAT.length){ const D=MT.filter(r=>r.acion==='Diesel'), conf=r=>r.cat&&r.cat.c&&r.cat.como!=='sugestão por potência e rotação', sug=r=>r.cat&&r.cat.c&&r.cat.como==='sugestão por potência e rotação';
+        const linhasC=CAT.map(c=>{ const v=D.filter(r=>conf(r)&&r.cat.c===c), g=D.filter(r=>sug(r)&&(r.cat.c===c||(r.cat.alt||[]).includes(c)));
+            return {c,v,g,q:somar(v,r=>r.q),qg:somar(g,r=>r.q)}; }).sort((a,b)=>b.q-a.q||b.qg-a.qg||(a.c.hpN||0)-(b.c.hpN||0));
+        const lk=(a,t)=>a.length?`<a class="td-link" onclick="abrirLista('${regLista('prd-catv'+t+a[0].cat.c.i,`${a[0].cat.c.nome} — ${t==='v'?'vendidos (confirmados)':'sugeridos por potência'}`,a.map(lin),cols)}')">${fmtU(somar(a,r=>r.q))}</a>`:'—';
+        const nC=somar(D.filter(conf),r=>r.q), nS=somar(D.filter(sug),r=>r.q), nF=somar(D.filter(r=>!r.cat||r.cat.fora),r=>r.q);
+        h+=card('Catálogo de motores padronizados × motores diesel vendidos',`${fmtU(nC)} motor(es) diesel casados com o catálogo pelo modelo ou pela marca + potência · ${fmtU(nS)} só por potência e rotação (sugestão — o ERP não diz a marca) · ${fmtU(nF)} fora do catálogo. Clique no motor para a ficha técnica e no número para os pedidos.`,
+          tab([{t:'Motor do catálogo',f:1},{t:'Potência',n:1},{t:'Rotação',n:1},{t:'Arrefecimento'},{t:'Aspiração'},{t:'Preço de referência',n:1},{t:'Vendidos (confirmados)',n:1},{t:'Sugeridos',n:1}],
+            linhasC.map(x=>[fichaLk(x.c),x.c.hpN?fmtN(x.c.hpN)+' HP':'—',x.c.rpmN?fmtN(x.c.rpmN)+' rpm':'—',esc(x.c.arref||'—'),esc(x.c.aspiracao||'—'),x.c.precoN?fmtBRL(x.c.precoN):'—',lk(x.v,'v'),lk(x.g,'s')]),400)); }
+      else h+=card('','','<p class="nd-m">Para ver a ficha técnica de cada motor diesel (cilindros, aspiração, consumo, peso, preço de referência), importe a planilha <b>Motores Padronizados LS Fire</b> em ⋯ Mais → Importar planilhas.</p>');
       h+=card(`Listagem — ${fmtN(ML.length)} motor(es)${ac?' — '+ac:''}`,`Do mais recente ao mais antigo. "Não descrita no ERP": o item não tem a descrição técnica; o código traz potência e rotação, mas não a marca.`,
         tab(cols.map(c=>typeof c==='string'?{t:c}:c),[...ML].sort((a,b)=>b.x.dt-a.x.dt).map(lin),420));
     } else h+=card('','','<p class="pl-vazio">Nenhum conjunto com motor vendido no período.</p>'); }
@@ -9708,7 +9766,7 @@ addEventListener('afterprint',()=>{ if(document.body.classList.contains('rel-on'
 const HTML_ORIG=document.documentElement.outerHTML;
 const NOMES_BASE={negocios:'Negócios (CRM)',propostas:'Propostas — itens',propCab:'Propostas — cabeçalho',interacoes:'Interações',
   empresas:'Empresas',historico:'Histórico OMIE',pedidos:'Controle de Pedidos',
-  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)'};
+  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)',motoresCat:'Motores padronizados (catálogo técnico)'};
 
 function abrirModal(id){ document.getElementById(id).classList.add('aberto');
   if(id==='m-dados')listarBases(); if(id==='m-cfg')montarCfg(); if(id==='m-glos')montarGlossario(); }
@@ -9893,6 +9951,9 @@ function receber(files){
     const aplica=(cols,rows)=>{
       const base=detectar(cols);
       if(!base)throw new Error('não reconheci a base pelos títulos das colunas');
+      if(base==='motoresCat'){ const keep=cols.map((c,i)=>/^escopo ploomes/.test(norm(c))||!String(c).trim()?-1:i).filter(i=>i>=0);
+        cols=keep.map(i=>cols[i]); rows=rows.map(r=>keep.map(i=>r[i])); const im=mapear(cols,'motoresCat').modelo;
+        if(im!=null)rows=rows.filter(r=>r[im]!=null&&String(r[im]).trim()!==''&&!/^[—-]$/.test(String(r[im]).trim())); }
       const antes=(BRUTO[base]&&BRUTO[base].rows)?BRUTO[base].rows.length:0;
       /* notas fiscais vêm um mês por arquivo: junta com as anteriores, sem repetir
          a mesma nota (nº + série) — a mais recente prevalece */

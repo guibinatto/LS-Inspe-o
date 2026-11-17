@@ -28,6 +28,20 @@ const { chromium } = require('playwright'), path = require('path');
     t(o1.Diesel.length === 1 && o1.Diesel[0].marca === 'Clarke' && o1.Diesel[0].modelo === 'DR8H-UFAA40', 'marca/modelo do motor pela descrição; "painel para motor diesel SVE" não é motor: ' + JSON.stringify(o1.Diesel));
     const o2 = prdMotoresObs('MOTOR DIESEL Marca: CLARKE FIRE Modelo: C13H0-UFAD38 (BLOCO CATERPILLAR)');
     t(o2.Diesel[0].marca === 'Clarke Fire' && o2.Diesel[0].modelo === 'C13H0-UFAD38', 'formato "Marca: … Modelo: …"');
+    /* catálogo de motores padronizados: casamento em camadas */
+    { const orig = M.motoresCat; M.motoresCat = [
+        { modelo: 'DF15TIH-N', marca: 'De Maas', modeloFicha: 'Doosan PU158Ti', hp: 554, rpm: 2100, _raw: [] },
+        { modelo: '6ETAA12.8G21', marca: 'SNAT', modeloFicha: '6ETAA12.8-G21', hp: 543, rpm: 1800, _raw: [] },
+        { modelo: '6HTAA8.9G23', marca: 'SNAT', modeloFicha: '6DTAA8.9-G23', hp: 379, rpm: 1800, _raw: [] },
+        { modelo: '6M21G390/6', marca: 'Weichai', modeloFicha: '6M21G390/6 (Baudouin)', hp: 600, rpm: 1800, _raw: [] }];
+      DADOS_VER++; const m = (marca, modelo, hp, rpm) => { const r = prdCasaCatalogo({ acion: 'Diesel', marca, modelo, hp, rpm }); return r && r.c ? r.c.modelo + '/' + r.como : 'fora'; };
+      t(m('Deemas', 'DF15TIH-N', 550, 1900) === 'DF15TIH-N/modelo', 'modelo: Deemas DF15TIH-N do ERP = De Maas DF15TIH-N');
+      t(m('Snat', '6ETAA12.8-G22', 543, 1800) === '6ETAA12.8G21/variante do modelo', 'variante: G22 vendido × G21 no catálogo');
+      t(m('Baudouin', '', 601, 1800) === '6M21G390/6/marca + potência', 'marca + potência: Baudouin 601 HP = Weichai 6M21G390/6');
+      t(m('', '', 379, 1800) === '6HTAA8.9G23/sugestão por potência e rotação', 'sem marca nem modelo: sugestão por potência e rotação');
+      t(m('Baudouin', '6M16G308/6', 483, 1800) === 'fora' && m('Clarke', 'DR8H-UFAA40', 490, 2100) === 'fora', 'modelo ou marca fora do catálogo não é forçado a casar');
+      t(prdCasaCatalogo({ acion: 'Elétrica', marca: 'Weg', modelo: '', hp: 40, rpm: 3500 }) === null, 'motor elétrico não entra no catálogo diesel');
+      M.motoresCat = orig; DADOS_VER++; }
     /* a mesma venda em várias OVs (pedido, reemissão, medições) conta uma vez — caso Irricom */
     { const orig = M.omie, v0 = DADOS_VER, d = new Date(2026, 4, 6), it = (ov, q, v, dep, prod) => ({ ov, qNum: q, vNum: v, departamento: dep, pedidoCli: 'N/D', nCli: 'irr', cli: 'IRRICOM', produto: prod, dt: d });
       const A = 'CON LSF DEJ ES TKF 100-400 217 TKF-M 75', B = 'CON LSF DEJ ES TKF 100-400 217 TKF 125';
