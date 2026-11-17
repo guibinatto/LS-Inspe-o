@@ -19,6 +19,15 @@ const { chromium } = require('playwright'), path = require('path');
     t(prdEhMB('CMB LSF E SC 4HF10 40 35 38T ULFM') && prdEhMB('BOMBA CENTRIFUGA MULTIESTAGIO JOCKEY MHE 10') && !prdEhMB('ROTOR PARA BOMBA PERRLESS') && !prdEhMB('Manutenção em Motobombas - Corretiva'),
       'motobomba × peça/serviço');
     t(Math.abs(prdVazao('300 USgpm') - 68.13) < .1 && Math.abs(prdPressao('142 psi') - 99.84) < .1 && prdVazao('1,85m³/h') === 1.85, 'conversão USgpm→m³/h e psi→mca');
+    /* motores: código do conjunto e descrição do item */
+    const c1 = prdConjuntos('CMB LSF D SC SCE 150-460 483 18 RD 22M NFPA20')[0];
+    t(c1.acion === 'Diesel' && c1.hp === 483 && c1.rpm === 1800 && c1.arref === 'Radiador' && c1.painel === '220 V mono', 'motor diesel 483 HP 1800 rpm radiador 220 V: ' + JSON.stringify(c1));
+    const c2 = prdConjuntos('SKD LSF DEJ SC SCE 200-500 680 18 22M 16 SC SCE 200-500 600 18 44T 16 MB VSSE 3-17-30 3 35 44T 16');
+    t(c2.length === 3 && c2.map(c => c.acion + c.hp).join() === 'Diesel680,Elétrica600,Jockey3' && c2[1].painel === '440 V tri', 'skid DEJ: três motores ' + c2.map(c => c.acion + ' ' + c.hp).join(' / '));
+    const o1 = prdMotoresObs('01 x Motor Diesel Clarke, modelo DR8H-UFAA40 490HP @ 2100RPM; 01 x Painel de comando para Motor Diesel SVE');
+    t(o1.Diesel.length === 1 && o1.Diesel[0].marca === 'Clarke' && o1.Diesel[0].modelo === 'DR8H-UFAA40', 'marca/modelo do motor pela descrição; "painel para motor diesel SVE" não é motor: ' + JSON.stringify(o1.Diesel));
+    const o2 = prdMotoresObs('MOTOR DIESEL Marca: CLARKE FIRE Modelo: C13H0-UFAD38 (BLOCO CATERPILLAR)');
+    t(o2.Diesel[0].marca === 'Clarke Fire' && o2.Diesel[0].modelo === 'C13H0-UFAD38', 'formato "Marca: … Modelo: …"');
     /* a mesma venda em várias OVs (pedido, reemissão, medições) conta uma vez — caso Irricom */
     { const orig = M.omie, v0 = DADOS_VER, d = new Date(2026, 4, 6), it = (ov, q, v, dep, prod) => ({ ov, qNum: q, vNum: v, departamento: dep, pedidoCli: 'N/D', nCli: 'irr', cli: 'IRRICOM', produto: prod, dt: d });
       const A = 'CON LSF DEJ ES TKF 100-400 217 TKF-M 75', B = 'CON LSF DEJ ES TKF 100-400 217 TKF 125';
@@ -39,7 +48,7 @@ const { chromium } = require('playwright'), path = require('path');
     for (const f of PRD_MB_FONTE) for (const g of PRD_MB_POR) { PRD.mbFonte = f[0]; PRD.mbPor = g[0]; render(); comb++; }
     PRD.mbFonte = 'vendido'; PRD.mbPor = 'modelo'; render();
     const secs = [...document.querySelectorAll('#tela [data-sid]')].map(x => x.dataset.sid);
-    t(['prd-kpi', 'prd-fam', 'prd-abc', 'prd-mb', 'prd-cot'].every(s => secs.includes(s)), 'cinco seções com ID estável: ' + secs.filter(s => /^prd/.test(s)).join(','));
+    t(['prd-kpi', 'prd-fam', 'prd-abc', 'prd-mb', 'prd-mot', 'prd-cot'].every(s => secs.includes(s)), 'seis seções com ID estável: ' + secs.filter(s => /^prd/.test(s)).join(','));
     t(comb === 15, '15 combinações de base × agrupamento');
     return ok;
   });

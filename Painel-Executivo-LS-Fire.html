@@ -8003,7 +8003,7 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
    - cotado × ganho: itens das propostas do Ploomes, só a revisão mais recente de cada proposta.
    O código do produto descreve o equipamento: "CMB LSF J MB BT4-0715E14 1,5 35 38T NFPA20" =
    conjunto motobomba · LSF · Jockey · Multiestágio · modelo BT4-0715E14 · ... · NFPA 20. */
-const PRD={mbPor:'modelo',mbFonte:'vendido',abcPor:'valor'};
+const PRD={mbPor:'modelo',mbFonte:'vendido',abcPor:'valor',motAc:''};
 const PRD_ACION={E:'Elétrica',D:'Diesel',J:'Jockey',G:'Gasolina'};
 const PRD_TIPO={MB:'Multiestágio',SC:'Bipartida (split case)',ES:'Sucção axial (end suction)',VT:'Turbina vertical',IL:'In-line',
   AUTOESCORVANTE:'Autoescorvante',MBV:'Multiestágio vertical'};
@@ -8102,6 +8102,59 @@ const PRD_FX_VZ=[[0,10,'até 10 m³/h'],[10,100,'10–100'],[100,300,'100–300'
 const PRD_FX_PR=[[0,80,'até 80 mca'],[80,100,'80–100'],[100,120,'100–120'],[120,1e9,'acima de 120']];
 function prdSet(k,v){ PRD[k]=v; render(); }
 
+/* ---------- motores: lidos do código do produto e da observação do item ----------
+   Código: CMB LSF <acionamentos> <tipo> <modelo da bomba> <HP> <rpm/100> [RD|TR] <painel> [norma]
+   ex.: "CMB LSF D SC SCE 150-460 483 18 RD 22M NFPA20" = diesel 483 HP 1800 rpm, radiador, painel 220 V mono.
+   Skid/container trazem um bloco por conjunto: "SKD LSF DEJ SC … 680 18 22M 16 SC … 600 18 44T 16 MB … 3 35 44T 16".
+   Marca e modelo do motor não estão no código: vêm da observação do item ("Motor Diesel Clarke, modelo DR8H-UFAA40"),
+   quando o ERP a tem. */
+const PRD_PAINEL={'11M':'110 V mono','22M':'220 V mono','38T':'380 V tri','44T':'440 V tri','22T':'220 V tri','380T':'380 V tri','440T':'440 V tri','48T':'480 V tri','480T':'480 V tri'};
+const prdEhNorma=t=>/^(NFPA ?20|NFPA|ULFM|UL|FM|UF|NF|NL|16|NBR[\d.]*|N\/?A)$/.test(t);
+function prdConjuntos(desc){ const s=prdTxt(desc).replace(/\s+/g,' '), m=s.match(/^(CMB|BMB|SKD|CON)\s+LSF\s+([DEJG]+)\s+(.*)$/); if(!m)return null;
+  const t=m[3].split(' '), out=[]; let i=0;
+  for(const L of m[2].split('')){ if(i>=t.length)break;
+    const c={acion:PRD_ACION[L]||L,tipo:'',modelo:'',hp:null,rpm:null,arref:'',painel:''};
+    if(PRD_TIPO[t[i]]||(/^[A-Z]{2,}$/.test(t[i])&&!prdEhNorma(t[i]))){ c.tipo=PRD_TIPO[t[i]]||prdTitulo(t[i]); i++; }
+    /* fim do bloco: o token do painel (22M, 44T…); sem ele, a primeira norma ou o fim */
+    let j=i; while(j<t.length&&!/^\d{2,3}[MT]$/.test(t[j])&&!(prdEhNorma(t[j])&&j>i+2))j++;
+    let k=j-1; const temPainel=j<t.length&&/^\d{2,3}[MT]$/.test(t[j]);
+    if(k>=i&&/^(RD|TR)$/.test(t[k])){ c.arref=t[k]==='RD'?'Radiador':'Trocador de calor'; k--; }
+    const num=x=>x!=null&&/^\d+(,\d+)?$/.test(x)?parseFloat(x.replace(',','.')):null;
+    const rpm=num(t[k]), hp=num(t[k-1]);
+    if(rpm!=null&&hp!=null&&k-1>=i){ c.rpm=rpm<100?rpm*100:rpm; c.hp=hp; c.modelo=t.slice(i,k-1).join(' '); } else c.modelo=t.slice(i,j).join(' ');
+    if(temPainel){ c.painel=PRD_PAINEL[t[j]]||t[j]; j++; }
+    while(j<t.length&&prdEhNorma(t[j]))j++;
+    i=j; out.push(c); }
+  return out; }
+/* marca/modelo dos motores citados na observação, na ordem em que aparecem, por tipo */
+function prdMotoresObs(obs){ const s=prdTxt(obs).replace(/[ÉÈ]/g,'E'), R={Diesel:[],'Elétrica':[]};
+  const re=/MOTOR (DIESEL|ELETRICO)\b([^;]{0,140})/g; let m;
+  while((m=re.exec(s))){ /* "painel de comando PARA motor diesel SVE", "kit … do motor": é o painel, não o motor */
+    if(/(PARA|DO|DE)\s*$/.test(s.slice(Math.max(0,m.index-8),m.index)))continue;
+    let r=m[2].replace(/\s01 X\s.*$/,'').replace(/\s+/g,' ').trim(); const tipo=m[1]==='DIESEL'?'Diesel':'Elétrica';
+    let marca='', modelo='';
+    const mm=r.match(/MARCA:\s*([A-Z][A-Z \-]{1,24}?)\s+MODELO:\s*([A-Z0-9][\w\-\/.]*)/);
+    if(mm){ marca=mm[1].trim(); modelo=mm[2]; }
+    else{ const p=r.replace(/^[,:\s]+/,'').split(/[\s,]+/); if(p[0]&&/^[A-Z][A-Z\-]{1,}$/.test(p[0])&&!/^(MODELO|COM|DE|DO|PARA|OU|A|TROCADOR|RADIADOR)$/.test(p[0]))marca=p[0]+(p[1]&&/^(FIRE|POWER)$/.test(p[1])?' '+p[1]:'');
+      const md=r.match(/MODELO:?\s*([A-Z0-9][\w\-\/.]*(?:\s(?=[\w\-\/.]*\d)[\w\-\/.]+)?)/)||r.match(/\b([A-Z]{1,4}\d[\w\-\/]*|\d[A-Z][\w\-\/]{3,}|[A-Z]-[A-Z]{2,4}\s\d[\w]+)\b/);
+      if(md)modelo=md[1].replace(/\s*\d+(\.\d+)?\s*HP.*$/,'').trim(); }
+    if(/^\d/.test(modelo)&&/HP/.test(modelo)||/^IP\d/.test(modelo))modelo='';
+    marca=marca.replace(/^NMFIRE$/,'NM FIRE'); R[tipo].push({marca:marca?(marca.length<=3?marca:prdTitulo(marca)):'',modelo}); }
+  return R; }
+/* uma linha por motor vendido (itens do período, uma vez por projeto) */
+function prdMotores(I){ const L=[];
+  I.forEach(x=>{ const cj=prdConjuntos(x.produto), obs=prdMotoresObs(x.obsItem), us={Diesel:0,'Elétrica':0};
+    if(!cj){ const s=prdTxt(x.produto); if(/^MOTOR\b/.test(s)){ const a=prdAnalisa(s), hp=(s.match(/(\d+(?:[.,]\d+)?)\s*(?:HP|CV)\b/)||[])[1];
+        L.push({x,n:1,de:1,acion:/DIESEL/.test(s)?'Diesel':/EL[EÉ]TRIC|CV|KW/.test(s)?'Elétrica':a.acion,hp:hp?parseFloat(hp.replace(',','.')):null,rpm:null,arref:'',painel:'',bomba:'(motor avulso)',marca:prdTitulo((s.match(/\b(WEG|CLARKE|CUMMINS|PERKINS|BAUDOUIN|MWM|SCANIA|DEEMAS|BUFFALO|TOYAMA|BRANCO|HONDA)\b/)||[])[1]||''),modelo:'',q:x.qNum||0}); }
+      return; }
+    cj.forEach((c,i)=>{ let marca='', modelo='';
+      if(c.hp==null){ const cv=(c.modelo.match(/(\d+(?:[.,]\d+)?)\s*CV\b/)||[])[1]; if(cv)c.hp=parseFloat(cv.replace(',','.')); }
+      if(c.acion==='Jockey'){ marca='—'; modelo='monobloco (motor integrado à bomba)'; }
+      else if(obs[c.acion]){ const o=obs[c.acion][us[c.acion]++]; if(o){ marca=o.marca; modelo=o.modelo; } }
+      L.push({x,n:i+1,de:cj.length,acion:c.acion,hp:c.hp,rpm:c.rpm,arref:c.arref,painel:c.painel,bomba:[c.tipo,c.modelo].filter(Boolean).join(' · '),marca,modelo,q:x.qNum||0}); }); });
+  return L; }
+
+const PRD_MOT_AC=[['','Todos'],['Diesel','Diesel'],['Elétrica','Elétrica'],['Jockey','Jockey']];
 VISTA.produtos=function(){
   const I=prdItens(), V=F.vendas||[], P=prdPropostas(), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
   const nomeFam=c=>CAT_NOME[c]||c||'(sem família)';
@@ -8171,6 +8224,25 @@ VISTA.produtos=function(){
     h+=card(`Detalhe — ${esc(PRD_MB_POR.find(x=>x[0]===porMB)[1])}`,'',tab([{t:'#',n:1},{t:PRD_MB_POR.find(x=>x[0]===porMB)[1],f:1},{t:'Unidades',n:1},{t:'Valor',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
       abcM.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(String(x.k).slice(0,70))}</a>`,fmtU(x.q),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]),360));
   } else h+=card('','','<p class="pl-vazio">Nenhum conjunto motobomba nesta base no período.</p>');
+  /* ---------- motores vendidos ---------- */
+  { const MT=prdMotores(I), ac=PRD.motAc, ML=MT.filter(r=>!ac||r.acion===ac), hpT=r=>r.hp==null?'—':fmtD(r.hp,r.hp%1?1:0)+' HP';
+    h+=sec('Motores vendidos',`Um motor por conjunto: skids e containers trazem vários (ex.: diesel + elétrica + jockey). Potência, rotação, arrefecimento e painel saem do código do produto; marca e modelo do motor, da descrição do item no ERP, quando ela existe. Jockey é monobloco: o motor vem integrado à bomba.`,'prd-mot');
+    if(MT.length){
+      const cols=['Data','Cliente','Pedido (ERP)','Conjunto','Acionamento',{t:'Potência',n:1},{t:'Rotação',n:1},'Arrefecimento','Painel','Bomba','Marca do motor','Modelo do motor',{t:'Qtd.',n:1}];
+      const lin=r=>[fmtData(r.x.dt),esc(String(r.x.cli||'').slice(0,30)),esc(r.x.ovPrincipal||r.x.ov||'—'),esc(String(r.x.produto).slice(0,50))+(r.de>1?` <small>(${r.n} de ${r.de})</small>`:''),esc(r.acion),hpT(r),r.rpm?fmtN(r.rpm)+' rpm':'—',esc(r.arref||'—'),esc(r.painel||'—'),esc(r.bomba||'—'),esc(r.marca||'não descrita no ERP'),esc(r.modelo||'—'),fmtU(r.q)];
+      const kL=regLista('prd-mot-todos',`Motores vendidos${ac?' — '+ac:''} (${PER.rot})`,[...ML].sort((a,b)=>b.x.dt-a.x.dt).map(lin),cols);
+      const porAc=['Diesel','Elétrica','Jockey'].map(a=>{ const r=MT.filter(m=>m.acion===a); return {rot:a,val:somar(r,m=>m.q),extra:r.length?`${fmtN(new Set(r.map(m=>m.x.cli)).size)} clientes`:''}; }).filter(x=>x.val>0);
+      const FX=[[0,100,'até 100 HP'],[100,300,'100–300 HP'],[300,500,'300–500 HP'],[500,1e9,'acima de 500 HP']];
+      const porFx=FX.map(([a,b,rot])=>{ const r=ML.filter(m=>m.acion!=='Jockey'&&m.hp!=null&&m.hp>a&&m.hp<=b); return {rot,val:somar(r,m=>m.q),k:r.length?regLista('prd-motfx'+a,`Motores ${rot}${ac?' — '+ac:''}`,r.map(lin),cols):null}; });
+      const marcas=[...agrupa(ML.filter(m=>m.acion!=='Jockey'),m=>m.marca||'não descrita no ERP').entries()].map(([k,a])=>({rot:k,val:somar(a,m=>m.q),k:regLista('prd-motm'+norm(k).replace(/ /g,''),`Motores ${k}`,a.map(lin),cols)})).sort((a,b)=>b.val-a.val).slice(0,10);
+      h+=`<div class="pq-linhas so-tela" style="margin:0 0 10px"><div><label>Acionamento</label><div class="seg">${PRD_MOT_AC.map(([k,n])=>`<button class="${ac===k?'on':''}" onclick="prdSet('motAc','${k}')">${n}</button>`).join('')}</div></div>
+        <div><button class="btn sec so-tela" onclick="abrirLista('${kL}')">Abrir a listagem completa (↓ CSV)</button></div></div>`;
+      h+=`<div class="g g3">${card('Por acionamento','Unidades no período (todos os acionamentos).',`<div class="gb-c">${svgBarrasH(porAc,{fmt:v=>fmtU(v)+' un.',W:400,lw:80,rw:130,aria:'Motores por acionamento'})}</div>`)}
+        ${card('Por potência','Diesel e elétrico; clique para ver os motores.',`<div class="gb-c">${svgBarrasH(porFx,{fmt:v=>fmtU(v)+' un.',W:400,lw:120,rw:60,aria:'Motores por faixa de potência'})}</div>`)}
+        ${card('Por marca do motor','Diesel e elétrico, pela descrição do item no ERP.',`<div class="gb-c">${svgBarrasH(marcas,{fmt:v=>fmtU(v)+' un.',W:400,lw:140,rw:60,aria:'Motores por marca'})}</div>`)}</div>`;
+      h+=card(`Listagem — ${fmtN(ML.length)} motor(es)${ac?' — '+ac:''}`,`Do mais recente ao mais antigo. "Não descrita no ERP": o item não tem a descrição técnica; o código traz potência e rotação, mas não a marca.`,
+        tab(cols.map(c=>typeof c==='string'?{t:c}:c),[...ML].sort((a,b)=>b.x.dt-a.x.dt).map(lin),420));
+    } else h+=card('','','<p class="pl-vazio">Nenhum conjunto com motor vendido no período.</p>'); }
   /* ---------- cotado × ganho por linha ---------- */
   h+=sec('Cotado × ganho por linha de produto',`Itens das propostas emitidas no período (revisão mais recente de cada proposta; itens sem valor, como documentação, ficam fora). Win rate = ganhos ÷ (ganhos + perdidos); alternativa não escolhida conta como perdida.`,'prd-cot');
   if(P.length){
@@ -8453,7 +8525,7 @@ const REL_TEMAS=[
  {k:'tPIP',ic:'⟐',nome:'Pipeline e previsão',per:'esteMes',desc:'Posição e mudanças do pipeline, etapas, envelhecimento, previsão de pedidos por mês, compromisso, confiabilidade e negócios para agir.',off:['pipe-insp'],
    telas:{pipeline:['kpi:pipeline','pipe-pos','pipe-casc','pipe-etapa','pipe-estagios','pipe-aging','pipe-prev','pipe-pol','pipe-mes','pipe-cob','pipe-comp','pipe-conf2','pipe-div','q:n-div','q:n-dono','t:origem-do-negocio','t:segmento-do-cliente','q:n-so','q:n-id','pipe-parados','pipe-conf','pipe-insp']}},
  {k:'tPRD',ic:'⬢',nome:'Produtos e mix',per:'esteAno',desc:'Famílias mais vendidas, curva ABC dos produtos e dos conjuntos motobomba, cotado × ganho por linha e faixas de vazão e pressão.',
-   telas:{produtos:['prd-kpi','prd-fam','prd-abc','prd-mb','prd-cot']}},
+   telas:{produtos:['prd-kpi','prd-fam','prd-abc','prd-mb','prd-mot','prd-cot']}},
  {k:'tRES',ic:'▤',nome:'Resultados e metas',per:'esteAno',desc:'Pedidos contra a meta, evolução, mês a mês e contra o ano anterior, vendedores, categoria fiscal, natureza, estados e principais clientes.',
    telas:{resultados:['kpi:resultados','res-bullet','res-ind','res-evo','res-rec','res-mes','res-yoy','q:v-vend','res-cat','q:v-cat','q:v-nat','m:v-mapa','q:v-uf','q:v-cli','res-spv','res-seq']}},
  {k:'tPRO',ic:'✎',nome:'Propostas e conversão',per:'esteTri',desc:'Propostas emitidas, conversão, velocidade, situação por vendedor, win rate, ciclo de venda e motivos de perda.',

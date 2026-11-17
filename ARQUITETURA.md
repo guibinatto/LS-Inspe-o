@@ -188,3 +188,5 @@ Aba `produtos` (`VISTA.produtos`, funções `prd*`). Três fontes:
 - **Cotado × ganho e faixas:** itens das propostas (`M.propostas`), só a revisão mais recente de cada proposta e só itens com valor.
 
 `prdAnalisa` lê o código do produto (`CMB LSF <acionamento> <tipo> <modelo> … <norma>`); descrições livres são lidas por palavras-chave. Curva ABC: A até 80% do valor (o item que cruza a linha ainda é A), B até 95%, C o resto. Relatório por tema `tPRD`. Teste: `testes/produtos.js`.
+
+**Motores vendidos** (seção `prd-mot`): `prdConjuntos` lê do código um bloco por conjunto — `<tipo> <modelo da bomba> <HP> <rpm/100> [RD|TR] <painel> [norma]` (RD radiador, TR trocador de calor; 22M = 220 V mono, 38T/44T = 380/440 V tri); skid/container trazem um bloco por letra do acionamento (DEJ = diesel, elétrica, jockey). `prdMotoresObs` tira marca e modelo da descrição do item no ERP ("Motor Diesel Clarke, modelo DR8H-UFAA40"; ignora "painel para motor diesel …"), na ordem em que aparecem, por tipo. Jockey é monobloco (motor integrado). Sem descrição, a marca fica "não descrita no ERP".
