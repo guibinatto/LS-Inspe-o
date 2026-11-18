@@ -440,6 +440,9 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .gc-t{width:100%;border-collapse:collapse;font-size:12.5px}.gc-t th{text-align:left;font-weight:600;color:var(--txt3);padding:5px 10px 5px 0;vertical-align:top;width:38%}
 .gc-t td{padding:5px 0;border-bottom:1px solid var(--linha);overflow-wrap:anywhere}
 .gc-src{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:99px;padding:0 6px;white-space:nowrap}
+.gc-abas small{margin-left:6px;font-size:10px;opacity:.8;font-weight:400}
+.gc-sug{margin:8px 0 4px;font-size:12px}.gc-sug summary{cursor:pointer;color:var(--lar-txt);font-weight:600;padding:4px 0}
+.gc-sug-i{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--linha)}
 .gc-check{list-style:none;padding:0;margin:0;font-size:12.5px;display:grid;gap:3px}.gc-check li{color:var(--ale)}.gc-check li.ok{color:var(--ok)}
 .gc-bar{display:inline-block;position:relative;width:70px;height:8px;border-radius:4px;background:var(--card2);border:1px solid var(--linha);vertical-align:middle}
 .gc-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--lar);border-radius:4px}.gc-bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--txt);margin-left:-1px}
@@ -3020,6 +3023,7 @@ const TELAS=[
  {id:'clientes',bloco:'Análise',ic:'◍',nome:'Clientes e mercado',tit:'Clientes e mercado',sub:'Quem compra, quem volta, concentração e regiões',fase:''},
  {id:'produtos',bloco:'Análise',ic:'⬢',nome:'Produtos e mix',tit:'Produtos e mix',sub:'Famílias e itens mais vendidos, curva ABC, motobombas e cotado × ganho',fase:''},
  {id:'verificacoes',bloco:'Análise',ic:'✓',nome:'Verificações',tit:'Verificações de cadastro',sub:'O que falta ou está errado no Ploomes, no Omie e no Controle: vendedor, agente, impostos, NCM, descrição dos itens',fase:''},
+ {id:'gestao',bloco:'Gestão',ic:'▦',nome:'Contratos e serviços recorrentes',tit:'Gestão de contratos e serviços recorrentes',sub:'ITM, manutenção preventiva e locação: ficha, equipamentos, visitas, anexos e indicadores',fase:''},
  {id:'relatorios',bloco:'Apoio',ic:'▣',nome:'Relatórios prontos',tit:'Relatórios prontos',sub:'Diário, semanal, individual, engenharia, mensal, trimestral e anual',fase:''},
  {id:'apresentacao',bloco:'Apoio',ic:'▶',nome:'Apresentação',tit:'Apresentação',sub:'A história do período em capítulos, para projetar ou enviar — com o período e os filtros do painel',fase:''},
  {id:'busca',bloco:'Apoio',ic:'⌕',nome:'Consulta detalhada',tit:'Consulta detalhada',sub:'Qualquer cliente, vendedor, analista, cidade ou estado, em todas as bases',fase:''},
@@ -6670,17 +6674,20 @@ function svgVigencias(L,o){ o=o||{}; const R=hoje(); L=L.filter(c=>c.ini||c.fim)
    publicado (capacidade db do Claude), e os arquivos no armazenamento dele (assets).
    Sobrevivem às atualizações automáticas do painel. No arquivo baixado (↓ Salvar),
    que não roda dentro do Claude, a gestão aparece só para leitura do automático.
-   Coleções: contratos/<id>  ·  ctrVisitas/<id> (campo ctr)  ·  ctrAnexos/<id> (campo ctr). */
+   Coleções: contratos/<id>  ·  ctrVisitas/<id>  ·  ctrAnexos/<id>  ·  ctrEquip/<id> (todas com o campo ctr).
+   Fica num menu próprio (Gestão), separado do dashboard de contratos (Análise). */
 const GC={db:null,assets:null,user:null,uid:null,estado:'carregando',erro:'',fichas:new Map(),visitas:[],anexos:[],
-  pode:null,aba:'acomp',filtro:'',aberto:null,pendente:false,nomes:{},_ini:false,_t:null,chegou:new Set()};
-const GC_TIPOS=['Manutenção preventiva','Inspeção e testes (NFPA 25)','Manutenção preventiva e corretiva','Locação','Assistência técnica','Outro'];
+  pode:null,aba:'todos',filtro:'',aberto:null,pendente:false,nomes:{},_ini:false,_t:null,chegou:new Set(),equip:[],indCat:''};
+const GC_TIPOS=['Inspeção e manutenção (ITM)','Manutenção preventiva','Manutenção preventiva e corretiva','Inspeção e testes (NFPA 25)','Locação','Assistência técnica','Outro'];
+const GC_ETIPOS=['Bomba principal','Bomba jockey','Motor diesel','Motor elétrico','Painel de comando','Painel jockey','Conjunto motobomba','Skid','Container','Tanque','Válvula','Instrumento','Outro'];
+const GC_ESIT=['Em operação','Parado','Em manutenção','Locado no cliente','Devolvido','Retirado'];
 const GC_PERIOD=[['','não definida'],['mensal','mensal'],['bimestral','bimestral'],['trimestral','trimestral'],['quadrimestral','quadrimestral'],['semestral','semestral'],['anual','anual'],['demanda','sob demanda']];
 const GC_PASSO={mensal:1,bimestral:2,trimestral:3,quadrimestral:4,semestral:6,anual:12};
 const GC_STATUS=['','Ativo','Em renovação','Suspenso','Encerrado','Cancelado'];
 const GC_REAJ=['','IPCA','IGP-M','INPC','Fixo (sem reajuste)','Outro'];
 const GC_VTIPOS=['Preventiva','Corretiva','Inspeção','Teste de bombas','Treinamento','Emergencial','Outra'];
 const GC_VSIT=['Realizada','Agendada','Não realizada','Cancelada'];
-const GC_ATIPOS=['Contrato','Aditivo','Proposta / PTC','Pedido de compra','ART','Relatório de visita','Outro'];
+const GC_ATIPOS=['Contrato','Aditivo','Proposta / PTC','Pedido de compra','ART','Relatório de visita','Termo de entrega / devolução','Foto do equipamento','Outro'];
 const GC_ACEITA='application/pdf,image/png,image/jpeg,image/webp,image/gif,text/plain,text/csv';
 /* id de documento: o número do contrato com só os caracteres que o banco aceita */
 const gcId=num=>String(num||'').trim().replace(/[^A-Za-z0-9_\-.~:@+]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'sem-numero';
@@ -6696,27 +6703,43 @@ async function gcIniciar(){ if(GC._ini)return; GC._ini=true;
   try{ GC.user=await window.claude.use('user'); if(GC.user){ GC.uid=await GC.user.id(); const p=GC.user.can?await GC.user.can('data.write'):null; GC.pode=p; } }catch(e){}
   try{ GC.assets=await window.claude.use('assets'); }catch(e){ GC.assets=null; }
   const falha=e=>{ clearTimeout(GC._t); GC.estado='erro'; GC.erro=(e&&e.code)||'erro'; gcAtualizarTela(); };
-  const pronto=(k,snap)=>{ if(!snap.metadata.fromCache)GC.chegou.add(k); if(GC.chegou.size>=3){ clearTimeout(GC._t); GC.estado='ok'; } gcAtualizarTela(); };
+  const pronto=(k,snap)=>{ if(!snap.metadata.fromCache)GC.chegou.add(k); if(GC.chegou.size>=4){ clearTimeout(GC._t); GC.estado='ok'; } gcAtualizarTela(); };
   GC.db.collection('contratos').onSnapshot(s=>{ GC.fichas=new Map(s.docs.map(d=>[d.id,d.data()])); pronto('f',s); },falha);
   GC.db.collection('ctrVisitas').onSnapshot(s=>{ GC.visitas=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('v',s); },falha);
-  GC.db.collection('ctrAnexos').onSnapshot(s=>{ GC.anexos=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('a',s); },falha); }
+  GC.db.collection('ctrAnexos').onSnapshot(s=>{ GC.anexos=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('a',s); },falha);
+  GC.db.collection('ctrEquip').onSnapshot(s=>{ GC.equip=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('e',s); },falha); }
 /* dado novo do banco: redesenha a aba (ou a ficha aberta), sem atropelar um formulário em edição */
 function gcAtualizarTela(){ _GCV=null;
   const form=document.getElementById('m-form'); if(form&&form.classList.contains('aberto')){ GC.pendente=true; return; }
   const m=document.getElementById('m-ctr'); if(m&&m.classList.contains('aberto')&&GC.aberto){ gcFicha(GC.aberto,true); }
-  if(EST.tela==='contratos')render(); }
+  if(EST.tela==='gestao'||EST.tela==='contratos')render(); }
 async function gcNomes(ids){ ids=[...new Set(ids.filter(Boolean))].filter(i=>!(i in GC.nomes)); if(!ids.length||!GC.user||!GC.user.profiles)return;
   try{ const ps=await GC.user.profiles(ids); ids.forEach(i=>{ GC.nomes[i]=(ps[i]&&ps[i].name)||''; }); }catch(e){ ids.forEach(i=>{ GC.nomes[i]=''; }); } }
 const gcQuem=id=>id?(GC.nomes[id]||(id===GC.uid?'você':'—')):'—';
 
 /* ---------- a visão de cada contrato: automático + ficha ---------- */
 let _GCV=null;
-function gcContratos(){ const C=contratosModelo(), chave=C.chave+'|'+GC.fichas.size+'|'+GC.visitas.length+'|'+GC.anexos.length;
+function gcContratos(){ const C=contratosModelo(), chave=C.chave+'|'+GC.fichas.size+'|'+GC.visitas.length+'|'+GC.anexos.length+'|'+GC.equip.length;
   if(_GCV&&_GCV.chave===chave&&_GCV.R===+hoje())return _GCV.L;
   const R=hoje(), L=C.L.map(c=>gcMontar(c,GC.fichas.get(gcId(c.num))||{},R));
+  gcLocacoes(C,R).forEach(c=>L.push(gcMontar(c,GC.fichas.get(gcId(c.num))||{},R)));
   /* contratos cadastrados só no painel (ainda não estão no Omie nem no Controle) */
   GC.fichas.forEach((f,id)=>{ if(f.manual&&!L.some(x=>x.id===id))L.push(gcMontar({num:f.num||id,cli:f.cli||'(sem cliente)',nCli:norm(f.cli||''),os:[],fat:0,aguard:0,total:0,alertas:[],pl:{ab:[],renov:[],abSPV:[]},manualSo:true},f,R)); });
   _GCV={chave,R:+R,L}; return L; }
+/* LOCAÇÕES (rentals): pedido da família REN no Controle de Pedidos e OV do Omie com categoria
+   Locação. Traz cliente, valor, data, itens locados (descrição do Omie), notas da OV e OS de
+   locação do cliente; entrega, devolução, local e números de série a equipe completa na ficha. */
+function gcLocacoes(C,R){ const kov=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,''), out=[], vistos=new Set();
+  const w1=n=>String(n||'').split(' ').filter(x=>x.length>2)[0]||'', mesmo=(a,b)=>!!a&&!!b&&w1(a)===w1(b);
+  const doLoc=(ov,ped,itens)=>{ const k=kov(ov), osL=(M.os||[]).filter(o=>/loca/i.test(o.cat||'')&&mesmo(o.nCli,(ped||itens[0]).nCli)&&(!o.dt||!ped||!ped.dt||o.dt>=new Date(+ped.dt-30*864e5)));
+    const nfs=k?(M.notas||[]).filter(n=>!n.cancelada&&kov(n.ov)===k):[], cli=(ped&&ped.cli)||(itens[0]&&itens[0].cli)||'(sem cliente)';
+    const num='LOC '+((ped&&String(ped.ptc||'').trim())||k||(ped&&ped.dt?isoD(ped.dt):'s/nº'));
+    out.push({num,cli,nCli:norm(cli),loc:true,ped,itens,os:osL,nfs,fat:somar(osL.filter(o=>o.faturado),o=>o.vNum)+somar(nfs,n=>n.vNum),aguard:somar(osL.filter(o=>!o.faturado),o=>o.vNum),
+      valorPed:ped?ped.vNum||null:somar(itens,o=>o.vNum)||null,ini:ped?(ped.dtEnt||ped.dt):(itens[0]&&itens[0].dt),fonteVig:ped&&ped.dtEnt?'entrega no Controle':'data do pedido (presumida)',
+      status:'Vigente',resp:(ped&&ped.resp)||(itens[0]&&itens[0].resp)||'(sem responsável)',pl:ctrPloomes(norm(cli),cli),alertas:[]}); };
+  (M.pedidos||[]).filter(p=>p.cat==='REN'&&p.dt&&p.dt<=R).forEach(p=>{ const k=kov(p.ov), it=k?(M.omie||[]).filter(o=>kov(o.ov)===k):[]; if(k)vistos.add(k); doLoc(p.ov,p,it); });
+  for(const [k,it] of agrupa((M.omie||[]).filter(o=>/loca/i.test(o.cat||'')&&kov(o.ov)),o=>kov(o.ov)))if(!vistos.has(k))doLoc(k,null,it);
+  out.forEach(c=>{ c.dono=c.pl.dono; }); return out; }
 function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c.cli};
   const fonte=(v,src)=>v!=null&&v!==''?{v,src}:null, pick=(...op)=>op.find(Boolean)||{v:null,src:'—'};
   /* vigência */
@@ -6747,9 +6770,11 @@ function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c
   x.pc=f.pc||(c.ped&&c.ped.pedidoCli?String(c.ped.pedidoCli):'')||(pcOS?String(pcOS):''); x.pcSrc=f.pc?'ficha':x.pc?(c.ped&&c.ped.pedidoCli?'Controle de Pedidos':'OS (Omie)'):'—';
   x.vend=nomeCurto(c.resp)||c.resp||''; x.dono=c.dono?nomeCurto(c.dono)||c.dono:'';
   x.respInt=f.respInterno||''; x.contato=f.contato||'';
-  x.tipo=f.tipo||''; x.objeto=f.objeto||''; x.reajuste=f.reajuste||''; x.mesReaj=f.mesReajuste||'';
+  x.loc=f.tipo?f.tipo==='Locação':!!c.loc; x.cat=x.loc?'Locação':'ITM e manutenção';
+  x.tipo=f.tipo||(c.loc?'Locação':''); x.objeto=f.objeto||''; x.reajuste=f.reajuste||''; x.mesReaj=f.mesReajuste||'';
+  x.local=f.local||''; x.devolucao=data(f.devolucao); x.caucao=num(f.caucao);
   /* situação: a ficha manda; sem ela, a do Omie */
-  x.status=f.status||(c.manualSo?(x.fim&&R>x.fim?'Encerrado':'Ativo'):c.status==='Vigente'||c.status==='A vencer'?'Ativo':c.status)||'—';
+  x.status=f.status||(x.devolucao&&x.devolucao<=R?'Encerrado':c.manualSo?(x.fim&&R>x.fim?'Encerrado':'Ativo'):c.status==='Vigente'||c.status==='A vencer'?'Ativo':c.status)||'—';
   x.ativo=['Ativo','Em renovação','Suspenso'].includes(x.status)&&!(x.fim&&R>x.fim&&!f.status);
   x.diasFim=x.fim?diasEntre(R,x.fim):null;
   /* visitas */
@@ -6767,23 +6792,29 @@ function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c
   x.proxVis=ag?{data:ag.data,src:'agendada'}:passo&&x.ini&&x.ativo?{data:isoD(gcAddMes(x.ultVis?data(x.ultVis.data):x.ini,x.ultVis?passo:0)),src:'pela periodicidade'}:null;
   x.semRel=x.realizadas.filter(v=>!v.relatorio);
   x.diasSemVisita=x.ultVis?diasEntre(data(x.ultVis.data),R):null;
+  /* equipamentos */
+  x.eq=GC.equip.filter(e=>e.ctr===id).sort((a,b)=>GC_ETIPOS.indexOf(a.tipo)-GC_ETIPOS.indexOf(b.tipo)||String(a.tag||'').localeCompare(String(b.tag||'')));
+  x.eqSemSerie=x.eq.filter(e=>!String(e.serie||'').trim()&&!['Tanque','Válvula','Outro'].includes(e.tipo));
   /* anexos e cadastro */
   x.anx=GC.anexos.filter(a=>a.ctr===id).sort((a,b)=>String(b.em).localeCompare(String(a.em)));
   const tem=t=>x.anx.some(a=>a.tipo===t);
   x.check=[['Contrato assinado anexado',tem('Contrato')],['Proposta / PTC anexada ou informada',tem('Proposta / PTC')||!!x.ptc],['Valor contratado',x.valor!=null],
-    ['Início e fim da vigência',!!(x.ini&&x.fim)],['Periodicidade de visita',!!x.period],['Responsável interno',!!x.respInt],['Reajuste definido',!!x.reajuste]];
+    [x.loc?'Entrega e devolução prevista':'Início e fim da vigência',!!(x.ini&&x.fim)],['Equipamentos cadastrados',x.eq.length>0],['Nº de série de todos os equipamentos',x.eq.length>0&&!x.eqSemSerie.length],
+    x.loc?['Local de instalação',!!x.local]:['Periodicidade de visita',!!x.period],['Responsável interno',!!x.respInt],['Reajuste definido',!!x.reajuste]];
   x.completo=x.check.filter(k=>k[1]).length/x.check.length;
   x.alertas=[x.status==='Ativo'&&x.diasFim!=null&&x.diasFim<=90&&x.diasFim>=0?`vence em ${fmtN(x.diasFim)} dias`:'',x.diasFim!=null&&x.diasFim<0&&x.ativo?'vigência vencida':'',
     x.visAtraso?`${fmtN(x.visAtraso)} visita(s) atrasada(s)`:'',x.semRel.length?`${fmtN(x.semRel.length)} visita(s) sem relatório`:'',
     x.desvio!=null&&x.desvio<-.15?`faturamento ${fmtPct(-x.desvio,0)} abaixo do prazo`:'',x.desvio!=null&&x.desvio>.15?`faturamento ${fmtPct(x.desvio,0)} acima do prazo`:'',
+    x.eqSemSerie.length?`${fmtN(x.eqSemSerie.length)} equipamento(s) sem nº de série`:'',x.loc&&x.ativo&&!x.fim?'sem devolução prevista':'',
     x.completo<1?`cadastro ${fmtPct(x.completo,0)}`:''].filter(Boolean);
-  x.busca=norm([x.num,x.cli,x.vend,x.dono,x.respInt,x.ptc,x.pc,x.tipo].join(' '));
+  x.busca=norm([x.num,x.cli,x.vend,x.dono,x.respInt,x.ptc,x.pc,x.tipo,x.local,...x.eq.map(e=>[e.serie,e.modelo,e.fabricante,e.tag].join(' '))].join(' '));
   return x; }
 
-/* ---------- abas da tela Contratos ---------- */
-function gcAbas(){ const n=GC.estado==='ok'?gcContratos().filter(x=>x.ativo&&x.alertas.length).length:0;
-  return `<div class="seg so-tela" role="tablist" style="margin:0 0 14px">${[['acomp','Acompanhamento (Omie)'],['gestao','Gestão de contratos'+(n?` · ${n}`:'')],['ind','Indicadores']].map(([k,t])=>
-    `<button role="tab" aria-selected="${GC.aba===k}" class="${GC.aba===k?'on':''}" onclick="GC.aba='${k}';render()">${esc(t)}</button>`).join('')}</div>`; }
+/* ---------- abas da tela Gestão ---------- */
+const GC_ABAS=[['todos','Todos'],['itm','ITM e manutenção'],['loc','Locação'],['ind','Indicadores']];
+function gcAbas(){ const L=GC.estado==='indisponivel'||GC.estado==='ok'?gcContratos():[], n=c=>L.filter(x=>x.ativo&&(c==='itm'?!x.loc:c==='loc'?x.loc:true)).length;
+  return `<div class="seg so-tela gc-abas" role="tablist" style="margin:0 0 14px">${GC_ABAS.map(([k,t])=>
+    `<button role="tab" aria-selected="${GC.aba===k}" class="${GC.aba===k?'on':''}" onclick="GC.aba='${k}';render()">${esc(t)}${k!=='ind'&&L.length?` <small title="ativos">${n(k)}</small>`:''}</button>`).join('')}</div>`; }
 function gcAvisoEstado(){
   if(GC.estado==='indisponivel')return `<div class="nota" style="border-left-color:var(--ale)"><b>Gestão disponível só no painel publicado no Claude.</b> Este arquivo não guarda fichas, visitas nem anexos: abra o link do painel. Os valores automáticos (Omie, Controle, Ploomes) aparecem abaixo para leitura.</div>`;
   if(GC.estado==='carregando')return `<div class="nota">Carregando as fichas dos contratos…</div>`;
@@ -6798,17 +6829,17 @@ function gcBarra(p,ref){ if(p==null)return '';
 
 /* ---------- aba Gestão: a carteira de contratos com a ficha de cada um ---------- */
 function gcTelaGestao(){
-  const L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), q=norm(GC.filtro);
+  const cat=GC.aba, L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]).filter(x=>cat==='itm'?!x.loc:cat==='loc'?x.loc:true), q=norm(GC.filtro);
   const F=L.filter(x=>!q||x.busca.includes(q)).sort((a,b)=>(b.ativo-a.ativo)||((a.diasFim??9e9)-(b.diasFim??9e9)));
   let h=gcAvisoEstado();
-  h+=`<div class="pl-bar so-tela" style="margin:0 0 12px"><input class="campo" id="gc-q" style="min-width:240px" placeholder="Filtrar: cliente, contrato, PTC, responsável…" aria-label="Filtrar contratos" value="${esc(GC.filtro)}" oninput="GC.filtro=this.value;clearTimeout(GC._f);GC._f=setTimeout(()=>{render();const i=document.getElementById('gc-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">
-    ${gcEdita()?`<button class="btn" onclick="gcNovo()">＋ Novo contrato</button>`:''}<button class="btn sec" onclick="gcExcel()">↓ Excel da gestão</button></div>`;
-  h+=sec('Carteira de contratos','Uma linha por contrato: ativos primeiro, do vencimento mais próximo. Clique no contrato para abrir a ficha completa (dados, valores, visitas, anexos).','gc-lista');
-  h+=card('',`${fmtN(F.length)} contrato(s) · barra = quanto do valor já foi faturado; o traço é quanto do prazo já passou.`,tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Situação'},{t:'Vigência'},{t:'Mês'},{t:'Valor contratado',n:1},{t:'Faturado × prazo'},{t:'Saldo',n:1},{t:'Visitas',n:1},{t:'Última visita',n:1},{t:'Cadastro',n:1},{t:'Atenção',f:1}],
-    F.map(x=>[`<a class="td-link" onclick="gcFicha('${esc(x.id)}')"><b>${esc(x.num)}</b></a>`,esc(String(x.cli).slice(0,34)),gcSit(x.status),
+  h+=`<div class="pl-bar so-tela" style="margin:0 0 12px"><input class="campo" id="gc-q" style="min-width:240px" placeholder="Filtrar: cliente, contrato, PTC, nº de série, modelo…" aria-label="Filtrar contratos" value="${esc(GC.filtro)}" oninput="GC.filtro=this.value;clearTimeout(GC._f);GC._f=setTimeout(()=>{render();const i=document.getElementById('gc-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">
+    ${gcEdita()?`<button class="btn" onclick="gcNovo(${cat==='loc'})">＋ ${cat==='loc'?'Nova locação':'Novo contrato'}</button>`:''}<button class="btn sec" onclick="gcExcel()">↓ Excel da gestão</button></div>`;
+  h+=sec(cat==='loc'?'Locações':cat==='itm'?'Contratos de ITM e manutenção':'Contratos e serviços recorrentes',`Uma linha por ${cat==='loc'?'locação':'contrato'}: ativos primeiro, do vencimento mais próximo. Clique no número para abrir a ficha completa (dados, valores, equipamentos, visitas, anexos).`,'gc-lista');
+  h+=card('',`${fmtN(F.length)} ${cat==='loc'?'locação(ões)':'contrato(s)'} · barra = quanto do valor já foi faturado; o traço é quanto do prazo já passou.`,tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Tipo'},{t:'Situação'},{t:'Vigência'},{t:'Mês'},{t:'Valor contratado',n:1},{t:'Faturado × prazo'},{t:'Saldo',n:1},{t:'Equip.',n:1},{t:'Visitas',n:1},{t:'Última visita',n:1},{t:'Cadastro',n:1},{t:'Atenção',f:1}],
+    F.map(x=>[`<a class="td-link" onclick="gcFicha('${esc(x.id)}')"><b>${esc(x.num)}</b></a>`,esc(String(x.cli).slice(0,34)),`<span class="tag ${x.loc?'t-az':''}">${x.loc?'Locação':'ITM'}</span>`,gcSit(x.status),
       x.ini||x.fim?`<span style="white-space:nowrap">${x.ini?_dc(x.ini):'?'} – ${x.fim?_dc(x.fim):'?'}</span>`:'<span class="nd">—</span>',esc(x.fase),
       x.valor!=null?fmtBRL(x.valor):'<span class="nd">—</span>',x.fatPct!=null?gcBarra(x.fatPct,x.prazoPct)+` <small>${fmtPct(x.fatPct,0)}</small>`:'<span class="nd">—</span>',
-      x.saldo!=null?fmtBRL(x.saldo):'—',x.esperadas!=null?`${fmtN(x.realizadas.length)}/${fmtN(x.esperadas)}`:fmtN(x.realizadas.length),
+      x.saldo!=null?fmtBRL(x.saldo):'—',x.eq.length?`${fmtN(x.eq.length)}${x.eqSemSerie.length?` <small style="color:var(--ale)">${fmtN(x.eqSemSerie.length)} s/ série</small>`:''}`:'<span class="nd">—</span>',x.esperadas!=null?`${fmtN(x.realizadas.length)}/${fmtN(x.esperadas)}`:fmtN(x.realizadas.length),
       x.ultVis?fmtData(data(x.ultVis.data)):'<span class="nd">nenhuma</span>',`<span style="color:${x.completo<1?'var(--ale)':'var(--ok)'}">${fmtPct(x.completo,0)}</span>`,
       x.alertas.length?x.alertas.map(a=>`<span class="tag ${/atrasad|vencida|abaixo|sem relat/.test(a)?'t-err':'t-ale'}">${esc(a)}</span>`).join(' '):'<span class="tag t-ok">ok</span>']),560));
   return h; }
@@ -6824,6 +6855,11 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
     esc(String(v.resumo||'').slice(0,160))+(v.pendencias?`<br><small><b>Pendências:</b> ${esc(String(v.pendencias).slice(0,160))}</small>`:''),
     v.relatorio?`<a class="td-link" href="/_blob/${esc(v.relatorio)}" target="_blank" rel="noopener">${esc(v.relNome||'relatório')}</a>`:v.status==='Realizada'?'<span class="tag t-err">sem relatório</span>':'—',
     ed?`<button class="mini" onclick="gcVisita('${esc(id)}','${esc(v._id)}')">editar</button>`:'']);
+  const eqs=x.eq.map(e=>[esc(e.tipo||'—'),esc([e.fabricante,e.modelo].filter(Boolean).join(' ')||'—'),e.serie?`<b>${esc(e.serie)}</b>`:'<span class="tag t-ale">sem nº de série</span>',
+    esc([e.potencia,e.rotacao&&e.rotacao+' rpm',e.vazao,e.pressao,e.tensao].filter(Boolean).join(' · ')||'—'),esc([e.tag,e.ano&&'fab. '+e.ano,e.patrimonio&&'patr. '+e.patrimonio,e.horimetro&&e.horimetro+' h'].filter(Boolean).join(' · ')||'—'),
+    `<span class="tag ${{'Em operação':'t-ok','Locado no cliente':'t-az',Parado:'t-err','Em manutenção':'t-ale'}[e.situacao]||''}">${esc(e.situacao||'—')}</span>`,
+    ed?`<button class="mini" onclick="gcEquip('${esc(id)}','${esc(e._id)}')">editar</button>`:'']);
+  const sug=ed?gcSugestoes(x):[];
   const anx=x.anx.map(a=>[esc(a.tipo||'—'),`<a class="td-link" href="/_blob/${esc(a.asset)}" target="_blank" rel="noopener">${esc(a.nome||'arquivo')}</a>`,a.tam?fmtN(Math.round(a.tam/1024))+' KB':'—',a.em?fmtData(new Date(a.em)):'—',esc(gcQuem(a.por)),
     ed&&GC.assets?`<button class="mini" onclick="gcApagarAnexo('${esc(a._id)}')">remover</button>`:'']);
   m.innerHTML=`<div class="cx-modal gc-ficha" role="dialog" aria-label="Ficha do contrato ${esc(x.num)}"><header><h3>Contrato ${esc(x.num)} · ${esc(String(x.cli).slice(0,60))}</h3>${gcSit(x.status)}<button onclick="gcFechar()" aria-label="Fechar">✕</button></header>
@@ -6835,8 +6871,9 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
       <div class="gc-2">
         <div><h4>Dados do contrato</h4><table class="gc-t">
           ${lin('Cliente',esc(x.cli))}${lin('Tipo',gcFmtV(esc(x.tipo)))}${lin('Objeto / escopo',gcFmtV(esc(x.objeto)))}
-          ${lin('Vigência',gcFmtV(x.ini?fmtData(x.ini):'',x.iniSrc)+' a '+gcFmtV(x.fim?fmtData(x.fim):'',x.fimSrc))}${lin('Duração',gcFmtV(x.meses?fmtN(x.meses)+' meses':'',x.mesesSrc))}
-          ${lin('Parcela',gcFmtV(x.parcela?fmtBRL(x.parcela):'',num(x.f.valorParcela)?'ficha':c.parcela?'Omie':''))}${lin('Reajuste',gcFmtV(esc([x.reajuste,x.mesReaj&&'em '+x.mesReaj].filter(Boolean).join(' '))))}
+          ${x.loc?lin('Entrega (início)',gcFmtV(x.ini?fmtData(x.ini):'',x.iniSrc))+lin('Devolução prevista',gcFmtV(x.fim?fmtData(x.fim):'',x.fimSrc))+lin('Devolvido em',gcFmtV(x.devolucao?fmtData(x.devolucao):''))+lin('Local de instalação',gcFmtV(esc(x.local)))+(x.caucao?lin('Caução / seguro',fmtBRL(x.caucao)):'')
+            :lin('Vigência',gcFmtV(x.ini?fmtData(x.ini):'',x.iniSrc)+' a '+gcFmtV(x.fim?fmtData(x.fim):'',x.fimSrc))}${lin('Duração',gcFmtV(x.meses?fmtN(x.meses)+' meses':'',x.mesesSrc))}
+          ${lin(x.loc?'Aluguel mensal':'Parcela',gcFmtV(x.parcela?fmtBRL(x.parcela):'',num(x.f.valorParcela)?'ficha':c.parcela?'Omie':''))}${lin('Reajuste',gcFmtV(esc([x.reajuste,x.mesReaj&&'em '+x.mesReaj].filter(Boolean).join(' '))))}
           ${lin('Renovação',gcFmtV(esc([x.f.renovAuto?'automática':x.f.renovAuto===false?'manual':'',x.f.avisoPrevio?`aviso prévio ${x.f.avisoPrevio} dias`:''].filter(Boolean).join(' · '))))}
           ${lin('PTC / proposta',gcFmtV(esc(x.ptc),x.ptcSrc))}${lin('Pedido de compra do cliente',gcFmtV(esc(x.pc),x.pcSrc))}
           ${lin('Vendedor (OS)',gcFmtV(esc(x.vend),'Omie'))}${lin('Dono da conta',gcFmtV(esc(x.dono),'Ploomes'))}
@@ -6851,6 +6888,10 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
             ${lin('Última',x.ultVis?`${fmtData(data(x.ultVis.data))} <small>(${fmtN(x.diasSemVisita)} dias)</small>`:'<span class="nd">nenhuma registrada</span>')}
             ${lin('Próxima',x.proxVis?`${fmtData(data(x.proxVis.data))} <small class="gc-src">${esc(x.proxVis.src)}</small>`:'—')}</table>
           ${x.alertas.length?`<h4>Atenção</h4><p>${x.alertas.map(a=>`<span class="tag ${/atrasad|vencida|abaixo|sem relat/.test(a)?'t-err':'t-ale'}">${esc(a)}</span>`).join(' ')}</p>`:''}</div></div>
+      <h4>Equipamentos ${x.loc?'locados':'do contrato'} (${fmtN(x.eq.length)})</h4>
+      ${ed?`<div class="pl-bar"><button class="btn" onclick="gcEquip('${esc(id)}')">＋ Equipamento</button></div>`:''}
+      ${eqs.length?tab([{t:'Tipo'},{t:'Fabricante / modelo',f:1},{t:'Nº de série'},{t:'Dados técnicos',f:1},{t:'TAG / local · ano · patrimônio',f:1},{t:'Situação'},{t:''}],eqs,320):'<p class="pl-vazio">Nenhum equipamento cadastrado.</p>'}
+      ${sug.length?`<details class="gc-sug" ${x.eq.length?'':'open'}><summary>Sugestões a partir do Omie e do Ploomes (${fmtN(sug.length)}) — adicione e complete o nº de série</summary>${sug.map((g,i)=>`<div class="gc-sug-i"><div><b>${esc(g.desc.slice(0,90))}</b><br><small class="gc-src">${esc(g.src)}</small> <small>${g.eq.map(e=>esc(e.tipo+(e.modelo?' '+e.modelo:'')+(e.potencia?' '+e.potencia:''))).join(' · ')}</small></div><button class="mini" onclick="gcAddSug('${esc(id)}',${i})">adicionar ${fmtN(g.eq.length)}</button></div>`).join('')}</details>`:''}
       <h4>Visitas e relatórios</h4>
       ${ed?`<div class="pl-bar"><button class="btn" onclick="gcVisita('${esc(id)}')">＋ Registrar visita</button></div>`:''}
       ${vis.length?tab([{t:'Data'},{t:'Tipo'},{t:'Situação'},{t:'Técnico'},{t:'Resumo',f:1},{t:'Relatório'},{t:''}],vis,320):'<p class="pl-vazio">Nenhuma visita registrada.</p>'}
@@ -6859,10 +6900,60 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
         :ed?'<p class="nd-m">Anexar arquivos é só para quem pode editar o painel (Editor ou dono).</p>':''}
       ${anx.length?tab([{t:'Tipo'},{t:'Arquivo',f:1},{t:'Tamanho',n:1},{t:'Em',n:1},{t:'Por'},{t:''}],anx,260):'<p class="pl-vazio">Nenhum anexo.</p>'}
       ${c.os&&c.os.length?`<h4>OS do Omie (${fmtN(c.os.length)})</h4>`+tab(OS_COLS,c.os.slice().sort((a,b)=>(b.dt||0)-(a.dt||0)).map(osLinha),260):''}
+      ${c.nfs&&c.nfs.length?`<h4>Notas fiscais da OV (${fmtN(c.nfs.length)})</h4>`+tab([{t:'NF'},{t:'Emissão',n:1},{t:'Valor',n:1}],c.nfs.map(n=>[esc(n.nf),fmtData(n.dt),fmtBRL(n.vNum)]),200):''}
+      ${c.itens&&c.itens.length?`<h4>Itens da OV no Omie</h4>`+tab([{t:'OV'},{t:'Produto',f:1},{t:'Qtd',n:1},{t:'Valor',n:1}],c.itens.map(o=>[esc(o.ov),esc(String(o.produto).slice(0,90)),fmtN(o.qNum),fmtBRL(o.vNum)]),200):''}
     </div></div>`;
   if(!refresh)abrirModal('m-ctr'); }
 function gcFechar(){ GC.aberto=null; fecharModal('m-ctr'); if(GC.pendente){ GC.pendente=false; render(); } }
 const gcFechaForm=()=>{ if(GC.pendente){ GC.pendente=false; gcAtualizarTela(); } };
+
+/* ---------- equipamentos: sugestões a partir do Omie e do Ploomes ----------
+   Fontes: itens da própria OV (locação), itens da proposta/PTC do contrato no Ploomes e o que a
+   LS Fire já vendeu ao mesmo cliente no Omie (motobomba, skid, container, painel). O código do
+   produto ("CMB LSF D SC SCE 150-460 483 18 RD 22M NFPA20") vira bomba + motor + painel; marca e
+   modelo do motor vêm da descrição do item quando ela traz. Nº de série nunca está nos sistemas:
+   a equipe completa. */
+function gcEquipDe(desc,obs,extra){ const d=String(desc||''), out=[], mot=prdMotoresObs(String(obs||'')+' '+d)||{}, ex=extra||{};
+  const conj=prdConjuntos(d);
+  const nm={Diesel:'Motor diesel','Elétrica':'Motor elétrico',Jockey:'Motor elétrico'};
+  if(conj&&conj.length)conj.forEach(c=>{ const jk=c.acion==='Jockey', m=(mot[c.acion]||[])[0]||{};
+    out.push({tipo:jk?'Bomba jockey':'Bomba principal',modelo:c.modelo||'',rotacao:c.rpm||'',vazao:ex.vazao||'',pressao:ex.pressao||'',norma:ex.norma||''});
+    out.push({tipo:nm[c.acion]||'Motor',fabricante:m.marca||'',modelo:m.modelo||'',potencia:c.hp?c.hp+' HP':'',rotacao:c.rpm||''});
+    out.push({tipo:jk?'Painel jockey':'Painel de comando',tensao:c.painel||''}); });
+  else if(prdEhMB(d)){ const a=prdAnalisa(d)||{}; out.push({tipo:a.acion==='Jockey'?'Bomba jockey':'Conjunto motobomba',modelo:/sem modelo/i.test(a.modelo||'')?'':a.modelo||'',norma:a.norma||ex.norma||'',vazao:ex.vazao||'',pressao:ex.pressao||''}); }
+  else if(/^PAN\b|painel/i.test(d))out.push({tipo:'Painel de comando',modelo:d.slice(0,60)});
+  else if(/rental|loca/i.test(d))out.push({tipo:'Conjunto motobomba',modelo:d.slice(0,60)});
+  return out; }
+function gcSugestoes(x){ const vistos=new Set(x.eq.map(e=>e.origemDesc).filter(Boolean)), G=[], add=(desc,src,eq)=>{ const k=prdTxt(desc); if(!eq.length||vistos.has(k))return; vistos.add(k); G.push({desc:String(desc),src,eq,k}); };
+  (x.c.itens||[]).forEach(o=>add(o.produto,`OV ${o.ov} (Omie)`,gcEquipDe(o.produto,o.obsItem)));
+  const cods=String(x.ptc||'').replace(/\b20\d\d\//g,'').match(/\d{4,6}/g)||[];
+  cods.map(c=>c.replace(/^0+/,'')).forEach(cod=>(M.propostas||[]).filter(p=>String(p.cod).replace(/^0+/,'')===cod).forEach(p=>add(p.prod,`proposta ${p.cod} (Ploomes)`,
+    gcEquipDe(p.prod,'',{vazao:p.vazaoNom||p.vazaoProj?String(p.vazaoNom||p.vazaoProj):'',pressao:p.pressao?String(p.pressao):'',norma:p.norma&&p.norma!=='N/I'?p.norma:''}))));
+  const w1=n=>String(n||'').split(' ').filter(t=>t.length>2)[0]||'', cw=w1(x.c.nCli||norm(x.cli));
+  if(cw.length>=4)(M.omie||[]).filter(o=>w1(o.nCli)===cw&&(prdEhMB(o.produto)||/^(SKD|CON|PAN)\b/i.test(String(o.produto))))
+    .sort((a,b)=>(b.dt||0)-(a.dt||0)).forEach(o=>add(o.produto,`vendido ao cliente · OV ${o.ov}${o.dt?' · '+fmtData(o.dt):''} (Omie)`,gcEquipDe(o.produto,o.obsItem)));
+  return G.slice(0,12); }
+async function gcAddSug(id,i){ const x=gcContratos().find(k=>k.id===id); if(!x)return; const g=gcSugestoes(x)[i]; if(!g)return;
+  let ok=0; for(const e of g.eq){ if(await gcGravar(GC.db.collection('ctrEquip').doc(),Object.assign({ctr:id,situacao:x.loc?'Locado no cliente':'Em operação',serie:'',origem:g.src,origemDesc:g.k,criadoEm:new Date().toISOString(),por:GC.uid||null},e)))ok++; }
+  if(ok)aviso(`${fmtN(ok)} equipamento(s) adicionados. Complete o nº de série em "editar".`); }
+function gcEquip(id,eid){ const e=eid?GC.equip.find(k=>k._id===eid):null, x=gcContratos().find(k=>k.id===id);
+  const v=k=>e&&e[k]!=null?e[k]:'';
+  const campos=[{k:'tipo',rot:'Tipo',tipo:'sel',ops:GC_ETIPOS,v:v('tipo')||'Bomba principal'},{k:'situacao',rot:'Situação',tipo:'sel',ops:GC_ESIT,v:v('situacao')||(x&&x.loc?'Locado no cliente':'Em operação')},
+    {k:'fabricante',rot:'Fabricante / marca',tipo:'text',v:v('fabricante')},{k:'modelo',rot:'Modelo',tipo:'text',v:v('modelo')},
+    {k:'serie',rot:'Nº de série',tipo:'text',v:v('serie'),ajuda:'da plaqueta do equipamento'},{k:'ano',rot:'Ano de fabricação',tipo:'number',v:v('ano')},
+    {k:'potencia',rot:'Potência (HP / CV / kW)',tipo:'text',v:v('potencia')},{k:'rotacao',rot:'Rotação (rpm)',tipo:'text',v:v('rotacao')},
+    {k:'vazao',rot:'Vazão',tipo:'text',v:v('vazao'),ajuda:'com a unidade: m³/h ou gpm'},{k:'pressao',rot:'Pressão',tipo:'text',v:v('pressao'),ajuda:'com a unidade: mca, psi ou bar'},
+    {k:'tensao',rot:'Tensão / alimentação',tipo:'text',v:v('tensao')},{k:'norma',rot:'Norma',tipo:'text',v:v('norma')},
+    {k:'tag',rot:'TAG / local de instalação',tipo:'text',v:v('tag'),ajuda:'ex.: CB-01, casa de bombas norte'},{k:'dtInst',rot:'Instalado / entregue em',tipo:'date',v:v('dtInst')},
+    {k:'patrimonio',rot:'Patrimônio LS Fire (locação)',tipo:'text',v:v('patrimonio')},{k:'horimetro',rot:'Horímetro (h)',tipo:'number',v:v('horimetro')},
+    {k:'obs',rot:'Observações',tipo:'area',rows:2,v:v('obs'),larg:1}];
+  if(e)campos.push({k:'apagar',rot:'Excluir este equipamento',tipo:'html',html:`<label><input type="checkbox" name="apagar" value="1"> excluir do contrato</label>`});
+  formModal(e?'Editar equipamento':'Novo equipamento',campos,fd=>{
+    (async()=>{ const ref=e?GC.db.doc('ctrEquip/'+eid):GC.db.collection('ctrEquip').doc();
+      if(e&&fd.apagar){ try{ await ref.delete(); aviso('Equipamento excluído.'); }catch(er){ aviso('Não consegui excluir ('+((er&&er.code)||'erro')+').'); } gcFechaForm(); return; }
+      const d=Object.assign({},e||{},{ctr:id},Object.fromEntries(['tipo','situacao','fabricante','modelo','serie','ano','potencia','rotacao','vazao','pressao','tensao','norma','tag','dtInst','patrimonio','horimetro','obs'].map(k=>[k,String(fd[k]==null?'':fd[k]).trim()])),
+        e?{}:{criadoEm:new Date().toISOString(),por:GC.uid||null},{atualizadoEm:new Date().toISOString()}); delete d._id;
+      await gcGravar(ref,d,e?'Equipamento atualizado.':'Equipamento cadastrado.'); gcFechaForm(); })(); },e?'Salvar':'Cadastrar'); }
 
 /* ---------- gravação ---------- */
 async function gcGravar(ref,dados,msg){ if(!gcEdita()){ aviso('Sem permissão para gravar.'); return false; }
@@ -6875,15 +6966,17 @@ async function gcGravar(ref,dados,msg){ if(!gcEdita()){ aviso('Sem permissão pa
     return false; } }
 const gcCarimbo=()=>({atualizadoEm:new Date().toISOString(),atualizadoPor:GC.uid||null});
 function gcEditar(id){ const x=gcContratos().find(k=>k.id===id); if(!x)return; const f=x.f;
-  formModal(`Ficha do contrato ${x.num}`,[
-    {k:'tipo',rot:'Tipo',tipo:'sel',ops:['',...GC_TIPOS],v:f.tipo||''},
+  formModal(`Ficha ${x.loc?'da locação':'do contrato'} ${x.num}`,[
+    {k:'tipo',rot:'Tipo',tipo:'sel',ops:['',...GC_TIPOS],v:f.tipo||x.tipo||''},
     {k:'status',rot:'Situação (vazio = a do Omie)',tipo:'sel',ops:GC_STATUS,v:f.status||''},
     {k:'objeto',rot:'Objeto / escopo do contrato',tipo:'area',rows:3,v:f.objeto||'',larg:1},
-    {k:'ini',rot:'Início da vigência',tipo:'date',v:f.ini||'',ajuda:x.c.ini?`Omie: ${fmtData(x.c.ini)}`:''},
-    {k:'fim',rot:'Fim da vigência',tipo:'date',v:f.fim||'',ajuda:x.c.fim?`Omie: ${fmtData(x.c.fim)}`:''},
+    {k:'ini',rot:x.loc?'Entrega do equipamento (início da locação)':'Início da vigência',tipo:'date',v:f.ini||'',ajuda:x.c.ini?`automático: ${fmtData(x.c.ini)} (${esc(x.c.fonteVig||'Omie')})`:''},
+    {k:'fim',rot:x.loc?'Devolução prevista':'Fim da vigência',tipo:'date',v:f.fim||'',ajuda:x.c.fim?`Omie: ${fmtData(x.c.fim)}`:''},
+    ...(x.loc?[{k:'devolucao',rot:'Devolvido em (encerra a locação)',tipo:'date',v:f.devolucao||''},{k:'local',rot:'Local de instalação (obra, cidade)',tipo:'text',v:f.local||''},
+      {k:'caucao',rot:'Caução / seguro (R$)',tipo:'number',v:f.caucao||''}]:[]),
     {k:'meses',rot:'Duração (meses)',tipo:'number',v:f.meses||'',ajuda:'sem o fim, o painel calcula o fim pelo início + meses'},
     {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:f.valorTotal||'',ajuda:x.c.valorPed?`Controle: ${fmtBRL(x.c.valorPed)}`:x.c.parcela?`Omie: parcela ${fmtBRL(x.c.parcela)}`:''},
-    {k:'valorParcela',rot:'Valor da parcela (R$)',tipo:'number',v:f.valorParcela||''},
+    {k:'valorParcela',rot:x.loc?'Aluguel mensal (R$)':'Valor da parcela (R$)',tipo:'number',v:f.valorParcela||''},
     {k:'fatExtra',rot:'Faturado fora das OS do Omie (R$)',tipo:'number',v:f.fatExtra||'',ajuda:'só se parte do contrato foi faturada sem OS vinculada'},
     {k:'reajuste',rot:'Índice de reajuste',tipo:'sel',ops:GC_REAJ,v:f.reajuste||''},
     {k:'mesReajuste',rot:'Mês do reajuste',tipo:'sel',ops:['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],v:f.mesReajuste||''},
@@ -6901,15 +6994,15 @@ function gcEditar(id){ const x=gcContratos().find(k=>k.id===id); if(!x)return; c
       const d=Object.assign({},f,{num:x.num,cli:f.cli||x.cli,tipo:fd.tipo||'',status:fd.status||'',objeto:String(fd.objeto||'').trim(),ini:fd.ini||'',fim:fd.fim||'',
         meses:n('meses'),valorTotal:n('valorTotal'),valorParcela:n('valorParcela'),fatExtra:n('fatExtra'),reajuste:fd.reajuste||'',mesReajuste:fd.mesReajuste||'',
         renovAuto:fd.renovAuto==='automática'?true:fd.renovAuto==='manual'?false:null,avisoPrevio:n('avisoPrevio'),periodicidade:fd.periodicidade||'',visitasPrevistas:n('visitasPrevistas'),
-        ptc:String(fd.ptc||'').trim(),pc:String(fd.pc||'').trim(),respInterno:String(fd.respInterno||'').trim(),contato:String(fd.contato||'').trim(),obs:String(fd.obs||'').trim()},gcCarimbo());
+        ptc:String(fd.ptc||'').trim(),pc:String(fd.pc||'').trim(),devolucao:fd.devolucao!=null?fd.devolucao:(f.devolucao||''),local:fd.local!=null?String(fd.local).trim():(f.local||''),caucao:fd.caucao!=null?n('caucao'):(f.caucao||null),respInterno:String(fd.respInterno||'').trim(),contato:String(fd.contato||'').trim(),obs:String(fd.obs||'').trim()},gcCarimbo());
       gcGravar(GC.db.doc('contratos/'+id),d,'Ficha salva.').then(gcFechaForm); },'Salvar ficha'); }
-function gcNovo(){ formModal('Novo contrato (ainda fora do Omie)',[
+function gcNovo(loc){ formModal(loc?'Nova locação (ainda fora do Omie/Controle)':'Novo contrato (ainda fora do Omie)',[
     {k:'num',rot:'Número do contrato',tipo:'text',v:''},{k:'cli',rot:'Cliente',tipo:'text',v:''},
-    {k:'ini',rot:'Início da vigência',tipo:'date',v:''},{k:'meses',rot:'Duração (meses)',tipo:'number',v:'12'},
+    {k:'ini',rot:loc?'Entrega do equipamento':'Início da vigência',tipo:'date',v:''},{k:'meses',rot:'Duração (meses)',tipo:'number',v:loc?'':'12'},
     {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:''},{k:'ptc',rot:'PTC / código da proposta',tipo:'text',v:''}],fd=>{
     const nm=String(fd.num||'').trim(), cli=String(fd.cli||'').trim(); if(!nm||!cli){ aviso('Informe o número e o cliente.'); return false; }
     const id=gcId(nm); if(gcContratos().some(x=>x.id===id)){ aviso('Já existe um contrato com esse número: abra a ficha dele.'); return false; }
-    gcGravar(GC.db.doc('contratos/'+id),Object.assign({manual:true,num:nm,cli,ini:fd.ini||'',meses:num(fd.meses)||null,valorTotal:num(fd.valorTotal)||null,ptc:String(fd.ptc||'').trim(),criadoEm:new Date().toISOString()},gcCarimbo()),'Contrato criado.')
+    gcGravar(GC.db.doc('contratos/'+id),Object.assign({manual:true,num:nm,cli,tipo:loc?'Locação':'',ini:fd.ini||'',meses:num(fd.meses)||null,valorTotal:num(fd.valorTotal)||null,ptc:String(fd.ptc||'').trim(),criadoEm:new Date().toISOString()},gcCarimbo()),'Contrato criado.')
       .then(ok=>{ gcFechaForm(); if(ok){ _GCV=null; setTimeout(()=>gcFicha(id),300); } }); },'Criar contrato'); }
 function gcVisita(id,vid){ const v=vid?GC.visitas.find(k=>k._id===vid):null;
   const campos=[{k:'data',rot:'Data',tipo:'date',v:v?v.data:isoD(hoje())},{k:'status',rot:'Situação',tipo:'sel',ops:GC_VSIT,v:v?v.status:'Realizada'},
@@ -6945,8 +7038,12 @@ function gcApagarAnexo(aid){ const a=GC.anexos.find(k=>k._id===aid); if(!a)retur
       catch(e){ aviso('Não consegui remover ('+((e&&e.code)||'erro')+').'); } gcFechaForm(); })(); },'Remover'); }
 
 /* ---------- indicadores ---------- */
-function gcTelaInd(){ const R=hoje(), L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), A=L.filter(x=>x.ativo);
+function gcTelaInd(){ const R=hoje(), ic=GC.indCat, L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]).filter(x=>ic==='itm'?!x.loc:ic==='loc'?x.loc:true), A=L.filter(x=>x.ativo);
   let h=gcAvisoEstado();
+  h+=REL_GERANDO?'':`<div class="pq-linhas so-tela"><div><label>Indicadores de</label><div class="seg">${[['','Todos'],['itm','ITM e manutenção'],['loc','Locação']].map(([k,t])=>`<button class="${ic===k?'on':''}" onclick="GC.indCat='${k}';render()">${t}</button>`).join('')}</div></div></div>`;
+  const EQ=A.flatMap(x=>x.eq), eqSS=A.flatMap(x=>x.eqSemSerie), LOC=A.filter(x=>x.loc), dev30=LOC.filter(x=>x.fim&&x.diasFim!=null&&x.diasFim<=30);
+  regLista('gci-eq','Equipamentos dos contratos ativos',A.flatMap(x=>x.eq.map(e=>[esc(x.num),esc(String(x.cli).slice(0,34)),esc(e.tipo||''),esc([e.fabricante,e.modelo].filter(Boolean).join(' ')),e.serie?esc(e.serie):'<span class="tag t-ale">sem nº de série</span>',esc(e.tag||''),esc(e.situacao||'')])),
+    [{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Tipo'},{t:'Fabricante / modelo',f:1},{t:'Nº de série'},{t:'TAG / local'},{t:'Situação'}]);
   const mens=somar(A,x=>x.mensal||0), sal=somar(A,x=>x.saldo||0), comVal=A.filter(x=>x.valor!=null);
   const esp=somar(A,x=>x.esperadas||0), real=somar(A.filter(x=>x.esperadas!=null),x=>Math.min(x.esperadas,x.realizadas.length)), comPer=A.filter(x=>x.esperadas!=null);
   const atr=A.filter(x=>x.visAtraso>0), semRel=somar(L,x=>x.semRel.length), inc=A.filter(x=>x.completo<1);
@@ -6965,7 +7062,10 @@ function gcTelaInd(){ const R=hoje(), L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.
     ${cardG({rot:'Relatórios de visita pendentes',val:lnk('gci-rel',fmtN(semRel)),tipo:'pos',per:'visitas realizadas',cls:semRel?'ale':'ok',sub:'visita registrada sem o PDF do relatório',fonte:'visitas registradas'})}
     ${cardG({rot:'Vencem em até 90 dias',val:lnk('gci-v90',fmtN(venc(90).length)),tipo:'pos',per:`até ${fmtData(new Date(+R+90*864e5))}`,cls:venc(90).length?'ale':'ok',sub:`${fmtN(venc(30).length)} em 30 dias · ${fmtN(venc(60).length)} em 60`,fonte:'ficha + Omie'})}
     ${cardG({rot:'Faturamento abaixo do prazo',val:lnk('gci-fat',fmtN(atrasoFat.length)),tipo:'pos',per:'faturado × prazo decorrido',cls:atrasoFat.length?'ale':'ok',sub:'mais de 15 pontos abaixo: medição ou OS em atraso',fonte:'Omie × ficha'})}
-    ${cardG({rot:'Cadastro incompleto',val:lnk('gci-inc',fmtN(inc.length)),tipo:'pos',per:'contratos ativos',cls:inc.length?'ale':'ok',sub:'sem contrato anexado, valor, vigência, periodicidade, responsável ou reajuste',fonte:'ficha'})}
+    ${cardG({rot:'Cadastro incompleto',val:lnk('gci-inc',fmtN(inc.length)),tipo:'pos',per:'contratos ativos',cls:inc.length?'ale':'ok',sub:'sem contrato anexado, valor, vigência, equipamentos, nº de série, periodicidade, responsável ou reajuste',fonte:'ficha'})}
+    ${cardG({rot:'Equipamentos cadastrados',val:lnk('gci-eq',fmtN(EQ.length)),tipo:'pos',per:'contratos ativos',cls:eqSS.length?'ale':EQ.length?'ok':'',sub:EQ.length?`${fmtN(eqSS.length)} sem nº de série · ${fmtN(A.filter(x=>!x.eq.length).length)} contrato(s) sem equipamento`:'cadastre bomba, motor e painel de cada contrato',fonte:'ficha'})}
+    ${ic!=='itm'?cardG({rot:'Locações ativas',val:fmtN(LOC.length),tipo:'pos',per:`posição em ${fmtData(R)}`,sub:`${fmtCompacto(somar(LOC,x=>x.mensal||0))}/mês de aluguel · ${fmtN(LOC.flatMap(x=>x.eq).length)} equipamento(s) locados`,fonte:'ficha + Controle + Omie'}):''}
+    ${ic!=='itm'?cardG({rot:'Devoluções em até 30 dias',val:fmtN(dev30.length),tipo:'pos',per:`até ${fmtData(new Date(+R+30*864e5))}`,cls:dev30.length?'ale':'ok',sub:`${fmtN(LOC.filter(x=>!x.fim).length)} locação(ões) sem devolução prevista`,fonte:'ficha'}):''}
   </div>`;
   /* execução por contrato */
   h+=sec('Execução de cada contrato','Prazo decorrido × faturado × visitas. Desvio = faturado − prazo (negativo: faturando menos do que o tempo já passado).','gci-exec');
@@ -6987,12 +7087,14 @@ function gcTelaInd(){ const R=hoje(), L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.
 /* ---------- Excel da gestão ---------- */
 function gcExcel(){ const L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), wb=XLSX.utils.book_new(), R=hoje();
   const add=(nome,cab,lin)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cab,...lin]),nome);
-  add('Contratos',['Contrato','Cliente','Situação','Tipo','Objeto','Início','Fim','Meses','Mês atual','Valor contratado','Origem do valor','Parcela','Receita/mês','Faturado','Aguardando faturamento','Saldo a faturar','% faturado','% prazo','Desvio (p.p.)','Reajuste','Mês do reajuste','PTC','Pedido de compra','Vendedor','Dono da conta','Responsável interno','Periodicidade','Visitas realizadas','Visitas esperadas até hoje','Última visita','Próxima visita','Visitas sem relatório','Anexos','Cadastro %','Atenção'],
-    L.map(x=>[x.num,x.cli,x.status,x.tipo,x.objeto,x.ini?isoD(x.ini):'',x.fim?isoD(x.fim):'',x.meses,x.mesAtual,x.valor,x.valorSrc,x.parcela,x.mensal?Math.round(x.mensal*100)/100:null,x.fat,x.aguard,x.saldo,
+  add('Contratos',['Contrato','Cliente','Situação','Categoria','Tipo','Objeto','Início','Fim','Meses','Mês atual','Valor contratado','Origem do valor','Parcela','Receita/mês','Faturado','Aguardando faturamento','Saldo a faturar','% faturado','% prazo','Desvio (p.p.)','Reajuste','Mês do reajuste','PTC','Pedido de compra','Vendedor','Dono da conta','Responsável interno','Periodicidade','Visitas realizadas','Visitas esperadas até hoje','Última visita','Próxima visita','Visitas sem relatório','Equipamentos','Equipamentos sem nº de série','Local (locação)','Devolvido em','Anexos','Cadastro %','Atenção'],
+    L.map(x=>[x.num,x.cli,x.status,x.cat,x.tipo,x.objeto,x.ini?isoD(x.ini):'',x.fim?isoD(x.fim):'',x.meses,x.mesAtual,x.valor,x.valorSrc,x.parcela,x.mensal?Math.round(x.mensal*100)/100:null,x.fat,x.aguard,x.saldo,
       x.fatPct!=null?Math.round(x.fatPct*1000)/10:null,x.prazoPct!=null?Math.round(x.prazoPct*1000)/10:null,x.desvio!=null?Math.round(x.desvio*1000)/10:null,x.reajuste,x.mesReaj,x.ptc,x.pc,x.vend,x.dono,x.respInt,
-      x.period,x.realizadas.length,x.esperadas,x.ultVis?x.ultVis.data:'',x.proxVis?x.proxVis.data:'',x.semRel.length,x.anx.length,Math.round(x.completo*100),x.alertas.join(' · ')]));
+      x.period,x.realizadas.length,x.esperadas,x.ultVis?x.ultVis.data:'',x.proxVis?x.proxVis.data:'',x.semRel.length,x.eq.length,x.eqSemSerie.length,x.local,x.devolucao?isoD(x.devolucao):'',x.anx.length,Math.round(x.completo*100),x.alertas.join(' · ')]));
   add('Visitas',['Contrato','Cliente','Data','Tipo','Situação','Técnico','O que foi feito','Pendências','Relatório anexado'],
     L.flatMap(x=>x.vis.map(v=>[x.num,x.cli,v.data,v.tipo,v.status,v.tecnico,v.resumo,v.pendencias,v.relatorio?(v.relNome||'sim'):'não'])));
+  add('Equipamentos',['Contrato','Cliente','Tipo','Fabricante','Modelo','Nº de série','Ano','Potência','Rotação','Vazão','Pressão','Tensão','Norma','TAG / local','Instalado em','Patrimônio','Horímetro','Situação','Origem','Observações'],
+    L.flatMap(x=>x.eq.map(e=>[x.num,x.cli,e.tipo,e.fabricante,e.modelo,e.serie,e.ano,e.potencia,e.rotacao,e.vazao,e.pressao,e.tensao,e.norma,e.tag,e.dtInst,e.patrimonio,e.horimetro,e.situacao,e.origem||'manual',e.obs])));
   add('Anexos',['Contrato','Cliente','Tipo','Arquivo','Enviado em'],L.flatMap(x=>x.anx.map(a=>[x.num,x.cli,a.tipo,a.nome,a.em?String(a.em).slice(0,10):''])));
   add('Leia-me',['Item','Descrição'],[['Gerado em',fmtDH(new Date())],['Referência',fmtData(R)],
     ['Automático','Vigência, parcela, OS faturadas e a faturar: Omie. Valor vendido, PTC e pedido do cliente: Controle de Pedidos. Dono da conta: Ploomes.'],
@@ -7004,9 +7106,8 @@ function gcExcel(){ const L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), wb
 VISTA.contratos=function(){
   /* relatório: o acompanhamento e, com as fichas carregadas, os indicadores da gestão */
   if(REL_GERANDO)return ctrAcompanhamento()+(GC.estado==='ok'&&gcContratos().some(x=>Object.keys(x.f).length||x.vis.length)?sec('Gestão de contratos — indicadores','Fichas, visitas e anexos registrados no painel.','gci-rel-s')+gcTelaInd():'');
-  if(GC.aba==='gestao')return gcAbas()+gcTelaGestao();
-  if(GC.aba==='ind')return gcAbas()+gcTelaInd();
-  return gcAbas()+ctrAcompanhamento(); };
+  return `<div class="nota so-tela">Este é o <b>dashboard</b> dos contratos (Omie). Fichas, equipamentos, visitas, anexos e locações ficam em <a class="td-link" onclick="irTela('gestao')"><b>Gestão → Contratos e serviços recorrentes</b></a>.</div>`+ctrAcompanhamento(); };
+VISTA.gestao=function(){ return gcAbas()+(GC.aba==='ind'?gcTelaInd():gcTelaGestao()); };
 function ctrAcompanhamento(){
   const C=contratosModelo(), R=C.R, temOS=C.os.length, temBase=C.base.length;
   if(!temOS&&!temBase)return card('Nenhuma base de contratos carregada','',`<p>Para acompanhar os contratos, importe em <b>Dados e configurações → ↑ Importar planilhas</b>:</p>
@@ -10069,7 +10170,7 @@ const REL_PUB={
     desc:'Pedidos recebidos e meta, faturamento realizado, previsão de pedidos pela política de probabilidade e carteira a faturar pelo mês de entrega.',
     telas:{executiva:['kpi:executiva','exec-alertas','exec-meta','exec-div'],resultados:['kpi:resultados','res-mes'],pipeline:['kpi:pipeline','pipe-pol','pipe-mes','pipe-cob'],carteira:'*',contratos:['kpi:contratos','ctr-mes','ctr-ag']}},
   completo:{nome:'Completo',tit:'Relatório Comercial — Completo',lim:null,desc:'Todas as seções das abas marcadas, sem limite de linhas.',telas:null}};
-const TELAS_REL=()=>TELAS.filter(t=>!['busca','dados','relatorios','apresentacao'].includes(t.id));
+const TELAS_REL=()=>TELAS.filter(t=>!['busca','dados','relatorios','apresentacao','gestao'].includes(t.id));
 function relMarcarTelas(pub){
   const P=REL_PUB[pub], cx=document.getElementById('rel-telas');
   cx.innerHTML=TELAS_REL().map(t=>`<label><input type="checkbox" value="${t.id}" ${!P.telas||P.telas[t.id]?'checked':''}> ${t.nome}</label>`).join('')

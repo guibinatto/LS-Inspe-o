@@ -32,14 +32,14 @@ const SIMULADOR = ({ escrever }) => {
     if (!semClaude) await p.waitForFunction(() => GC.estado === 'ok', null, { timeout: 15000 }); return p; };
   /* 1. sem Claude (arquivo baixado): leitura do automático, sem botões de edição */
   { const p = await abrir(false, true);
-    const r = await p.evaluate(() => { irTela('contratos'); GC.aba = 'gestao'; render(); const T = document.getElementById('tela').innerText;
+    const r = await p.evaluate(() => { irTela('gestao'); GC.aba = 'todos'; render(); const T = document.getElementById('tela').innerText;
       return { est: GC.estado, aviso: /disponível só no painel publicado/.test(T), novo: !!document.querySelector('#tela button[onclick="gcNovo()"]'), n: gcContratos().length }; });
     t(r.est === 'indisponivel' && r.aviso && !r.novo, 'arquivo baixado: aviso de "só no painel publicado" e sem botão de novo contrato');
     t(r.n > 0, 'arquivo baixado: lista os contratos automáticos (' + r.n + ')'); await p.close(); }
   /* 2. com banco e permissão de escrita */
   const p = await abrir(true);
   const r = await p.evaluate(async () => {
-    const out = {}; irTela('contratos'); GC.aba = 'gestao'; render();
+    const out = {}; irTela('gestao'); GC.aba = 'todos'; render();
     const L0 = gcContratos(), a = L0.find(x => x.ativo) || L0[0]; out.id = a.id;
     out.auto = { valor: a.valor, src: a.valorSrc, fat: a.fat };
     /* ficha: valor, vigência de 12 meses começando há ~6 meses, visita mensal */
@@ -70,8 +70,18 @@ const SIMULADOR = ({ escrever }) => {
     gcNovo(); const n = document.querySelector('#m-form form'); n.querySelector('[name=num]').value = 'TESTE/001'; n.querySelector('[name=cli]').value = 'Cliente Teste'; n.querySelector('[name=ini]').value = isoD(R); n.querySelector('[name=meses]').value = '24'; n.querySelector('[name=valorTotal]').value = '48000';
     n.requestSubmit(); await new Promise(r => setTimeout(r, 450)); gcFechar();
     const nv = gcContratos().find(k => k.id === 'TESTE-001'); out.novo = nv && { cli: nv.cli, mensal: nv.mensal, status: nv.status, fase: nv.fase };
+    /* equipamentos: sugestão da locação (item da OV no Omie) e nº de série */
+    const lc = gcContratos().find(k => k.loc && gcSugestoes(k).length); out.locN = gcContratos().filter(k => k.loc).length;
+    if (lc) { await gcAddSug(lc.id, 0); await new Promise(r => setTimeout(r, 120));
+      let y = gcContratos().find(k => k.id === lc.id); out.eq = { n: y.eq.length, semSerie: y.eqSemSerie.length, sit: y.eq[0] && y.eq[0].situacao, origem: y.eq[0] && y.eq[0].origem };
+      gcEquip(lc.id, y.eq[0]._id); const ef = document.querySelector('#m-form form'); ef.querySelector('[name=serie]').value = 'SN-TESTE-001'; ef.requestSubmit(); await new Promise(r => setTimeout(r, 120));
+      y = gcContratos().find(k => k.id === lc.id); out.eq.depois = y.eqSemSerie.length; out.eq.busca = gcContratos().filter(k => k.busca.includes(norm('SN-TESTE-001'))).length;
+      out.eq.check = y.check.find(c => /série/.test(c[0]))[1]; }
+    /* separação: o dashboard Contratos não mostra a gestão; a aba Locação filtra */
+    irTela('contratos'); out.dash = { semAbas: !document.querySelector('#tela .gc-abas'), link: /Gestão → Contratos e serviços recorrentes/.test(document.getElementById('tela').innerText) };
+    irTela('gestao'); GC.aba = 'loc'; render(); out.abaLoc = [...document.querySelectorAll('#tela [data-sid="gc-lista"] ~ .card tbody tr')].length;
     /* indicadores */
-    GC.aba = 'ind'; render(); const I = document.getElementById('tela').innerText; out.ind = { cumpr: /CUMPRIMENTO DAS VISITAS\s*\n?\s*\d+%/i.test(I), rel: /RELATÓRIOS DE VISITA PENDENTES\s*\n?\s*1\b/i.test(I), exec: !!document.querySelector('#tela [data-sid="gci-exec"]') };
+    GC.aba = 'ind'; GC.indCat = ''; render(); const I = document.getElementById('tela').innerText; out.ind = { equip: /EQUIPAMENTOS CADASTRADOS/i.test(I), loc: /LOCAÇÕES ATIVAS/i.test(I), cumpr: /CUMPRIMENTO DAS VISITAS\s*\n?\s*\d+%/i.test(I), rel: /RELATÓRIOS DE VISITA PENDENTES\s*\n?\s*1\b/i.test(I), exec: !!document.querySelector('#tela [data-sid="gci-exec"]') };
     /* sem escrever: o que foi gravado não pode ser apagado por permissão */
     out.docs = [...window.__SIM.docs.keys()].map(k => k.split('/')[0]).sort().join(',');
     return out; });
@@ -86,10 +96,14 @@ const SIMULADOR = ({ escrever }) => {
   t(Object.values(r.fichaTxt).every(Boolean) && r.link, 'ficha mostra valor, visitas, anexo, relatório pendente e origem: ' + JSON.stringify(r.fichaTxt));
   t(r.novo && r.novo.cli === 'Cliente Teste' && r.novo.mensal === 2000 && r.novo.status === 'Ativo', 'contrato criado só no painel entra na carteira: ' + JSON.stringify(r.novo));
   t(r.ind.cumpr && r.ind.rel && r.ind.exec, 'indicadores: cumprimento, relatórios pendentes e execução por contrato');
-  t(r.docs === 'contratos,contratos,ctrAnexos,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
+  t(r.locN === 2 && r.eq && r.eq.n === 1 && r.eq.semSerie === 1 && r.eq.sit === 'Locado no cliente' && /OV .* \(Omie\)/.test(r.eq.origem), 'locações do Controle (REN) e equipamento sugerido pela OV do Omie: ' + JSON.stringify(r.eq));
+  t(r.eq && r.eq.depois === 0 && r.eq.check && r.eq.busca === 1, 'nº de série preenchido: some o alerta, cadastro marca a série e a busca acha pelo número');
+  t(r.dash.semAbas && r.dash.link && r.abaLoc === 2, 'dashboard de contratos separado da gestão; aba Locação lista 2: ' + JSON.stringify(r.dash) + ' ' + r.abaLoc);
+  t(r.ind.equip && r.ind.loc, 'indicadores de equipamentos e de locação');
+  t(r.docs === 'contratos,contratos,ctrAnexos,ctrEquip,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
   await p.close();
   /* 3. só leitura: sem botões de edição, aviso de leitura */
-  { const q = await abrir(false); const s = await q.evaluate(() => { irTela('contratos'); GC.aba = 'gestao'; render(); const id = gcContratos()[0].id; gcFicha(id);
+  { const q = await abrir(false); const s = await q.evaluate(() => { irTela('gestao'); GC.aba = 'todos'; render(); const id = gcContratos()[0].id; gcFicha(id);
       return { aviso: /só de leitura/.test(document.getElementById('tela').innerText), novo: !!document.querySelector('#tela button[onclick="gcNovo()"]'), editar: /Editar ficha/.test(document.getElementById('m-ctr').innerText) }; });
     t(s.aviso && !s.novo && !s.editar, 'só leitura: aviso e nenhum botão de edição'); await q.close(); }
   ok.forEach(([c, m]) => console.log((c ? '✓ ' : '✗ ') + m));

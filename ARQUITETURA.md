@@ -216,9 +216,15 @@ Nada é corrigido pelo painel — ele só lê.
   "Vendido (OVs)" e "NCM do Cadastro". Sem elas, as seções do Omie mostram "aguardando a base".
 - Teste: `testes/verificacoes.js` (registros sintéticos, sem dados de clientes).
 
-## Gestão de contratos (18/11/2026)
-Aba **Contratos de serviço** com três visões: Acompanhamento (Omie, como antes), **Gestão de contratos**
-e **Indicadores**.
+## Gestão de contratos e serviços recorrentes (18/11/2026)
+Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`), separado do dashboard
+**Análise → Contratos de serviço**. Abas: Todos · ITM e manutenção · Locação · Indicadores.
+- Locações: pedidos da família REN no Controle e OVs do Omie com categoria Locação (`gcLocacoes`);
+  entrega, devolução prevista/realizada, local, aluguel mensal e caução na ficha.
+- Equipamentos (`ctrEquip`): tipo, fabricante, modelo, nº de série, ano, potência, rotação, vazão,
+  pressão, tensão, norma, TAG/local, instalação, patrimônio, horímetro, situação. Sugestões automáticas
+  (`gcSugestoes`) a partir dos itens da OV, da proposta/PTC no Ploomes e do que já foi vendido ao
+  cliente no Omie: o código do produto vira bomba + motor + painel; nº de série a equipe completa.
 - Ficha de cada contrato: o automático vem do Omie (vigência, parcela, OS faturadas e a faturar), do
   Controle de Pedidos (valor vendido, PTC, pedido do cliente) e do Ploomes (dono da conta); a equipe
   preenche no painel valor contratado, meses, reajuste, renovação, periodicidade de visita, responsável,

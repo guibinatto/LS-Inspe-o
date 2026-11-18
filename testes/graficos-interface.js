@@ -32,7 +32,7 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
  // menu recolhível e cabeçalho
  const mn=await p.evaluate(()=>{ recolherMenu(); const w=document.getElementById('rail').getBoundingClientRect().width; recolherMenu(); const w2=document.getElementById('rail').getBoundingClientRect().width;
    return {w,w2,botoesTopo:[...document.querySelectorAll('.topo .acoes > button')].filter(b=>!b.hidden).length   /* o ↻ Ploomes só aparece no claude.ai */,grupos:[...document.querySelectorAll('.nav-bloco')].map(x=>x.textContent)}; });
- ok('Menu recolhível; três grupos; cabeçalho com 2 ações + menu',mn.w<70&&mn.w2>200&&mn.botoesTopo<=2&&mn.grupos.join()==='Rotina,Análise,Apoio',mn);
+ ok('Menu recolhível; quatro grupos (Rotina, Análise, Gestão, Apoio); cabeçalho com 2 ações + menu',mn.w<70&&mn.w2>200&&mn.botoesTopo<=2&&mn.grupos.join()==='Rotina,Análise,Gestão,Apoio',mn);
  // nenhum botão sem ação nas telas
  const bt=await p.evaluate(()=>{ const sem=[]; TELAS.forEach(t=>{ irTela(t.id); document.querySelectorAll('#tela button').forEach(x=>{ if(!x.onclick&&!x.getAttribute('onclick')&&x.type!=='submit')sem.push(t.id+':'+x.textContent.trim().slice(0,20)); }); }); return sem; });
  ok('Nenhum botão sem ação nas telas',!bt.length,bt.slice(0,5));
