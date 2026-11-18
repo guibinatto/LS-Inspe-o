@@ -433,6 +433,16 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .pq-tipo span{font-size:10.5px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pq-tipo b{font-size:18px}.pq-tipo small{font-size:10px;color:var(--txt3)}
 .pq-tipo:hover{border-color:var(--c)}.pq-tipo.on{background:var(--c);color:#fff;border-color:var(--c)}.pq-tipo.on span,.pq-tipo.on small{color:#fff}
 .pq-tipo.vazio{opacity:.45}
+.gc-ficha{max-width:1080px!important;width:calc(100vw - 32px)}
+.gc-ficha h4{margin:18px 0 8px;font-size:13px}
+.gc-2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px;margin-top:6px}
+@media (max-width:760px){.gc-2{grid-template-columns:minmax(0,1fr)}}
+.gc-t{width:100%;border-collapse:collapse;font-size:12.5px}.gc-t th{text-align:left;font-weight:600;color:var(--txt3);padding:5px 10px 5px 0;vertical-align:top;width:38%}
+.gc-t td{padding:5px 0;border-bottom:1px solid var(--linha);overflow-wrap:anywhere}
+.gc-src{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:99px;padding:0 6px;white-space:nowrap}
+.gc-check{list-style:none;padding:0;margin:0;font-size:12.5px;display:grid;gap:3px}.gc-check li{color:var(--ale)}.gc-check li.ok{color:var(--ok)}
+.gc-bar{display:inline-block;position:relative;width:70px;height:8px;border-radius:4px;background:var(--card2);border:1px solid var(--linha);vertical-align:middle}
+.gc-bar i{position:absolute;left:0;top:0;bottom:0;background:var(--lar);border-radius:4px}.gc-bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--txt);margin-left:-1px}
 .ver-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin:0 0 18px}
 .ver-it{all:unset;box-sizing:border-box;display:grid;grid-template-columns:54px 1fr auto;grid-template-rows:auto auto;gap:2px 10px;align-items:center;padding:10px 12px;background:var(--card);border:1px solid var(--linha);border-radius:10px;cursor:pointer;min-width:0}
 .ver-it:hover{border-color:var(--lar)} .ver-it.ok{cursor:default;opacity:.7} .ver-it:focus-visible{outline:2px solid var(--lar)}
@@ -6430,10 +6440,11 @@ VISTA.carteira=function(){
     ${cardG({rot:'Já faturado',val:sf.faturado!=null?fmtCompacto(sf.faturado):naoDisp('só com a Carteira de faturamento'),per:`posição em ${fmtData(R)}`,sub:sf.faturado!=null?'faturamento parcial dos pedidos em aberto':''})}
     ${cardG({rot:'Saldo a faturar',val:fmtCompacto(sf.valor),per:`posição em ${fmtData(R)}`,cls:'lar',sub:esc(sf.fonte),cond:sf.oficial?null:'não é saldo'})}
     ${cardG({rot:'Entregas vencidas',val:fmtCompacto(v(sf.atrasado)),per:`antes de ${fmtData(R)}`,cls:sf.atrasado.length?'err':'ok',sub:`${fmtN(sf.atrasado.length)} pedidos com entrega já passada (contratos fora)`})}
-    ${cardG({rot:'Sem previsão de entrega',val:fmtCompacto(v(sf.semPrev)),per:`posição em ${fmtData(R)}`,cls:sf.semPrev.length?'ale':'ok',sub:`${fmtN(sf.semPrev.length)} pedidos sem data de entrega no Controle`})}
-    ${cardG({rot:'Sem vínculo com o Controle',val:sf.oficial?fmtN(sf.semVinc.length):naoDisp(),per:`posição em ${fmtData(R)}`,cls:sf.semVinc.length?'ale':'ok',sub:sf.oficial?`${fmtCompacto(v(sf.semVinc))} — sem vendedor, divisão e entrega`:''})}
-    ${cardG({rot:'Contratos recorrentes',val:fmtCompacto(v(sf.contratos)),per:`posição em ${fmtData(R)}`,sub:`${fmtN(sf.contratos.length)} contratos (ITM, rentals) — sem cronograma de faturamento: não são alocados num mês`})}
-    ${cardG({rot:'Sem divisão identificada',val:fmtCompacto(v(sf.semDiv)),per:`posição em ${fmtData(R)}`,sub:`${fmtN(sf.semDiv.length)} pedidos — ficam no consolidado`})}
+    ${(()=>{ /* entrega, vínculo e divisão costumam faltar nos MESMOS pedidos: um cartão só, sem contar duas vezes */
+      const U=[...new Set([...sf.semPrev,...(sf.oficial?sf.semVinc:[]),...sf.semDiv])], partes=[[sf.semPrev,'sem data de entrega'],[sf.oficial?sf.semVinc:[],'sem vínculo com o Controle'],[sf.semDiv,'sem divisão']].filter(x=>x[0].length);
+      return cardG({rot:'Pedidos com dado faltando',val:fmtCompacto(v(U)),per:`posição em ${fmtData(R)}`,cls:U.length?'ale':'ok',
+        sub:U.length?`${fmtN(U.length)} pedido(s): ${partes.map(x=>`${fmtN(x[0].length)} ${x[1]}`).join(' · ')}${partes.length>1&&partes.every(x=>x[0].length===U.length)?' (os mesmos)':''}`:'nenhum: entrega, vínculo e divisão preenchidos'}); })()}
+    ${cardG({rot:'Contratos recorrentes',val:fmtCompacto(v(sf.contratos)),per:`posição em ${fmtData(R)}`,sub:`${fmtN(sf.contratos.length)} contratos com saldo na carteira do financeiro (ITM, rentals) — sem cronograma, não são alocados num mês. A aba Contratos conta todos os vigentes (${fmtN(contratosModelo().L.filter(c=>c.vigente).length)}), inclusive os sem saldo aqui`})}
   </div>`;
   h+=secFaturamento();
   /* previsão de faturamento: a carteira não traz data de faturamento; a data de
@@ -6648,7 +6659,355 @@ function svgVigencias(L,o){ o=o||{}; const R=hoje(); L=L.filter(c=>c.ini||c.fim)
         <rect x="${sx(x1)}" y="${y+5}" width="${sx(Math.max(3,x2-x1))}" height="14" rx="2" fill="${cor[c.status]||corV('--g-real')}" ${c.aprox?`stroke="${corV('--txt2')}" stroke-dasharray="3 2"`:''} opacity="${c.vigente?1:.55}"/>
         ${txtSvg(W-rw+6,y+16,c.status==='A vencer'||c.status==='Vigente'?(c.diasFim!=null?`${fmtN(c.diasFim)} dias`:'sem fim'):c.status.toLowerCase(),{fs:11.5,c:c.status==='A vencer'?corV('--ale'):corV('--txt2'),w:c.status==='A vencer'?700:400})}</g>`; }).join('')}
     <line x1="${sx(xr)}" x2="${sx(xr)}" y1="18" y2="${H-2}" stroke="${corV('--lar')}" stroke-width="2"/>${txtSvg(xr+4,H-6,'hoje',{fs:11,c:corV('--lar'),w:700})}</svg>`; }
+/* ======================= GESTÃO DE CONTRATOS =======================
+   O Omie e o Ploomes não administram contrato. Aqui cada contrato ganha uma FICHA:
+   o que é automático vem do Omie (OS faturadas e a faturar, vigência, parcela), do
+   Controle de Pedidos (valor vendido, PTC, pedido do cliente) e do Ploomes (dono da
+   conta, renovação); o resto a equipe preenche no painel — valor contratado, meses,
+   reajuste, periodicidade de visita, responsável — e anexa o contrato, a proposta/PTC
+   e os relatórios de visita.
+   Onde fica: a ficha, as visitas e os anexos ficam no banco do próprio painel
+   publicado (capacidade db do Claude), e os arquivos no armazenamento dele (assets).
+   Sobrevivem às atualizações automáticas do painel. No arquivo baixado (↓ Salvar),
+   que não roda dentro do Claude, a gestão aparece só para leitura do automático.
+   Coleções: contratos/<id>  ·  ctrVisitas/<id> (campo ctr)  ·  ctrAnexos/<id> (campo ctr). */
+const GC={db:null,assets:null,user:null,uid:null,estado:'carregando',erro:'',fichas:new Map(),visitas:[],anexos:[],
+  pode:null,aba:'acomp',filtro:'',aberto:null,pendente:false,nomes:{},_ini:false,_t:null,chegou:new Set()};
+const GC_TIPOS=['Manutenção preventiva','Inspeção e testes (NFPA 25)','Manutenção preventiva e corretiva','Locação','Assistência técnica','Outro'];
+const GC_PERIOD=[['','não definida'],['mensal','mensal'],['bimestral','bimestral'],['trimestral','trimestral'],['quadrimestral','quadrimestral'],['semestral','semestral'],['anual','anual'],['demanda','sob demanda']];
+const GC_PASSO={mensal:1,bimestral:2,trimestral:3,quadrimestral:4,semestral:6,anual:12};
+const GC_STATUS=['','Ativo','Em renovação','Suspenso','Encerrado','Cancelado'];
+const GC_REAJ=['','IPCA','IGP-M','INPC','Fixo (sem reajuste)','Outro'];
+const GC_VTIPOS=['Preventiva','Corretiva','Inspeção','Teste de bombas','Treinamento','Emergencial','Outra'];
+const GC_VSIT=['Realizada','Agendada','Não realizada','Cancelada'];
+const GC_ATIPOS=['Contrato','Aditivo','Proposta / PTC','Pedido de compra','ART','Relatório de visita','Outro'];
+const GC_ACEITA='application/pdf,image/png,image/jpeg,image/webp,image/gif,text/plain,text/csv';
+/* id de documento: o número do contrato com só os caracteres que o banco aceita */
+const gcId=num=>String(num||'').trim().replace(/[^A-Za-z0-9_\-.~:@+]+/g,'-').replace(/^-+|-+$/g,'').slice(0,120)||'sem-numero';
+const gcISO=v=>{ const d=v instanceof Date?v:data(v); return d&&!isNaN(d)?isoD(d):''; };
+const gcAddMes=(d,n)=>new Date(d.getFullYear(),d.getMonth()+n,d.getDate());
+
+/* liga o banco uma vez, quando o painel abre dentro do Claude */
+async function gcIniciar(){ if(GC._ini)return; GC._ini=true;
+  if(!window.claude||typeof window.claude.use!=='function'){ GC.estado='indisponivel'; return; }
+  GC._t=setTimeout(()=>{ if(GC.estado==='carregando'){ GC.estado='lento'; gcAtualizarTela(); } },10000);
+  try{ GC.db=await window.claude.use('db'); }catch(e){ GC.db=null; }
+  if(!GC.db){ clearTimeout(GC._t); GC.estado='indisponivel'; gcAtualizarTela(); return; }
+  try{ GC.user=await window.claude.use('user'); if(GC.user){ GC.uid=await GC.user.id(); const p=GC.user.can?await GC.user.can('data.write'):null; GC.pode=p; } }catch(e){}
+  try{ GC.assets=await window.claude.use('assets'); }catch(e){ GC.assets=null; }
+  const falha=e=>{ clearTimeout(GC._t); GC.estado='erro'; GC.erro=(e&&e.code)||'erro'; gcAtualizarTela(); };
+  const pronto=(k,snap)=>{ if(!snap.metadata.fromCache)GC.chegou.add(k); if(GC.chegou.size>=3){ clearTimeout(GC._t); GC.estado='ok'; } gcAtualizarTela(); };
+  GC.db.collection('contratos').onSnapshot(s=>{ GC.fichas=new Map(s.docs.map(d=>[d.id,d.data()])); pronto('f',s); },falha);
+  GC.db.collection('ctrVisitas').onSnapshot(s=>{ GC.visitas=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('v',s); },falha);
+  GC.db.collection('ctrAnexos').onSnapshot(s=>{ GC.anexos=s.docs.map(d=>Object.assign({_id:d.id},d.data())); pronto('a',s); },falha); }
+/* dado novo do banco: redesenha a aba (ou a ficha aberta), sem atropelar um formulário em edição */
+function gcAtualizarTela(){ _GCV=null;
+  const form=document.getElementById('m-form'); if(form&&form.classList.contains('aberto')){ GC.pendente=true; return; }
+  const m=document.getElementById('m-ctr'); if(m&&m.classList.contains('aberto')&&GC.aberto){ gcFicha(GC.aberto,true); }
+  if(EST.tela==='contratos')render(); }
+async function gcNomes(ids){ ids=[...new Set(ids.filter(Boolean))].filter(i=>!(i in GC.nomes)); if(!ids.length||!GC.user||!GC.user.profiles)return;
+  try{ const ps=await GC.user.profiles(ids); ids.forEach(i=>{ GC.nomes[i]=(ps[i]&&ps[i].name)||''; }); }catch(e){ ids.forEach(i=>{ GC.nomes[i]=''; }); } }
+const gcQuem=id=>id?(GC.nomes[id]||(id===GC.uid?'você':'—')):'—';
+
+/* ---------- a visão de cada contrato: automático + ficha ---------- */
+let _GCV=null;
+function gcContratos(){ const C=contratosModelo(), chave=C.chave+'|'+GC.fichas.size+'|'+GC.visitas.length+'|'+GC.anexos.length;
+  if(_GCV&&_GCV.chave===chave&&_GCV.R===+hoje())return _GCV.L;
+  const R=hoje(), L=C.L.map(c=>gcMontar(c,GC.fichas.get(gcId(c.num))||{},R));
+  /* contratos cadastrados só no painel (ainda não estão no Omie nem no Controle) */
+  GC.fichas.forEach((f,id)=>{ if(f.manual&&!L.some(x=>x.id===id))L.push(gcMontar({num:f.num||id,cli:f.cli||'(sem cliente)',nCli:norm(f.cli||''),os:[],fat:0,aguard:0,total:0,alertas:[],pl:{ab:[],renov:[],abSPV:[]},manualSo:true},f,R)); });
+  _GCV={chave,R:+R,L}; return L; }
+function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c.cli};
+  const fonte=(v,src)=>v!=null&&v!==''?{v,src}:null, pick=(...op)=>op.find(Boolean)||{v:null,src:'—'};
+  /* vigência */
+  const ini=pick(fonte(data(f.ini),'ficha'),fonte(c.ini,c.fonteVig||'Omie')), fim0=pick(fonte(data(f.fim),'ficha'),fonte(c.fim,c.fonteVig||'Omie'));
+  const mesesF=num(f.meses);
+  x.ini=ini.v; x.iniSrc=ini.src;
+  x.fim=fim0.v||(x.ini&&mesesF?new Date(gcAddMes(x.ini,mesesF)-864e5):null); x.fimSrc=fim0.v?fim0.src:x.fim?'início + meses (ficha)':'—';
+  x.meses=mesesF||(x.ini&&x.fim&&x.fim>x.ini?Math.max(1,Math.round((x.fim-x.ini)/(30.44*864e5))):null); x.mesesSrc=mesesF?'ficha':x.meses?'calculado pela vigência':'—';
+  /* mês do contrato em que estamos */
+  if(x.ini&&x.meses){ const dec=Math.floor(diasEntre(x.ini,R)/30.44)+1; x.mesAtual=R<x.ini?0:Math.min(x.meses,dec); x.fase=R<x.ini?'não iniciado':x.fim&&R>x.fim?'vigência encerrada':`mês ${x.mesAtual} de ${x.meses}`; }
+  else { x.mesAtual=null; x.fase='—'; }
+  x.prazoPct=x.ini&&x.fim&&x.fim>x.ini?Math.min(1,Math.max(0,(R-x.ini)/(x.fim-x.ini))):null;
+  /* valor contratado */
+  const vt=num(f.valorTotal), parc=num(f.valorParcela)||c.parcela||null;
+  const val=vt?{v:vt,src:'ficha'}:c.valorPed?{v:c.valorPed,src:'vendido no Controle de Pedidos'}:parc&&x.meses?{v:parc*x.meses,src:`parcela ${num(f.valorParcela)?'(ficha)':'(Omie)'} × ${x.meses} meses`}:{v:null,src:'—'};
+  x.valor=val.v; x.valorSrc=val.src; x.parcela=parc;
+  x.mensal=x.valor&&x.meses?x.valor/x.meses:(c.receitaMes||null); x.mensalSrc=x.valor&&x.meses?'valor ÷ meses':c.receitaFonte||'—';
+  /* faturado (OS do Omie) e saldo */
+  x.fat=(c.fat||0)+(num(f.fatExtra)||0); x.fatSrc=num(f.fatExtra)?'OS faturadas (Omie) + lançado na ficha':'OS faturadas (Omie)';
+  x.aguard=c.aguard||0;
+  x.saldo=x.valor!=null?Math.max(0,x.valor-x.fat):null;
+  x.fatPct=x.valor?x.fat/x.valor:null;
+  x.desvio=x.fatPct!=null&&x.prazoPct!=null?x.fatPct-x.prazoPct:null;   /* + adiantado · − atrasado */
+  x.previstoHoje=x.valor!=null&&x.prazoPct!=null?x.valor*x.prazoPct:null;
+  /* PTC, pedido do cliente, dono */
+  x.ptc=f.ptc||(c.ped&&c.ped.ptc?String(c.ped.ptc):'')||''; x.ptcSrc=f.ptc?'ficha':x.ptc?'Controle de Pedidos':'—';
+  const pcOS=(c.os||[]).map(o=>o.pedCli).find(v=>v!=null&&String(v).trim()&&!/^n\/?d$/i.test(String(v)));
+  x.pc=f.pc||(c.ped&&c.ped.pedidoCli?String(c.ped.pedidoCli):'')||(pcOS?String(pcOS):''); x.pcSrc=f.pc?'ficha':x.pc?(c.ped&&c.ped.pedidoCli?'Controle de Pedidos':'OS (Omie)'):'—';
+  x.vend=nomeCurto(c.resp)||c.resp||''; x.dono=c.dono?nomeCurto(c.dono)||c.dono:'';
+  x.respInt=f.respInterno||''; x.contato=f.contato||'';
+  x.tipo=f.tipo||''; x.objeto=f.objeto||''; x.reajuste=f.reajuste||''; x.mesReaj=f.mesReajuste||'';
+  /* situação: a ficha manda; sem ela, a do Omie */
+  x.status=f.status||(c.manualSo?(x.fim&&R>x.fim?'Encerrado':'Ativo'):c.status==='Vigente'||c.status==='A vencer'?'Ativo':c.status)||'—';
+  x.ativo=['Ativo','Em renovação','Suspenso'].includes(x.status)&&!(x.fim&&R>x.fim&&!f.status);
+  x.diasFim=x.fim?diasEntre(R,x.fim):null;
+  /* visitas */
+  x.vis=GC.visitas.filter(v=>v.ctr===id).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+  const passo=GC_PASSO[f.periodicidade]||null; x.passo=passo; x.period=f.periodicidade||'';
+  const hojeIso=isoD(R), fimV=x.fim&&x.fim<R?x.fim:R;
+  x.realizadas=x.vis.filter(v=>v.status==='Realizada'&&(!x.ini||v.data>=isoD(x.ini))&&v.data<=hojeIso);
+  if(passo&&x.ini){ let k=0; while(k<600&&gcAddMes(x.ini,k*passo)<=fimV)k++; x.esperadas=R<x.ini?0:k;
+    let t=0; if(x.fim)while(t<600&&gcAddMes(x.ini,t*passo)<=x.fim)t++; x.previstasTot=num(f.visitasPrevistas)||(x.fim?t:null); }
+  else { x.esperadas=null; x.previstasTot=num(f.visitasPrevistas)||null; }
+  x.visAtraso=x.esperadas!=null?Math.max(0,x.esperadas-x.realizadas.length):null;
+  x.cumpr=x.esperadas?Math.min(1,x.realizadas.length/x.esperadas):null;
+  x.ultVis=x.realizadas[0]||null;
+  const ag=x.vis.filter(v=>v.status==='Agendada'&&v.data>=hojeIso).sort((a,b)=>String(a.data).localeCompare(String(b.data)))[0];
+  x.proxVis=ag?{data:ag.data,src:'agendada'}:passo&&x.ini&&x.ativo?{data:isoD(gcAddMes(x.ultVis?data(x.ultVis.data):x.ini,x.ultVis?passo:0)),src:'pela periodicidade'}:null;
+  x.semRel=x.realizadas.filter(v=>!v.relatorio);
+  x.diasSemVisita=x.ultVis?diasEntre(data(x.ultVis.data),R):null;
+  /* anexos e cadastro */
+  x.anx=GC.anexos.filter(a=>a.ctr===id).sort((a,b)=>String(b.em).localeCompare(String(a.em)));
+  const tem=t=>x.anx.some(a=>a.tipo===t);
+  x.check=[['Contrato assinado anexado',tem('Contrato')],['Proposta / PTC anexada ou informada',tem('Proposta / PTC')||!!x.ptc],['Valor contratado',x.valor!=null],
+    ['Início e fim da vigência',!!(x.ini&&x.fim)],['Periodicidade de visita',!!x.period],['Responsável interno',!!x.respInt],['Reajuste definido',!!x.reajuste]];
+  x.completo=x.check.filter(k=>k[1]).length/x.check.length;
+  x.alertas=[x.status==='Ativo'&&x.diasFim!=null&&x.diasFim<=90&&x.diasFim>=0?`vence em ${fmtN(x.diasFim)} dias`:'',x.diasFim!=null&&x.diasFim<0&&x.ativo?'vigência vencida':'',
+    x.visAtraso?`${fmtN(x.visAtraso)} visita(s) atrasada(s)`:'',x.semRel.length?`${fmtN(x.semRel.length)} visita(s) sem relatório`:'',
+    x.desvio!=null&&x.desvio<-.15?`faturamento ${fmtPct(-x.desvio,0)} abaixo do prazo`:'',x.desvio!=null&&x.desvio>.15?`faturamento ${fmtPct(x.desvio,0)} acima do prazo`:'',
+    x.completo<1?`cadastro ${fmtPct(x.completo,0)}`:''].filter(Boolean);
+  x.busca=norm([x.num,x.cli,x.vend,x.dono,x.respInt,x.ptc,x.pc,x.tipo].join(' '));
+  return x; }
+
+/* ---------- abas da tela Contratos ---------- */
+function gcAbas(){ const n=GC.estado==='ok'?gcContratos().filter(x=>x.ativo&&x.alertas.length).length:0;
+  return `<div class="seg so-tela" role="tablist" style="margin:0 0 14px">${[['acomp','Acompanhamento (Omie)'],['gestao','Gestão de contratos'+(n?` · ${n}`:'')],['ind','Indicadores']].map(([k,t])=>
+    `<button role="tab" aria-selected="${GC.aba===k}" class="${GC.aba===k?'on':''}" onclick="GC.aba='${k}';render()">${esc(t)}</button>`).join('')}</div>`; }
+function gcAvisoEstado(){
+  if(GC.estado==='indisponivel')return `<div class="nota" style="border-left-color:var(--ale)"><b>Gestão disponível só no painel publicado no Claude.</b> Este arquivo não guarda fichas, visitas nem anexos: abra o link do painel. Os valores automáticos (Omie, Controle, Ploomes) aparecem abaixo para leitura.</div>`;
+  if(GC.estado==='carregando')return `<div class="nota">Carregando as fichas dos contratos…</div>`;
+  if(GC.estado==='lento')return `<div class="nota" style="border-left-color:var(--ale)">As fichas ainda não chegaram (conexão lenta). O que aparece pode estar desatualizado; a tela se atualiza sozinha quando chegarem.</div>`;
+  if(GC.estado==='erro')return `<div class="nota" style="border-left-color:var(--err)">Não consegui ler as fichas dos contratos (${esc(GC.erro)}). Recarregue a página.</div>`;
+  return GC.pode===false?`<div class="nota">Você tem acesso só de leitura: fichas, visitas e anexos não podem ser alterados por aqui.</div>`:''; }
+const gcEdita=()=>GC.db&&GC.estado!=='indisponivel'&&GC.pode!==false;
+const gcFmtV=(v,src)=>v==null||v===''?'<span class="nd">—</span>':`${v}${src&&src!=='—'?` <small class="gc-src" title="origem">${esc(src)}</small>`:''}`;
+const gcSit=s=>`<span class="tag ${{Ativo:'t-ok','Em renovação':'t-ale',Suspenso:'t-ale',Encerrado:'',Cancelado:'t-err'}[s]||''}">${esc(s)}</span>`;
+function gcBarra(p,ref){ if(p==null)return '';
+  return `<span class="gc-bar" title="${fmtPct(p,0)}${ref!=null?' · prazo '+fmtPct(ref,0):''}"><i style="width:${Math.round(Math.min(1,p)*100)}%"></i>${ref!=null?`<b style="left:${Math.round(Math.min(1,ref)*100)}%"></b>`:''}</span>`; }
+
+/* ---------- aba Gestão: a carteira de contratos com a ficha de cada um ---------- */
+function gcTelaGestao(){
+  const L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), q=norm(GC.filtro);
+  const F=L.filter(x=>!q||x.busca.includes(q)).sort((a,b)=>(b.ativo-a.ativo)||((a.diasFim??9e9)-(b.diasFim??9e9)));
+  let h=gcAvisoEstado();
+  h+=`<div class="pl-bar so-tela" style="margin:0 0 12px"><input class="campo" id="gc-q" style="min-width:240px" placeholder="Filtrar: cliente, contrato, PTC, responsável…" aria-label="Filtrar contratos" value="${esc(GC.filtro)}" oninput="GC.filtro=this.value;clearTimeout(GC._f);GC._f=setTimeout(()=>{render();const i=document.getElementById('gc-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">
+    ${gcEdita()?`<button class="btn" onclick="gcNovo()">＋ Novo contrato</button>`:''}<button class="btn sec" onclick="gcExcel()">↓ Excel da gestão</button></div>`;
+  h+=sec('Carteira de contratos','Uma linha por contrato: ativos primeiro, do vencimento mais próximo. Clique no contrato para abrir a ficha completa (dados, valores, visitas, anexos).','gc-lista');
+  h+=card('',`${fmtN(F.length)} contrato(s) · barra = quanto do valor já foi faturado; o traço é quanto do prazo já passou.`,tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Situação'},{t:'Vigência'},{t:'Mês'},{t:'Valor contratado',n:1},{t:'Faturado × prazo'},{t:'Saldo',n:1},{t:'Visitas',n:1},{t:'Última visita',n:1},{t:'Cadastro',n:1},{t:'Atenção',f:1}],
+    F.map(x=>[`<a class="td-link" onclick="gcFicha('${esc(x.id)}')"><b>${esc(x.num)}</b></a>`,esc(String(x.cli).slice(0,34)),gcSit(x.status),
+      x.ini||x.fim?`<span style="white-space:nowrap">${x.ini?_dc(x.ini):'?'} – ${x.fim?_dc(x.fim):'?'}</span>`:'<span class="nd">—</span>',esc(x.fase),
+      x.valor!=null?fmtBRL(x.valor):'<span class="nd">—</span>',x.fatPct!=null?gcBarra(x.fatPct,x.prazoPct)+` <small>${fmtPct(x.fatPct,0)}</small>`:'<span class="nd">—</span>',
+      x.saldo!=null?fmtBRL(x.saldo):'—',x.esperadas!=null?`${fmtN(x.realizadas.length)}/${fmtN(x.esperadas)}`:fmtN(x.realizadas.length),
+      x.ultVis?fmtData(data(x.ultVis.data)):'<span class="nd">nenhuma</span>',`<span style="color:${x.completo<1?'var(--ale)':'var(--ok)'}">${fmtPct(x.completo,0)}</span>`,
+      x.alertas.length?x.alertas.map(a=>`<span class="tag ${/atrasad|vencida|abaixo|sem relat/.test(a)?'t-err':'t-ale'}">${esc(a)}</span>`).join(' '):'<span class="tag t-ok">ok</span>']),560));
+  return h; }
+
+/* ---------- ficha do contrato (janela) ---------- */
+function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ if(!refresh)aviso('Contrato não encontrado.'); return; }
+  GC.aberto=id; let m=document.getElementById('m-ctr');
+  if(!m){ m=document.createElement('div'); m.className='modal'; m.id='m-ctr'; m.addEventListener('click',e=>{ if(e.target===m)gcFechar(); }); document.body.appendChild(m); }
+  gcNomes([x.f.atualizadoPor,...x.vis.map(v=>v.por),...x.anx.map(a=>a.por)]).then(()=>{ if(GC.aberto===id&&!refresh)gcFicha(id,true); });
+  const ed=gcEdita(), c=x.c, R=hoje();
+  const lin=(r,v)=>`<tr><th>${r}</th><td>${v}</td></tr>`;
+  const vis=x.vis.map(v=>[fmtData(data(v.data)),esc(v.tipo||'—'),`<span class="tag ${{Realizada:'t-ok',Agendada:'t-az','Não realizada':'t-err',Cancelada:''}[v.status]||''}">${esc(v.status||'—')}</span>`,esc(v.tecnico||'—'),
+    esc(String(v.resumo||'').slice(0,160))+(v.pendencias?`<br><small><b>Pendências:</b> ${esc(String(v.pendencias).slice(0,160))}</small>`:''),
+    v.relatorio?`<a class="td-link" href="/_blob/${esc(v.relatorio)}" target="_blank" rel="noopener">${esc(v.relNome||'relatório')}</a>`:v.status==='Realizada'?'<span class="tag t-err">sem relatório</span>':'—',
+    ed?`<button class="mini" onclick="gcVisita('${esc(id)}','${esc(v._id)}')">editar</button>`:'']);
+  const anx=x.anx.map(a=>[esc(a.tipo||'—'),`<a class="td-link" href="/_blob/${esc(a.asset)}" target="_blank" rel="noopener">${esc(a.nome||'arquivo')}</a>`,a.tam?fmtN(Math.round(a.tam/1024))+' KB':'—',a.em?fmtData(new Date(a.em)):'—',esc(gcQuem(a.por)),
+    ed&&GC.assets?`<button class="mini" onclick="gcApagarAnexo('${esc(a._id)}')">remover</button>`:'']);
+  m.innerHTML=`<div class="cx-modal gc-ficha" role="dialog" aria-label="Ficha do contrato ${esc(x.num)}"><header><h3>Contrato ${esc(x.num)} · ${esc(String(x.cli).slice(0,60))}</h3>${gcSit(x.status)}<button onclick="gcFechar()" aria-label="Fechar">✕</button></header>
+    <div class="conteudo">
+      <div class="g g4 kpis-2">${kpi('Fase',esc(x.fase),x.diasFim!=null?(x.diasFim>=0?`${fmtN(x.diasFim)} dias para vencer`:`venceu há ${fmtN(-x.diasFim)} dias`):'vigência não informada','neutro')}
+        ${kpi('Valor contratado',x.valor!=null?fmtCompacto(x.valor):'—',x.valor!=null?`${esc(x.valorSrc)}${x.mensal?' · '+fmtCompacto(x.mensal)+'/mês':''}`:'preencha na ficha','neutro')}
+        ${kpi('Faturado',fmtCompacto(x.fat),`${x.fatPct!=null?fmtPct(x.fatPct,0)+' do valor · ':''}${x.prazoPct!=null?fmtPct(x.prazoPct,0)+' do prazo':''}${x.aguard?` · ${fmtCompacto(x.aguard)} aguardando`:''}`,x.desvio!=null&&x.desvio<-.15?'err':'neutro')}
+        ${kpi('Saldo a faturar',x.saldo!=null?fmtCompacto(x.saldo):'—',x.saldo!=null?'valor contratado − faturado':'sem valor contratado','neutro')}</div>
+      <div class="gc-2">
+        <div><h4>Dados do contrato</h4><table class="gc-t">
+          ${lin('Cliente',esc(x.cli))}${lin('Tipo',gcFmtV(esc(x.tipo)))}${lin('Objeto / escopo',gcFmtV(esc(x.objeto)))}
+          ${lin('Vigência',gcFmtV(x.ini?fmtData(x.ini):'',x.iniSrc)+' a '+gcFmtV(x.fim?fmtData(x.fim):'',x.fimSrc))}${lin('Duração',gcFmtV(x.meses?fmtN(x.meses)+' meses':'',x.mesesSrc))}
+          ${lin('Parcela',gcFmtV(x.parcela?fmtBRL(x.parcela):'',num(x.f.valorParcela)?'ficha':c.parcela?'Omie':''))}${lin('Reajuste',gcFmtV(esc([x.reajuste,x.mesReaj&&'em '+x.mesReaj].filter(Boolean).join(' '))))}
+          ${lin('Renovação',gcFmtV(esc([x.f.renovAuto?'automática':x.f.renovAuto===false?'manual':'',x.f.avisoPrevio?`aviso prévio ${x.f.avisoPrevio} dias`:''].filter(Boolean).join(' · '))))}
+          ${lin('PTC / proposta',gcFmtV(esc(x.ptc),x.ptcSrc))}${lin('Pedido de compra do cliente',gcFmtV(esc(x.pc),x.pcSrc))}
+          ${lin('Vendedor (OS)',gcFmtV(esc(x.vend),'Omie'))}${lin('Dono da conta',gcFmtV(esc(x.dono),'Ploomes'))}
+          ${lin('Responsável interno',gcFmtV(esc(x.respInt)))}${lin('Contato no cliente',gcFmtV(esc(x.contato)))}
+          ${x.f.obs?lin('Observações',esc(x.f.obs)):''}</table>
+          ${ed?`<div class="pl-bar"><button class="btn" onclick="gcEditar('${esc(id)}')">✎ Editar ficha</button></div>`:''}
+          <p class="nd-m">${x.f.atualizadoEm?`Ficha atualizada em ${fmtDH(new Date(x.f.atualizadoEm))} por ${esc(gcQuem(x.f.atualizadoPor))}.`:'Ficha ainda não preenchida: tudo acima vem do Omie, do Controle e do Ploomes.'}</p></div>
+        <div><h4>Cadastro ${fmtPct(x.completo,0)}</h4><ul class="gc-check">${x.check.map(([t,ok])=>`<li class="${ok?'ok':''}">${ok?'✓':'○'} ${esc(t)}</li>`).join('')}</ul>
+          <h4>Visitas</h4><table class="gc-t">${lin('Periodicidade',gcFmtV(esc((GC_PERIOD.find(p=>p[0]===x.period)||['',''])[1])))}
+            ${lin('Realizadas no contrato',fmtN(x.realizadas.length)+(x.esperadas!=null?` de ${fmtN(x.esperadas)} esperadas até hoje`:''))}
+            ${x.previstasTot?lin('Previstas no contrato',fmtN(x.previstasTot)):''}
+            ${lin('Última',x.ultVis?`${fmtData(data(x.ultVis.data))} <small>(${fmtN(x.diasSemVisita)} dias)</small>`:'<span class="nd">nenhuma registrada</span>')}
+            ${lin('Próxima',x.proxVis?`${fmtData(data(x.proxVis.data))} <small class="gc-src">${esc(x.proxVis.src)}</small>`:'—')}</table>
+          ${x.alertas.length?`<h4>Atenção</h4><p>${x.alertas.map(a=>`<span class="tag ${/atrasad|vencida|abaixo|sem relat/.test(a)?'t-err':'t-ale'}">${esc(a)}</span>`).join(' ')}</p>`:''}</div></div>
+      <h4>Visitas e relatórios</h4>
+      ${ed?`<div class="pl-bar"><button class="btn" onclick="gcVisita('${esc(id)}')">＋ Registrar visita</button></div>`:''}
+      ${vis.length?tab([{t:'Data'},{t:'Tipo'},{t:'Situação'},{t:'Técnico'},{t:'Resumo',f:1},{t:'Relatório'},{t:''}],vis,320):'<p class="pl-vazio">Nenhuma visita registrada.</p>'}
+      <h4>Anexos</h4>
+      ${ed&&GC.assets?`<div class="pl-bar"><label class="btn sec" style="cursor:pointer">↑ Anexar arquivo<input type="file" accept="${GC_ACEITA}" hidden onchange="gcAnexar('${esc(id)}',this)"></label><small class="nd-m">PDF ou imagem, até 20 MB. Contrato, aditivo, proposta/PTC, pedido de compra, ART.</small></div>`
+        :ed?'<p class="nd-m">Anexar arquivos é só para quem pode editar o painel (Editor ou dono).</p>':''}
+      ${anx.length?tab([{t:'Tipo'},{t:'Arquivo',f:1},{t:'Tamanho',n:1},{t:'Em',n:1},{t:'Por'},{t:''}],anx,260):'<p class="pl-vazio">Nenhum anexo.</p>'}
+      ${c.os&&c.os.length?`<h4>OS do Omie (${fmtN(c.os.length)})</h4>`+tab(OS_COLS,c.os.slice().sort((a,b)=>(b.dt||0)-(a.dt||0)).map(osLinha),260):''}
+    </div></div>`;
+  if(!refresh)abrirModal('m-ctr'); }
+function gcFechar(){ GC.aberto=null; fecharModal('m-ctr'); if(GC.pendente){ GC.pendente=false; render(); } }
+const gcFechaForm=()=>{ if(GC.pendente){ GC.pendente=false; gcAtualizarTela(); } };
+
+/* ---------- gravação ---------- */
+async function gcGravar(ref,dados,msg){ if(!gcEdita()){ aviso('Sem permissão para gravar.'); return false; }
+  try{ await ref.set(dados); if(msg)aviso(msg); return true; }
+  catch(e){ const c=(e&&e.code)||'';
+    if(c==='invalid_argument'){ GC.pode=false; aviso('Você não tem permissão para alterar os contratos.'); }
+    else if(c==='quota_exceeded')aviso('O banco do painel está cheio. Remova registros antigos antes de criar novos.');
+    else if(c==='unavailable'){ await new Promise(r=>setTimeout(r,800+Math.random()*700)); try{ await ref.set(dados); if(msg)aviso(msg); return true; }catch(e2){ aviso('Não consegui gravar agora. Tente de novo.'); } }
+    else aviso('Não consegui gravar ('+(c||'erro')+').');
+    return false; } }
+const gcCarimbo=()=>({atualizadoEm:new Date().toISOString(),atualizadoPor:GC.uid||null});
+function gcEditar(id){ const x=gcContratos().find(k=>k.id===id); if(!x)return; const f=x.f;
+  formModal(`Ficha do contrato ${x.num}`,[
+    {k:'tipo',rot:'Tipo',tipo:'sel',ops:['',...GC_TIPOS],v:f.tipo||''},
+    {k:'status',rot:'Situação (vazio = a do Omie)',tipo:'sel',ops:GC_STATUS,v:f.status||''},
+    {k:'objeto',rot:'Objeto / escopo do contrato',tipo:'area',rows:3,v:f.objeto||'',larg:1},
+    {k:'ini',rot:'Início da vigência',tipo:'date',v:f.ini||'',ajuda:x.c.ini?`Omie: ${fmtData(x.c.ini)}`:''},
+    {k:'fim',rot:'Fim da vigência',tipo:'date',v:f.fim||'',ajuda:x.c.fim?`Omie: ${fmtData(x.c.fim)}`:''},
+    {k:'meses',rot:'Duração (meses)',tipo:'number',v:f.meses||'',ajuda:'sem o fim, o painel calcula o fim pelo início + meses'},
+    {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:f.valorTotal||'',ajuda:x.c.valorPed?`Controle: ${fmtBRL(x.c.valorPed)}`:x.c.parcela?`Omie: parcela ${fmtBRL(x.c.parcela)}`:''},
+    {k:'valorParcela',rot:'Valor da parcela (R$)',tipo:'number',v:f.valorParcela||''},
+    {k:'fatExtra',rot:'Faturado fora das OS do Omie (R$)',tipo:'number',v:f.fatExtra||'',ajuda:'só se parte do contrato foi faturada sem OS vinculada'},
+    {k:'reajuste',rot:'Índice de reajuste',tipo:'sel',ops:GC_REAJ,v:f.reajuste||''},
+    {k:'mesReajuste',rot:'Mês do reajuste',tipo:'sel',ops:['','janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'],v:f.mesReajuste||''},
+    {k:'renovAuto',rot:'Renovação',tipo:'sel',ops:['','automática','manual'],v:f.renovAuto===true?'automática':f.renovAuto===false?'manual':''},
+    {k:'avisoPrevio',rot:'Aviso prévio (dias)',tipo:'number',v:f.avisoPrevio||''},
+    {k:'periodicidade',rot:'Periodicidade das visitas',tipo:'html',html:`<select class="campo" name="periodicidade">${GC_PERIOD.map(([k,t])=>`<option value="${k}"${(f.periodicidade||'')===k?' selected':''}>${t}</option>`).join('')}</select>`},
+    {k:'visitasPrevistas',rot:'Visitas previstas no contrato',tipo:'number',v:f.visitasPrevistas||'',ajuda:'vazio = calculado pela periodicidade'},
+    {k:'ptc',rot:'PTC / código da proposta',tipo:'text',v:f.ptc||'',ajuda:x.ptc&&!f.ptc?`automático: ${esc(x.ptc)}`:''},
+    {k:'pc',rot:'Pedido de compra do cliente',tipo:'text',v:f.pc||'',ajuda:x.pc&&!f.pc?`automático: ${esc(x.pc)}`:''},
+    {k:'respInterno',rot:'Responsável interno (LS Fire)',tipo:'text',v:f.respInterno||'',lista:'dl-pessoas'},
+    {k:'contato',rot:'Contato no cliente (nome e função)',tipo:'text',v:f.contato||''},
+    {k:'obs',rot:'Observações',tipo:'area',rows:2,v:f.obs||'',larg:1}],fd=>{
+      const n=k=>{ const v=num(fd[k]); return v==null||v<0?null:v; };
+      if(fd.ini&&fd.fim&&fd.fim<fd.ini){ aviso('O fim da vigência é antes do início.'); return false; }
+      const d=Object.assign({},f,{num:x.num,cli:f.cli||x.cli,tipo:fd.tipo||'',status:fd.status||'',objeto:String(fd.objeto||'').trim(),ini:fd.ini||'',fim:fd.fim||'',
+        meses:n('meses'),valorTotal:n('valorTotal'),valorParcela:n('valorParcela'),fatExtra:n('fatExtra'),reajuste:fd.reajuste||'',mesReajuste:fd.mesReajuste||'',
+        renovAuto:fd.renovAuto==='automática'?true:fd.renovAuto==='manual'?false:null,avisoPrevio:n('avisoPrevio'),periodicidade:fd.periodicidade||'',visitasPrevistas:n('visitasPrevistas'),
+        ptc:String(fd.ptc||'').trim(),pc:String(fd.pc||'').trim(),respInterno:String(fd.respInterno||'').trim(),contato:String(fd.contato||'').trim(),obs:String(fd.obs||'').trim()},gcCarimbo());
+      gcGravar(GC.db.doc('contratos/'+id),d,'Ficha salva.').then(gcFechaForm); },'Salvar ficha'); }
+function gcNovo(){ formModal('Novo contrato (ainda fora do Omie)',[
+    {k:'num',rot:'Número do contrato',tipo:'text',v:''},{k:'cli',rot:'Cliente',tipo:'text',v:''},
+    {k:'ini',rot:'Início da vigência',tipo:'date',v:''},{k:'meses',rot:'Duração (meses)',tipo:'number',v:'12'},
+    {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:''},{k:'ptc',rot:'PTC / código da proposta',tipo:'text',v:''}],fd=>{
+    const nm=String(fd.num||'').trim(), cli=String(fd.cli||'').trim(); if(!nm||!cli){ aviso('Informe o número e o cliente.'); return false; }
+    const id=gcId(nm); if(gcContratos().some(x=>x.id===id)){ aviso('Já existe um contrato com esse número: abra a ficha dele.'); return false; }
+    gcGravar(GC.db.doc('contratos/'+id),Object.assign({manual:true,num:nm,cli,ini:fd.ini||'',meses:num(fd.meses)||null,valorTotal:num(fd.valorTotal)||null,ptc:String(fd.ptc||'').trim(),criadoEm:new Date().toISOString()},gcCarimbo()),'Contrato criado.')
+      .then(ok=>{ gcFechaForm(); if(ok){ _GCV=null; setTimeout(()=>gcFicha(id),300); } }); },'Criar contrato'); }
+function gcVisita(id,vid){ const v=vid?GC.visitas.find(k=>k._id===vid):null;
+  const campos=[{k:'data',rot:'Data',tipo:'date',v:v?v.data:isoD(hoje())},{k:'status',rot:'Situação',tipo:'sel',ops:GC_VSIT,v:v?v.status:'Realizada'},
+    {k:'tipo',rot:'Tipo',tipo:'sel',ops:GC_VTIPOS,v:v?v.tipo:'Preventiva'},{k:'tecnico',rot:'Técnico(s)',tipo:'text',v:v?v.tecnico:'',lista:'dl-pessoas'},
+    {k:'resumo',rot:'O que foi feito',tipo:'area',rows:3,v:v?v.resumo:'',larg:1},{k:'pendencias',rot:'Pendências / não conformidades encontradas',tipo:'area',rows:2,v:v?v.pendencias:'',larg:1},
+    {k:'rel',rot:'Relatório da visita (PDF ou imagem)',tipo:'html',larg:1,html:GC.assets?`<input class="campo" type="file" name="rel" accept="${GC_ACEITA}">${v&&v.relatorio?`<small class="nd-m">atual: ${esc(v.relNome||'relatório')} — escolha outro só para trocar</small>`:''}`:'<small class="nd-m">Anexar relatório é só para quem pode editar o painel.</small>'}];
+  if(v)campos.push({k:'apagar',rot:'Excluir esta visita',tipo:'html',html:`<label><input type="checkbox" name="apagar" value="1"> excluir o registro (o arquivo do relatório também)</label>`});
+  formModal(v?'Editar visita':'Registrar visita',campos,(fd,form)=>{
+    if(!fd.data){ aviso('Informe a data.'); return false; }
+    const arq=form.querySelector('input[name=rel]'), file=arq&&arq.files&&arq.files[0];
+    (async()=>{ const ref=v?GC.db.doc('ctrVisitas/'+vid):GC.db.collection('ctrVisitas').doc();
+      if(v&&fd.apagar){ try{ await ref.delete(); if(v.relatorio&&GC.assets)await GC.assets.delete(v.relatorio).catch(()=>{}); aviso('Visita excluída.'); }catch(e){ aviso('Não consegui excluir ('+((e&&e.code)||'erro')+').'); } gcFechaForm(); return; }
+      let rel=v?{relatorio:v.relatorio||null,relNome:v.relNome||''}:{relatorio:null,relNome:''};
+      if(file){ const up=await gcUpload(file); if(!up){ gcFechaForm(); return; } if(v&&v.relatorio&&GC.assets)GC.assets.delete(v.relatorio).catch(()=>{}); rel={relatorio:up.id,relNome:file.name}; }
+      const d=Object.assign({},v||{},{ctr:id,data:fd.data,status:fd.status,tipo:fd.tipo,tecnico:String(fd.tecnico||'').trim(),resumo:String(fd.resumo||'').trim(),pendencias:String(fd.pendencias||'').trim()},rel,
+        v?{}:{criadoEm:new Date().toISOString(),por:GC.uid||null},{atualizadoEm:new Date().toISOString()}); delete d._id;
+      await gcGravar(ref,d,v?'Visita atualizada.':'Visita registrada.'); gcFechaForm(); })(); },v?'Salvar':'Registrar'); }
+async function gcUpload(file){ if(!GC.assets){ aviso('Anexar não está disponível para você neste painel.'); return null; }
+  const ext=(file.name.split('.').pop()||'').toLowerCase(), tipos={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',txt:'text/plain',csv:'text/csv'};
+  const tipo=tipos[ext]; if(!tipo){ aviso('Formato não aceito. Envie PDF ou imagem (Word e Excel: salve como PDF).'); return null; }
+  if(file.size>20*1024*1024){ aviso('Arquivo acima de 20 MB. Comprima o PDF e tente de novo.'); return null; }
+  aviso('Enviando '+file.name+'…',60000);
+  try{ const r=await GC.assets.upload(file,{type:tipo}); aviso('Arquivo enviado.'); return r; }
+  catch(e){ const c=(e&&e.code)||''; aviso({too_large:'Arquivo grande demais.',unsupported_type:'Formato não aceito: envie PDF ou imagem.',quota_or_state:'O armazenamento do painel está cheio.',rate_limited:'Muitos envios seguidos: tente de novo em instantes.',not_granted:'Você não tem permissão para anexar.'}[c]||'Não consegui enviar o arquivo ('+(c||'erro')+').'); return null; } }
+function gcAnexar(id,inp){ const file=inp.files&&inp.files[0]; inp.value=''; if(!file)return;
+  formModal('Anexar: '+file.name,[{k:'tipo',rot:'Tipo do documento',tipo:'sel',ops:GC_ATIPOS,v:/contrato/i.test(file.name)?'Contrato':/ptc|proposta/i.test(file.name)?'Proposta / PTC':/aditivo/i.test(file.name)?'Aditivo':'Outro'}],fd=>{
+    (async()=>{ const up=await gcUpload(file); if(!up){ gcFechaForm(); return; }
+      const ok=await gcGravar(GC.db.collection('ctrAnexos').doc(),{ctr:id,tipo:fd.tipo,nome:file.name,asset:up.id,tipoArq:up.contentType,tam:up.sizeBytes,em:new Date().toISOString(),por:GC.uid||null},'Anexo salvo.');
+      if(!ok&&GC.assets)GC.assets.delete(up.id).catch(()=>{}); gcFechaForm(); })(); },'Enviar'); }
+function gcApagarAnexo(aid){ const a=GC.anexos.find(k=>k._id===aid); if(!a)return;
+  formModal('Remover anexo',[{k:'c',rot:'',tipo:'html',larg:1,html:`<p>Remover <b>${esc(a.nome||'arquivo')}</b> (${esc(a.tipo||'')})? O arquivo some para todos.</p>`}],()=>{
+    (async()=>{ try{ await GC.db.doc('ctrAnexos/'+aid).delete(); if(a.asset&&GC.assets)await GC.assets.delete(a.asset).catch(()=>{}); aviso('Anexo removido.'); }
+      catch(e){ aviso('Não consegui remover ('+((e&&e.code)||'erro')+').'); } gcFechaForm(); })(); },'Remover'); }
+
+/* ---------- indicadores ---------- */
+function gcTelaInd(){ const R=hoje(), L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), A=L.filter(x=>x.ativo);
+  let h=gcAvisoEstado();
+  const mens=somar(A,x=>x.mensal||0), sal=somar(A,x=>x.saldo||0), comVal=A.filter(x=>x.valor!=null);
+  const esp=somar(A,x=>x.esperadas||0), real=somar(A.filter(x=>x.esperadas!=null),x=>Math.min(x.esperadas,x.realizadas.length)), comPer=A.filter(x=>x.esperadas!=null);
+  const atr=A.filter(x=>x.visAtraso>0), semRel=somar(L,x=>x.semRel.length), inc=A.filter(x=>x.completo<1);
+  const venc=d=>A.filter(x=>x.diasFim!=null&&x.diasFim>=0&&x.diasFim<=d);
+  const atrasoFat=A.filter(x=>x.desvio!=null&&x.desvio<-.15);
+  const k=(n,t,lin)=>regLista('gci-'+n,t,lin,[{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Fase'},{t:'Valor',n:1},{t:'Faturado',n:1},{t:'Visitas',n:1},{t:'Atenção',f:1}]);
+  const lx=x=>[esc(x.num),esc(String(x.cli).slice(0,40)),esc(x.fase),x.valor!=null?fmtBRL(x.valor):'—',fmtBRL(x.fat),x.esperadas!=null?`${x.realizadas.length}/${x.esperadas}`:fmtN(x.realizadas.length),esc(x.alertas.join(' · ')||'—')];
+  k('at','Contratos ativos',A.map(lx)); k('vis','Contratos com visita atrasada',atr.map(lx)); k('inc','Contratos com cadastro incompleto',inc.map(lx));
+  k('v90','Vencem em até 90 dias',venc(90).map(lx)); k('fat','Faturamento abaixo do prazo decorrido',atrasoFat.map(lx));
+  regLista('gci-rel','Visitas realizadas sem relatório',L.flatMap(x=>x.semRel.map(v=>[esc(x.num),esc(String(x.cli).slice(0,40)),fmtData(data(v.data)),esc(v.tipo||''),esc(v.tecnico||'')])),[{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Data',n:1},{t:'Tipo'},{t:'Técnico'}]);
+  h+=`<div class="g g4 kpis-2">
+    ${cardG({rot:'Contratos ativos',val:lnk('gci-at',fmtN(A.length)),tipo:'pos',per:`posição em ${fmtData(R)}`,sub:mens?`<b>${fmtCompacto(mens)}/mês</b> · ${fmtCompacto(mens*12)}/ano`:'',fonte:'ficha + Omie'})}
+    ${cardG({rot:'Saldo contratual a faturar',val:fmtCompacto(sal),tipo:'pos',per:`posição em ${fmtData(R)}`,sub:`${fmtN(comVal.length)} de ${fmtN(A.length)} contratos com valor conhecido`,cond:comVal.length<A.length?'parcial':null,fonte:'ficha + Omie'})}
+    ${cardG({rot:'Cumprimento das visitas',val:esp?fmtPct(real/esp,0):'—',tipo:'pos',per:'do início de cada contrato até hoje',cls:esp&&real/esp<.9?'err':esp?'ok':'',sub:esp?`${fmtN(real)} realizadas de ${fmtN(esp)} esperadas · ${fmtN(comPer.length)} contrato${comPer.length===1?'':'s'} com periodicidade`:'informe a periodicidade nas fichas',fonte:'visitas registradas'})}
+    ${cardG({rot:'Contratos com visita atrasada',val:lnk('gci-vis',fmtN(atr.length)),tipo:'pos',per:`em ${fmtData(R)}`,cls:atr.length?'err':'ok',sub:atr.length?atr.slice(0,4).map(x=>esc(String(x.cli).split(' ')[0])).join(' · '):'em dia',fonte:'visitas registradas'})}
+    ${cardG({rot:'Relatórios de visita pendentes',val:lnk('gci-rel',fmtN(semRel)),tipo:'pos',per:'visitas realizadas',cls:semRel?'ale':'ok',sub:'visita registrada sem o PDF do relatório',fonte:'visitas registradas'})}
+    ${cardG({rot:'Vencem em até 90 dias',val:lnk('gci-v90',fmtN(venc(90).length)),tipo:'pos',per:`até ${fmtData(new Date(+R+90*864e5))}`,cls:venc(90).length?'ale':'ok',sub:`${fmtN(venc(30).length)} em 30 dias · ${fmtN(venc(60).length)} em 60`,fonte:'ficha + Omie'})}
+    ${cardG({rot:'Faturamento abaixo do prazo',val:lnk('gci-fat',fmtN(atrasoFat.length)),tipo:'pos',per:'faturado × prazo decorrido',cls:atrasoFat.length?'ale':'ok',sub:'mais de 15 pontos abaixo: medição ou OS em atraso',fonte:'Omie × ficha'})}
+    ${cardG({rot:'Cadastro incompleto',val:lnk('gci-inc',fmtN(inc.length)),tipo:'pos',per:'contratos ativos',cls:inc.length?'ale':'ok',sub:'sem contrato anexado, valor, vigência, periodicidade, responsável ou reajuste',fonte:'ficha'})}
+  </div>`;
+  /* execução por contrato */
+  h+=sec('Execução de cada contrato','Prazo decorrido × faturado × visitas. Desvio = faturado − prazo (negativo: faturando menos do que o tempo já passado).','gci-exec');
+  h+=card('','',tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Fase'},{t:'Prazo',n:1},{t:'Faturado',n:1},{t:'Desvio',n:1},{t:'Previsto até hoje',n:1},{t:'Visitas',n:1},{t:'Cumprimento',n:1},{t:'Dias sem visita',n:1},{t:'Próxima visita',n:1}],
+    A.sort((a,b)=>(a.desvio??0)-(b.desvio??0)).map(x=>[`<a class="td-link" onclick="gcFicha('${esc(x.id)}')">${esc(x.num)}</a>`,esc(String(x.cli).slice(0,32)),esc(x.fase),fmtPct(x.prazoPct,0),fmtPct(x.fatPct,0),
+      x.desvio==null?'—':`<b style="color:${x.desvio<-.15?'var(--err)':x.desvio>.15?'var(--ale)':'inherit'}">${x.desvio>0?'+':''}${fmtD(x.desvio*100,0)} p.p.</b>`,x.previstoHoje!=null?fmtBRL(x.previstoHoje):'—',
+      x.esperadas!=null?`${x.realizadas.length}/${x.esperadas}`:fmtN(x.realizadas.length),x.cumpr!=null?`<span style="color:${x.cumpr<.9?'var(--err)':'var(--ok)'}">${fmtPct(x.cumpr,0)}</span>`:'—',
+      x.diasSemVisita!=null?fmtN(x.diasSemVisita):'—',x.proxVis?fmtData(data(x.proxVis.data)):'—']),480));
+  /* visitas por mês */
+  const meses=[...Array(12).keys()].map(i=>mesSoma(mesKey(R),i-11)), V=GC.visitas.filter(v=>L.some(x=>x.id===v.ctr));
+  const por=(st)=>meses.map(m=>V.filter(v=>v.status===st&&String(v.data).slice(0,7)===m).length);
+  agendar('gci-vm',{type:'bar',ehQtd:true,data:{labels:meses.map(mesRot),datasets:[{label:'Realizadas',data:por('Realizada'),stack:'s',backgroundColor:CORDIV.SPV(),borderRadius:2,maxBarThickness:40,fmt:'n'},
+      {label:'Agendadas',data:por('Agendada'),stack:'s',backgroundColor:alfa(CORDIV.SPV(),.4),borderRadius:2,maxBarThickness:40,fmt:'n'},
+      {label:'Não realizadas',data:por('Não realizada'),stack:'s',backgroundColor:corV('--err'),borderRadius:2,maxBarThickness:40,fmt:'n'}]},
+    options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{precision:0},grid:{color:COR().linha}}},plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10}}}}});
+  h+=sec('Visitas por mês','Visitas registradas nas fichas, pela data da visita.','gci-vm-s')+card('Visitas por mês',`${mesRot(meses[0])} a ${mesRot(meses[11])}`,V.length?graf('gci-vm','alt'):'<p class="pl-vazio">Nenhuma visita registrada ainda.</p>');
+  return h; }
+
+/* ---------- Excel da gestão ---------- */
+function gcExcel(){ const L=ctrRecorte(gcContratos(),x=>[x.c.resp,x.c.dono]), wb=XLSX.utils.book_new(), R=hoje();
+  const add=(nome,cab,lin)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cab,...lin]),nome);
+  add('Contratos',['Contrato','Cliente','Situação','Tipo','Objeto','Início','Fim','Meses','Mês atual','Valor contratado','Origem do valor','Parcela','Receita/mês','Faturado','Aguardando faturamento','Saldo a faturar','% faturado','% prazo','Desvio (p.p.)','Reajuste','Mês do reajuste','PTC','Pedido de compra','Vendedor','Dono da conta','Responsável interno','Periodicidade','Visitas realizadas','Visitas esperadas até hoje','Última visita','Próxima visita','Visitas sem relatório','Anexos','Cadastro %','Atenção'],
+    L.map(x=>[x.num,x.cli,x.status,x.tipo,x.objeto,x.ini?isoD(x.ini):'',x.fim?isoD(x.fim):'',x.meses,x.mesAtual,x.valor,x.valorSrc,x.parcela,x.mensal?Math.round(x.mensal*100)/100:null,x.fat,x.aguard,x.saldo,
+      x.fatPct!=null?Math.round(x.fatPct*1000)/10:null,x.prazoPct!=null?Math.round(x.prazoPct*1000)/10:null,x.desvio!=null?Math.round(x.desvio*1000)/10:null,x.reajuste,x.mesReaj,x.ptc,x.pc,x.vend,x.dono,x.respInt,
+      x.period,x.realizadas.length,x.esperadas,x.ultVis?x.ultVis.data:'',x.proxVis?x.proxVis.data:'',x.semRel.length,x.anx.length,Math.round(x.completo*100),x.alertas.join(' · ')]));
+  add('Visitas',['Contrato','Cliente','Data','Tipo','Situação','Técnico','O que foi feito','Pendências','Relatório anexado'],
+    L.flatMap(x=>x.vis.map(v=>[x.num,x.cli,v.data,v.tipo,v.status,v.tecnico,v.resumo,v.pendencias,v.relatorio?(v.relNome||'sim'):'não'])));
+  add('Anexos',['Contrato','Cliente','Tipo','Arquivo','Enviado em'],L.flatMap(x=>x.anx.map(a=>[x.num,x.cli,a.tipo,a.nome,a.em?String(a.em).slice(0,10):''])));
+  add('Leia-me',['Item','Descrição'],[['Gerado em',fmtDH(new Date())],['Referência',fmtData(R)],
+    ['Automático','Vigência, parcela, OS faturadas e a faturar: Omie. Valor vendido, PTC e pedido do cliente: Controle de Pedidos. Dono da conta: Ploomes.'],
+    ['Ficha','O que a equipe preenche no painel prevalece sobre o automático (coluna "Origem do valor" diz de onde veio).'],
+    ['Faturado','Soma das OS faturadas no Omie vinculadas ao contrato (mais o lançado na ficha como faturado fora das OS). É faturamento, não recebimento.'],
+    ['Visitas esperadas','Pela periodicidade da ficha, contadas do início do contrato até hoje (ou até o fim, se já venceu).']]);
+  XLSX.writeFile(wb,`LS-Fire-Gestao-Contratos-${isoD(R)}.xlsx`); }
+
 VISTA.contratos=function(){
+  /* relatório: o acompanhamento e, com as fichas carregadas, os indicadores da gestão */
+  if(REL_GERANDO)return ctrAcompanhamento()+(GC.estado==='ok'&&gcContratos().some(x=>Object.keys(x.f).length||x.vis.length)?sec('Gestão de contratos — indicadores','Fichas, visitas e anexos registrados no painel.','gci-rel-s')+gcTelaInd():'');
+  if(GC.aba==='gestao')return gcAbas()+gcTelaGestao();
+  if(GC.aba==='ind')return gcAbas()+gcTelaInd();
+  return gcAbas()+ctrAcompanhamento(); };
+function ctrAcompanhamento(){
   const C=contratosModelo(), R=C.R, temOS=C.os.length, temBase=C.base.length;
   if(!temOS&&!temBase)return card('Nenhuma base de contratos carregada','',`<p>Para acompanhar os contratos, importe em <b>Dados e configurações → ↑ Importar planilhas</b>:</p>
     <ul><li><b>Contratos por Cliente</b> (Omie · Serviços → Contratos), <b>sem filtro de situação</b>: vigência, situação e valor de cada contrato;</li>
@@ -6740,7 +7099,7 @@ VISTA.contratos=function(){
     [...sn.entries()].sort((a,b)=>v(b[1])-v(a[1])).map(([cli,a])=>{ const ms=new Set(a.map(o=>o.mes).filter(Boolean)); return [esc(String(cli).slice(0,40)),fmtN(a.length),fmtBRL(v(a)),fmtN(ms.size),fmtData(a.map(o=>o.dt).filter(Boolean).sort((x,y)=>y-x)[0]),
       ms.size>=3?'<span class="tag t-ale">recorrente: parece contrato</span>':'pontual']; }),380));
   h+=`<div class="pl-bar so-tela"><button class="btn sec" onclick="contratosExcel()">↓ Excel do acompanhamento</button></div>`;
-  return h; };
+  return h; }
 function contratosExcel(){ const C=contratosModelo(), R=C.R, wb=XLSX.utils.book_new();
   const add=(nome,cab,lin)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([cab,...lin]),nome);
   const L=ctrRecorte(C.L,c=>[c.resp,c.dono]), meses=[...new Set(C.os.map(o=>o.mes).filter(Boolean))].sort();
@@ -8644,7 +9003,7 @@ VISTA.atividades=function(){
   /* próximos passos do painel */
   const ps=recorte('passo',CFG.passos), sit=agrupa(ps,situacaoPasso);
   h+=sec('Próximos passos registrados no painel','Planejado = aberto com prazo futuro · vencido = aberto com prazo passado (não conclui sozinho) · reprogramado = prazo alterado com justificativa · concluído no prazo / com atraso · cancelado.','atv-passos');
-  h+=`<div class="g g6 kpis-2">${['Planejado','Reprogramado','Vencido','Concluído no prazo','Concluído com atraso','Concluído — prazo não avaliável','Cancelado'].map(k=>kpi(k,fmtN((sit.get(k)||[]).length),'',k==='Vencido'&&(sit.get(k)||[]).length?'err':'neutro')).join('')}</div>`;
+  if(ps.length)h+=`<div class="g g6 kpis-2">${['Planejado','Reprogramado','Vencido','Concluído no prazo','Concluído com atraso','Concluído — prazo não avaliável','Cancelado'].map(k=>kpi(k,fmtN((sit.get(k)||[]).length),'',k==='Vencido'&&(sit.get(k)||[]).length?'err':'neutro')).join('')}</div>`;
   h+=ps.length?card('','',tab([{t:'Cliente',f:1},{t:'Passo',f:1},{t:'Responsável'},{t:'Dono do negócio'},{t:'Prazo'},{t:'Situação'},{t:'Histórico',f:1},{t:''}],
       ps.sort((a,b)=>(a.prazo||'9')<(b.prazo||'9')?-1:1).map(p=>[esc(p.cli),esc(p.texto),esc(p.resp||'—'),esc(p.respNeg||'—'),p.prazo?fmtData(data(p.prazo)):'—',esc(situacaoPasso(p)),
         esc((p.hist||[]).map(x=>`${fmtData(new Date(x.em))}: ${x.campo} ${x.de||'—'} → ${x.para||'—'}${x.just?' ('+x.just+')':''}`).join(' | ')),`<button class="mini so-tela" onclick="passoEditar(${jsq(p.id)})">atualizar</button>`])))
@@ -10420,6 +10779,7 @@ function montarGlossario(){ document.getElementById('glos-corpo').innerHTML=
    pelo "downloads" da plataforma, que pede confirmação a quem está vendo. Aberto
    como arquivo local, segue o link de download de sempre. */
 let _DL=null;
+try{ gcIniciar(); }catch(e){ logFalha('gestão de contratos',e); }
 try{ if(window.claude&&typeof window.claude.use==='function')
   window.claude.use('downloads').then(d=>{_DL=d;}).catch(()=>{}); }catch(e){}
 function baixar(txt,nome,tipo){
@@ -10580,7 +10940,7 @@ function comCarregando(nome){ const f=window[nome]; if(typeof f!=='function'||f.
       .catch(e=>{ console.error(e); aviso('Não consegui gerar a planilha: '+(e&&e.message||'erro')); })
       .finally(()=>{ bt.classList.remove('carregando'); bt.removeAttribute('aria-busy'); bt.disabled=false; }); };
   g._cc=1; window[nome]=g; }
-['relcPlanilha','fechamentoPlanilha','pqExcel','xlsVendPrev','gbCSV','baixarLista','contratosExcel'].forEach(comCarregando);
+['relcPlanilha','fechamentoPlanilha','pqExcel','xlsVendPrev','gbCSV','baixarLista','contratosExcel','gcExcel'].forEach(comCarregando);
 /* ---------- arranque ---------- */
 function arrancar(){ lerSeed().then(iniciar).catch(e=>{ console.error(e);
   document.getElementById('tela').innerHTML=`<div class="nota">Não consegui abrir a base embutida (${esc(e.message)}).

@@ -215,3 +215,21 @@ Nada é corrigido pelo painel — ele só lê.
   (API-Omie_Produtos.xlsx e API-Omie_Fiscal.xlsx), reconhecidas por `detectar` pelas colunas
   "Vendido (OVs)" e "NCM do Cadastro". Sem elas, as seções do Omie mostram "aguardando a base".
 - Teste: `testes/verificacoes.js` (registros sintéticos, sem dados de clientes).
+
+## Gestão de contratos (18/11/2026)
+Aba **Contratos de serviço** com três visões: Acompanhamento (Omie, como antes), **Gestão de contratos**
+e **Indicadores**.
+- Ficha de cada contrato: o automático vem do Omie (vigência, parcela, OS faturadas e a faturar), do
+  Controle de Pedidos (valor vendido, PTC, pedido do cliente) e do Ploomes (dono da conta); a equipe
+  preenche no painel valor contratado, meses, reajuste, renovação, periodicidade de visita, responsável,
+  contato, objeto. O que a ficha informa prevalece, e cada valor mostra a origem.
+- Visitas (data, tipo, situação, técnico, o que foi feito, pendências, relatório em PDF) e anexos
+  (contrato, aditivo, proposta/PTC, pedido de compra, ART).
+- Onde fica: banco do painel publicado (capacidade `db` do Claude: coleções `contratos/<id>`,
+  `ctrVisitas`, `ctrAnexos`) e arquivos no armazenamento dele (`assets`). Sobrevive às atualizações
+  automáticas. Anexar é só para Editor/dono; preencher, para quem pode alterar o painel. O arquivo
+  baixado (↓ Salvar) não tem banco: mostra só o automático.
+- Indicadores: ativos e receita mensal, saldo contratual, cumprimento de visitas (realizadas ÷
+  esperadas pela periodicidade), visitas atrasadas, relatórios pendentes, vencimentos 30/60/90,
+  faturamento × prazo decorrido (desvio), cadastro incompleto. Entram no relatório do tema Contratos.
+- Teste: `testes/gestao-contratos.js` (banco simulado em memória).
