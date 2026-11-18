@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Omie (API) -> planilha de itens de venda no formato do export do Omie que o painel já importa.
+"""Omie (API) -> planilhas que o painel importa.
 
 Lê os JSON gravados por omie_coletar.py (pedidos, clientes, produtos, vendedores, notas,
 departamentos, categorias, etapas, famílias) e grava uma planilha com UMA LINHA POR ITEM de
 pedido de venda, com os MESMOS CABEÇALHOS do export "itens de venda" do Omie. O painel reconhece
 a planilha como a base "Omie — itens de venda" sem nenhuma mudança no painel.
 
+Na mesma pasta grava também, para as verificações de cadastro do painel:
+  API-Omie_Produtos.xlsx  uma linha por produto do cadastro (inclusive inativos)
+  API-Omie_Fiscal.xlsx    uma linha por item de OV não cancelada, com NCM, CFOP e CSTs
+
 Pedidos cancelados ficam de fora. Não chama a API: só lê os arquivos da coleta.
 A planilha tem dados de clientes: grave-a só em pasta fora do git (omie-coleta/ está no .gitignore).
 
 Uso
   python3 -I ferramentas/omie_para_planilha.py <pasta da coleta> [saída.xlsx]
-  (saída padrão: <pasta da coleta>/API-Omie_Itens.xlsx)
+  (saída padrão: <pasta da coleta>/API-Omie_Itens.xlsx; Produtos e Fiscal ao lado, mesmo nome-base)
 """
 import datetime as _dt, json, os, re, sys
 
@@ -26,6 +30,17 @@ CABECALHOS = [
     'Número da OP', 'Número de Parcelas', 'Número do Pedido de Compra', 'Sequencial', 'Série', 'Situação da OP',
     'Código da Família', 'Código do Produto', 'Dias de Garantia', 'Estado', 'Etapa da OP', 'Família de Produto',
     'Frete', 'Incluído por', 'Item', 'Nº do Contrato de Venda', 'Nota Fiscal', 'Tipo do Produto', 'Categoria',
+]
+CAB_PRODUTOS = [
+    'Código do Produto (cadastro)', 'Descrição', 'NCM', 'Unidade', 'Código da Família', 'Família', 'Tipo do Item',
+    'Origem da Mercadoria', 'CEST', 'Inativo', 'Data de Inclusão', 'Data de Alteração', 'Incluído por',
+    'Alterado por', 'Vendido (OVs)',
+]
+CAB_FISCAL = [
+    'OV (fiscal)', 'Item', 'Código do Produto (cadastro)', 'Descrição do Produto', 'NCM do Item', 'NCM do Cadastro',
+    'CFOP', 'CST/CSOSN ICMS', 'Alíquota ICMS', 'CST IPI', 'Alíquota IPI', 'CST PIS', 'CST COFINS',
+    'Categoria do Item', 'Tipo do Item', 'Vendedor', 'Agente de Negócio', 'Cliente (Nome Fantasia)',
+    'UF do Cliente', 'Data de Inclusão', 'Situação', 'Incluído por (OV)', 'Valor do Item',
 ]
 MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro',
          'Novembro', 'Dezembro']
@@ -68,6 +83,20 @@ def nome_categoria(descr):
     return m.group(1) if m else (descr or '')
 
 
+def caracteristica(cli, nome):
+    """valor de uma característica do cliente (ListarClientes com exibir_caracteristicas=S)"""
+    alvo = re.sub(r'\W+', '', nome.lower())
+    for c in cli.get('caracteristicas') or []:
+        if re.sub(r'\W+', '', txt(c.get('campo')).lower().replace('ó', 'o').replace('ê', 'e')) == alvo:
+            return txt(c.get('conteudo'))
+    return ''
+
+
+def tipo_item(t):
+    t = txt(t)
+    return f'{t} - {TIPOS_ITEM[t]}' if t in TIPOS_ITEM else t
+
+
 def montar(pasta, hoje=None):
     hoje = hoje or _dt.date.today()
     pedidos = ler(pasta, 'pedidos')
@@ -90,7 +119,8 @@ def montar(pasta, hoje=None):
             continue
         nf_do_pedido[ped] = txt(ide.get('nNF'))
 
-    linhas, cancelados = [], 0
+    linhas, fiscal, cancelados = [], [], 0
+    ovs_do_produto = {}
     for p in pedidos:
         cab, info = p.get('cabecalho') or {}, p.get('infoCadastro') or {}
         if txt(info.get('cancelado')) == 'S':
@@ -114,6 +144,9 @@ def montar(pasta, hoje=None):
         deps.sort(key=lambda d: (-d[0], not PROJETO.match(d[1])))
         depto = deps[0][1] if deps else ''
         nf = nf_do_pedido.get(cab.get('codigo_pedido')) if faturado else None
+        vendedor = vendedores.get(adic.get('codVend'), '')
+        cliente = txt(cli.get('nome_fantasia')) or txt(cli.get('razao_social'))
+        agente = caracteristica(cli, 'Agente de Negocio')
         for i, det in enumerate(p.get('det') or [], 1):
             prod, ia = det.get('produto') or {}, det.get('inf_adic') or {}
             cad = produtos.get(prod.get('codigo_produto')) or {}
@@ -121,9 +154,37 @@ def montar(pasta, hoje=None):
             tipo = txt(cad.get('tipoItem'))
             cat = txt(ia.get('codigo_categoria_item')) or txt(adic.get('codigo_categoria'))
             codigo, descr = txt(prod.get('codigo')), txt(prod.get('descricao'))
+            ovs_do_produto.setdefault(prod.get('codigo_produto'), set()).add(cab.get('codigo_pedido'))
+            imp = det.get('imposto') or {}
+            icms, icms_sn, ipi = imp.get('icms') or {}, imp.get('icms_sn') or {}, imp.get('ipi') or {}
+            fiscal.append([{
+                'OV (fiscal)': txt(cab.get('numero_pedido')),
+                'Item': i,
+                'Código do Produto (cadastro)': txt(cad.get('codigo')) or codigo,
+                'Descrição do Produto': descr,
+                'NCM do Item': txt(prod.get('ncm')),
+                'NCM do Cadastro': txt(cad.get('ncm')),
+                'CFOP': txt(prod.get('cfop')),
+                'CST/CSOSN ICMS': txt(icms.get('cod_sit_trib_icms')) or txt(icms_sn.get('cod_sit_trib_icms_sn')),
+                'Alíquota ICMS': icms.get('aliq_icms'),
+                'CST IPI': txt(ipi.get('cod_sit_trib_ipi')),
+                'Alíquota IPI': ipi.get('aliq_ipi'),
+                'CST PIS': txt((imp.get('pis_padrao') or {}).get('cod_sit_trib_pis')),
+                'CST COFINS': txt((imp.get('cofins_padrao') or {}).get('cod_sit_trib_cofins')),
+                'Categoria do Item': categorias.get(cat, cat),
+                'Tipo do Item': tipo_item(cad.get('tipoItem')),
+                'Vendedor': vendedor,
+                'Agente de Negócio': agente,
+                'Cliente (Nome Fantasia)': cliente,
+                'UF do Cliente': txt(cli.get('estado')),
+                'Data de Inclusão': txt(info.get('dInc')),
+                'Situação': situacao,
+                'Incluído por (OV)': txt(info.get('uInc')),
+                'Valor do Item': prod.get('valor_total'),
+            }.get(c) for c in CAB_FISCAL])
             linha = {
                 'ORDEM DE VENDA': txt(cab.get('numero_pedido')),
-                'Cliente (Nome Fantasia)': txt(cli.get('nome_fantasia')) or txt(cli.get('razao_social')),
+                'Cliente (Nome Fantasia)': cliente,
                 'Previsão de Faturamento (completa)': txt(cab.get('data_previsao')),
                 'Operação': 'ORDEM DE VENDA',
                 'Situação': situacao,
@@ -134,11 +195,13 @@ def montar(pasta, hoje=None):
                 'Descrição do Produto': descr,
                 'Descrição do Produto (completa)': f'{codigo} - {descr}' if codigo else descr,
                 'Observações do Item do Pedido': txt((det.get('observacao') or {}).get('obs_item')),
+                'Característica do Cliente - Agente de Negocio': agente,
+                'Característica do Cliente - Segmento': caracteristica(cli, 'Segmento'),
                 'Data de Inclusão.Ano': inc.year if inc else None,
                 'Data de Inclusão.Dia': inc.day if inc else None,
                 'Data de Inclusão.Mês': MESES[inc.month - 1] if inc else '',
                 'Nº do Pedido do Cliente': txt(adic.get('numero_pedido_cliente')),
-                'Vendedor': vendedores.get(adic.get('codVend'), ''),
+                'Vendedor': vendedor,
                 'Departamento': depto or ND,
                 'Previsão de Faturamento.Ano': prev.year if prev else None,
                 'Previsão de Faturamento.Dia': prev.day if prev else None,
@@ -155,17 +218,39 @@ def montar(pasta, hoje=None):
                 'Item': i,
                 'Nº do Contrato de Venda': txt(adic.get('numero_contrato')),
                 'Nota Fiscal': nf.zfill(8) if nf else ND,
-                'Tipo do Produto': f'{tipo} - {TIPOS_ITEM[tipo]}' if tipo in TIPOS_ITEM else (tipo or ND),
+                'Tipo do Produto': tipo_item(tipo) or ND,
                 'Categoria': categorias.get(cat, cat),
             }
             linhas.append([linha.get(c) for c in CABECALHOS])
-    return linhas, len(pedidos), cancelados
+
+    prods = []
+    for cad in produtos.values():
+        fam = familias.get(cad.get('codigo_familia')) or {}
+        info, rf = cad.get('info') or {}, cad.get('recomendacoes_fiscais') or {}
+        prods.append([{
+            'Código do Produto (cadastro)': txt(cad.get('codigo')),
+            'Descrição': txt(cad.get('descricao')),
+            'NCM': txt(cad.get('ncm')),
+            'Unidade': txt(cad.get('unidade')),
+            'Código da Família': txt(fam.get('codFamilia')),
+            'Família': txt(fam.get('nomeFamilia')) or txt(cad.get('descricao_familia')),
+            'Tipo do Item': tipo_item(cad.get('tipoItem')),
+            'Origem da Mercadoria': txt(rf.get('origem_mercadoria')),
+            'CEST': txt(cad.get('cest')) or txt(rf.get('id_cest')),
+            'Inativo': 'S' if txt(cad.get('inativo')) == 'S' else 'N',
+            'Data de Inclusão': txt(info.get('dInc')),
+            'Data de Alteração': txt(info.get('dAlt')),
+            'Incluído por': txt(info.get('uInc')),
+            'Alterado por': txt(info.get('uAlt')),
+            'Vendido (OVs)': len(ovs_do_produto.get(cad.get('codigo_produto'), ())),
+        }.get(c) for c in CAB_PRODUTOS])
+    return {'itens': linhas, 'produtos': prods, 'fiscal': fiscal}, len(pedidos), cancelados
 
 
-def gravar(linhas, saida):
+def gravar(linhas, saida, cabecalhos=CABECALHOS, aba='Itens de venda'):
     from openpyxl import Workbook
-    wb = Workbook(); ws = wb.active; ws.title = 'Itens de venda'
-    ws.append(CABECALHOS)
+    wb = Workbook(); ws = wb.active; ws.title = aba
+    ws.append(cabecalhos)
     for l in linhas:
         ws.append(['' if v is None else v for v in l])
     wb.save(saida)
@@ -176,9 +261,16 @@ def main():
         print(__doc__); return
     pasta = sys.argv[1]
     saida = sys.argv[2] if len(sys.argv) > 2 else os.path.join(pasta, 'API-Omie_Itens.xlsx')
-    linhas, n_ped, canc = montar(pasta)
-    gravar(linhas, saida)
-    print(f'ok: {len(linhas)} itens de {n_ped - canc} pedidos ({canc} cancelados fora) -> {saida}')
+    t, n_ped, canc = montar(pasta)
+    gravar(t['itens'], saida)
+    print(f'ok: {len(t["itens"])} itens de {n_ped - canc} pedidos ({canc} cancelados fora) -> {saida}')
+    base = re.sub(r'Itens(\.xlsx)?$', '', saida[:-5] if saida.lower().endswith('.xlsx') else saida)
+    if base == (saida[:-5] if saida.lower().endswith('.xlsx') else saida):
+        base += '_'
+    for nome, cab, aba in (('Produtos', CAB_PRODUTOS, 'Produtos'), ('Fiscal', CAB_FISCAL, 'Itens fiscais')):
+        arq = f'{base}{nome}.xlsx'
+        gravar(t[nome.lower()], arq, cab, aba)
+        print(f'ok: {len(t[nome.lower()])} linhas -> {arq}')
 
 
 if __name__ == '__main__':

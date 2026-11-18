@@ -24,7 +24,8 @@ URL = 'https://app.omie.com.br/api/v1/'
 # base -> (caminho, método, chave da lista na resposta, registros por página, parâmetros extras)
 PERMITIDOS = {
     'pedidos':    ('produtos/pedido/',     'ListarPedidos',    'pedido_venda_produto',     50,  {'apenas_importado_api': 'N'}),
-    'clientes':   ('geral/clientes/',      'ListarClientes',   'clientes_cadastro',        500, {'apenas_importado_api': 'N'}),
+    # exibir_caracteristicas traz as características do cliente (ex.: Agente de Negócio, Segmento)
+    'clientes':   ('geral/clientes/',      'ListarClientes',   'clientes_cadastro',        500, {'apenas_importado_api': 'N', 'exibir_caracteristicas': 'S'}),
     'produtos':   ('geral/produtos/',      'ListarProdutos',   'produto_servico_cadastro', 500, {'apenas_importado_api': 'N', 'filtrar_apenas_omiepdv': 'N'}),
     'projetos':   ('geral/projetos/',      'ListarProjetos',   'cadastro',                 500, {}),
     'vendedores': ('geral/vendedores/',    'ListarVendedores', 'cadastro',                 500, {}),
