@@ -441,6 +441,14 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .ver-a{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:20px;padding:1px 7px;white-space:nowrap}
 .ver-p{grid-column:3;font-size:10px;color:var(--txt3);text-align:right;white-space:nowrap}
 @media (max-width:640px){.ver-lista{grid-template-columns:1fr}}
+@media (max-width:760px){
+  .mini,.chip,.chips-al .chip,.pq-ex button{min-height:34px;box-sizing:border-box}
+  .mini{height:34px!important;padding:0 12px!important}
+  select.campo,input.campo{min-height:36px}
+  .pq-linhas .seg,.pq-barra .seg{flex-wrap:wrap;max-width:100%}
+  .kpi .val a.td-link{display:inline-block;min-width:34px;min-height:34px;text-align:center}
+  li a.ver,li a.td-link,p a.td-link,ol a.td-link{display:inline-block;padding:7px 0;max-width:100%;overflow-wrap:anywhere}
+}
 .pq-linhas{display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:10px}
 .pq-linhas>div,.pq-barra{display:flex;align-items:center;gap:8px}.pq-linhas label,.pq-barra label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3)}
 .seg button.on{background:var(--lar);color:#fff}
@@ -675,6 +683,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .fe-r{font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:13px}.fe-r small{font-family:Arial,sans-serif;font-weight:400;color:var(--txt3);font-size:11px}
 .fe-div{display:flex;height:16px;border-radius:3px;overflow:hidden;margin:3px 0}
 .fe-div i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:10px;font-weight:700;color:#fff}
+html:not([data-t="claro"]) .fe-div i{color:#1A1A1A}
+html:not([data-t="claro"]) span.tag[style*="22;color"],html:not([data-t="claro"]) span.tag[style*="1e;color"]{filter:brightness(1.6) saturate(.9)}
 .fe-div i.seq,.fe-leg i.seq{background:var(--lar)}.fe-div i.spv,.fe-leg i.spv{background:var(--az)}
 .fe-pp{font-size:11px;color:var(--txt2)}.fe-pp b{font-family:Arial,Helvetica,sans-serif;color:var(--txt)}.fe-pp b.err{color:var(--err)}
 .fe-an{font-size:11px;color:var(--txt2)}.fe-an b{color:var(--txt)}
@@ -1083,7 +1093,7 @@ table td{font-size:12.5px}
 .filt-m{display:none}
 .pnl-rod{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 24px 24px;padding:12px 16px;border-radius:6px;background:#404040;color:#fff;font-size:11px} .pnl-rod b{letter-spacing:.08em} .pnl-rod span{color:#D0D0D0}
 @media print{.pnl-rod{display:none}}
-.ctx-bar .bs .api{font-size:9px;font-weight:700;letter-spacing:.04em;color:#fff;background:var(--lar);padding:1px 4px;border-radius:3px;margin-left:2px}
+.ctx-bar .bs .api{font-size:9px;font-weight:700;letter-spacing:.04em;color:#1A1A1A;background:var(--lar);padding:1px 4px;border-radius:3px;margin-left:2px}
 .ctx-bar .bases{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px 0}   /* cada base com o seu espaço: ponto, nome e idade não se sobrepõem */
 .kband{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
 @media(max-width:1250px){.kband{grid-template-columns:repeat(3,minmax(0,1fr))}} @media(max-width:560px){.kband{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -1580,8 +1590,10 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
     s+=Object.keys(mapear(cols,base)).length;
     if(s>pt){pt=s;melhor=base;} }
   return pt>=6?melhor:null; }
+/* o Ploomes monta títulos com campos do negócio e grava "null" nos vazios ("CMB DJ | NFPA20 | null | null") */
+const semNull=t=>typeof t!=='string'||!/null/i.test(t)?t:/^\s*null\s*$/i.test(t)?'':t.includes('|')?t.split('|').map(x=>x.trim()).filter(x=>x&&!/^null$/i.test(x)).join(' | '):t;
 function objetos(cols,linhas,base){ const m=mapear(cols,base);
-  return linhas.map(l=>{const o={_raw:l};for(const c in m)o[c]=l[m[c]];return o;}); }
+  return linhas.map(l=>{const o={_raw:l};for(const c in m)o[c]=semNull(l[m[c]]);return o;}); }
 
 /* ---------- estado ---------- */
 /* a base embutida pode vir comprimida (gzip + base64, data-z="gz"): 2,4 MB de
@@ -3712,7 +3724,7 @@ function mapaUF(id,tit,sub,arr,ufDe,val,rotQ,campo){
   const mx=Math.max(1,...Object.values(dados).map(d=>campo==='n'?d.n:d.t)), fora=arr.filter(x=>!UF_POS[ufDe(x)]), e=escalaR(Math.max(0,...Object.values(dados).map(d=>d.t)));
   MAPAS[id]=dados;
   const tiles=Object.entries(UF_POS).map(([uf,[c,r]])=>{const d=dados[uf], q=d?(campo==='n'?d.n:d.t)/mx:0;
-    return `<div class="uf ${d?'tem':''}" style="grid-column:${c+1};grid-row:${r+1};${d?`background:${alfa(COR().lar,.12+.88*q)};color:${q>.45?'#fff':'var(--txt)'}`:''}"
+    return `<div class="uf ${d?'tem':''}" style="grid-column:${c+1};grid-row:${r+1};${d?`background:${alfa(COR().lar,.12+.88*q)};color:${txtMapa(.12+.88*q)}`:''}"
       ${d?`onclick="abrirDrill('${id}','${uf}',MAPAS['${id}']['${uf}'].itens)" title="${uf}: ${fmtCompacto(d.t)} · ${fmtN(d.n)} ${rotQ}"`:''}>
       <b>${uf}</b>${d?`<span>${campo==='n'?fmtN(d.n):e.f(d.t)}</span>`:''}</div>`;}).join('');
   const top=Object.entries(dados).sort((a,b)=>(campo==='n'?b[1].n-a[1].n:b[1].t-a[1].t)).slice(0,5);
@@ -3743,6 +3755,13 @@ function funilEtapasProp(etapas){
    número e o valor dentro, a conversão ao lado. Uma faixa pode vir repartida
    (ex.: com resposta = ganhas | perdidas). A largura tem piso de 34% para o texto
    caber mesmo nas etapas pequenas. */
+/* texto legível sobre uma cor de fundo: branco só quando dá contraste 4,5:1 (WCAG AA) */
+function txtSobre(hex){ const m=String(hex||'').match(/^#?([0-9a-f]{6})$/i); if(!m)return '#fff';
+  const c=[0,2,4].map(i=>parseInt(m[1].slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));
+  const L=.2126*c[0]+.7152*c[1]+.0722*c[2]; return 1.05/(L+.05)>=4.5?'#fff':'#1A1A1A'; }
+/* laranja com transparência sobre o fundo do cartão (claro ou escuro): qual texto lê melhor */
+function txtMapa(a){ const claro=document.documentElement.dataset.t==='claro', f=claro?[255,255,255]:[34,34,34], l=[255,102,0];
+  return txtSobre('#'+l.map((v,i)=>Math.round(v*a+f[i]*(1-a)).toString(16).padStart(2,'0')).join('')); }
 function funilVertical(etapas){
   const mx=Math.max(1,...etapas.map(e=>e.n)), L=n=>34+66*n/mx;
   const e0=escalaR(Math.max(...etapas.map(e=>e.t||0),0));
@@ -3750,7 +3769,7 @@ function funilVertical(etapas){
       /* faixas retas, centralizadas, a largura proporcional à quantidade (como na apresentação) */
       const w=L(e.n), fundo=e.cor;
       return `${i?`<div class="fv-conv"><span>${fmtPct(etapas[i-1].n?e.n/etapas[i-1].n:0,0)}</span><em>${e.conv||''}</em></div>`:''}
-      <div class="fv-lin"><div class="fv-bar" style="width:${w.toFixed(2)}%;background:${fundo}"><b>${fmtN(e.n)}</b><span>${e0.f(e.t||0)}</span></div>
+      <div class="fv-lin"><div class="fv-bar" style="width:${w.toFixed(2)}%;background:${fundo};${txtSobre(fundo)==='#1A1A1A'?'color:#1A1A1A;text-shadow:none':''}"><b>${fmtN(e.n)}</b><span>${e0.f(e.t||0)}</span></div>
         <div class="fv-rot"><b>${e.k}</b>${e.desc?`<small>${e.desc}</small>`:''}${e.partes?`<div class="fv-partes">${e.partes.map(p=>`<span><i style="background:${p.cor}"></i>${fmtN(p.n)} ${p.k} · ${e0.f(p.t)}</span>`).join('')}</div>`:''}</div></div>`;}).join('')}</div></div>`;
 }
 /* cartão por vendedor: anel = % da meta, cor = projeção do ano */
@@ -4291,10 +4310,10 @@ function secConfVend(ab){
   let h=sec('Confirmação por vendedor',`Todos os negócios abertos de cada vendedor, para ele <b>confirmar status, data de fechamento e valor</b>. Baixe o Excel (um por vendedor, ou um arquivo com uma aba para cada) e envie: as colunas de resposta vão em branco. Pendências: <b>vencida</b> = data de fechamento já passou · <b>sem data</b> = fora de qualquer previsão · <b>não classificado</b> = negócio sem marcador nem status da obra: precisa ser classificado no Ploomes.`,'pipe-conf');
   h+=card('Resumo por vendedor','clique no nome para ver a lista · ✉ Enviar abre o e-mail com o diagnóstico e a lista do que ajustar · 📎 com anexo gera o e-mail em arquivo com tabela formatada e Excel',
     tab([{t:'Vendedor',f:1},{t:'Negócios',n:1},{t:'Valor',n:1},{t:'Na previsão',n:1},{t:'Vencida',n:1},{t:'Sem data',n:1},{t:'Não classificado',n:1},{t:'E-mail do vendedor',f:1},{t:'Enviar',n:1}],
-      PREV_GR.map((g,i)=>[`<a href="javascript:void 0" onclick="verVendPrev(${i})" style="color:var(--lar);font-weight:700">${esc(g.nome)}</a>`,
+      PREV_GR.map((g,i)=>[`<a href="javascript:void 0" onclick="verVendPrev(${i})" style="color:var(--lar-txt);font-weight:700">${esc(g.nome)}</a>`,
         fmtN(g.itens.length),fmtBRL(vS(g.itens)),fmtBRL(somar(g.itens,prevNeg)),
         alerta(cnt(g.itens,'Vencida'),'ale'),alerta(cnt(g.itens,'Sem data'),'err'),alerta(cnt(g.itens,'Não classificado'),'ale'),
-        `<input class="campo" type="email" id="pv-mail-${i}" value="${esc(emailVend(g.nome))}" placeholder="nome@lsfire.com.br" onchange="setEmailVend(${i},this.value)" style="width:100%;min-width:170px;font-size:11px;padding:4px 7px">`,
+        `<input class="campo" type="email" id="pv-mail-${i}" aria-label="E-mail de ${esc(g.nome)}" value="${esc(emailVend(g.nome))}" placeholder="nome@lsfire.com.br" onchange="setEmailVend(${i},this.value)" style="width:100%;min-width:170px;font-size:11px;padding:4px 7px">`,
         `<span style="white-space:nowrap"><a href="javascript:void 0" onclick="enviarVendPrev(${i})" title="Abre o e-mail para ${esc(g.nome)} com o diagnóstico e a lista dos negócios a ajustar">✉ Enviar</a> · <a href="javascript:void 0" onclick="emlVendPrev(${i})" title="E-mail em arquivo, com tabela formatada e o Excel anexado">📎 com anexo</a> · <a href="javascript:void 0" onclick="xlsVendPrev(${i})" title="Só baixar o Excel de ${esc(g.nome)}">↓ Excel</a></span>`]))
     +`<div class="drill-cab" style="border:0;background:none;padding:10px 0 0"><span>${fmtN(PREV_GR.length)} vendedores · ${fmtN(ab.length)} negócios · ${fmtCompacto(vS(ab))}</span>
       <button onclick="xlsVendPrev(-1)">↓ Excel de todos (uma aba por vendedor)</button></div>`);
@@ -4302,7 +4321,7 @@ function secConfVend(ab){
   return h; }
 function htmlVendPrev(){
   const i=PREV_GR.findIndex(g=>g.nome===PREV_VEND), g=PREV_GR[i]; if(!g)return '';
-  const pend=n=>pendsNeg(n).map(p=>`<span class="tag" style="background:var(--${p==='Sem data'?'err':'ale'});color:#fff">${p.toLowerCase()}</span>`).join(' ');
+  const pend=n=>pendsNeg(n).map(p=>`<span class="tag" style="background:var(--${p==='Sem data'?'err':'ale'});color:${p==='Sem data'||document.documentElement.dataset.t==='claro'?'#fff':'#1A1A1A'}">${p.toLowerCase()}</span>`).join(' ');
   const cab=`<div class="drill-cab"><b>${esc(g.nome)}</b>
     <select class="campo" style="flex:0 1 220px" onchange="verVendPrev(+this.value)">${PREV_GR.map((x,j)=>`<option value="${j}"${j===i?' selected':''}>${esc(x.nome)}</option>`).join('')}</select>
     <span>${fmtN(g.itens.length)} negócios · ${fmtCompacto(somar(g.itens,n=>n.vNum||0))} · ${fmtN(g.itens.filter(n=>pendNeg(n)).length)} com pendência</span>
@@ -4312,7 +4331,7 @@ function htmlVendPrev(){
   return `<div class="drill-cx">${cab}${tab([{t:'Referência',f:1},{t:'Cliente',f:1},{t:'Título',f:1},{t:'Etapa',f:1},{t:'Status atual',f:1},{t:'Camada',f:1},{t:'Previsão',n:1},{t:'Valor',n:1},{t:'Pendência',f:1}],
     g.itens.map(n=>{const c=camadaNeg(n);return [esc(refNeg(n)),esc(n.cli),esc(String(n.titulo||'—')).slice(0,44),esc(String(n.etapa||'—')),
       `<i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${COR_PREV[n.certeza]||'#BDBDBD'};margin-right:5px"></i>${esc(n.certeza)}`,
-      `<span style="color:${c==='Possível'?'var(--txt3)':COR_CAMADA[c]}">${c}</span>`,
+      `<span style="color:${{'Alta confiança':'var(--ok)','Provável':'var(--lar-txt)','Possível':'var(--txt3)'}[c]||'inherit'}">${c}</span>`,
       n.dtPrev?fmtData(n.dtPrev):'—',fmtBRL(n.vNum),pend(n)];}),520)}</div>`; }
 function verVendPrev(i){ const g=PREV_GR[i]; if(!g)return; PREV_VEND=g.nome;
   const el=document.getElementById('pv-vend'); if(!el)return;
@@ -4813,7 +4832,7 @@ VISTA.busca=function(){
   const ex=['SC acima de 500 mil','abertos sem data','perdidos SPV 2026','Nordeste vendas','abertos parados acima de 1 mi','aguardando PO','visitas últimos 30 dias'];
   return `<div class="pq-hero card">
     <div class="pq-caixa"><span class="pq-lupa">⌕</span>
-      <input id="pq-q" autocomplete="off" spellcheck="false" placeholder="Cliente, vendedor, analista, cidade, estado, região, nº de proposta, OV… ou uma frase: “SC acima de 500 mil sem data”"
+      <input id="pq-q" aria-label="Consulta: cliente, vendedor, proposta, OV ou frase" autocomplete="off" spellcheck="false" placeholder="Cliente, vendedor, analista, cidade, estado, região, nº de proposta, OV… ou uma frase: “SC acima de 500 mil sem data”"
         value="${esc(PQ.q)}" oninput="pqDigita(this.value)" onkeydown="pqTecla(event)" onfocus="pqSug()">
       <kbd>/</kbd></div>
     <div id="pq-sug" class="pq-sug"></div>
@@ -6312,7 +6331,7 @@ VISTA.pipeline=function(){
   h+=sec('Política de probabilidade','Valor integral, probabilidade, valor ponderado e critério. Uma política só para o painel: pela classificação do negócio (o mais avançado entre o marcador de etapa e o status da obra). As probabilidades são convencionais — referência de gestão, não estatística histórica (a base de decididos do Ploomes começa em jul/2026). Editáveis em Dados e configurações.','pipe-pol');
   h+=card('','',tab([{t:'Classificação',f:1},{t:'Camada',f:1},{t:'Probabilidade',n:1},{t:'Entra na previsão',f:1},{t:'Negócios',n:1},{t:'Valor integral',n:1},{t:'Ponderado',n:1},{t:`No horizonte (integral)`,n:1},{t:'Previsão no horizonte',n:1}],
     POL().map(x=>{ const a=ab.filter(n=>n.certeza===x.k), e=pv.eleg.filter(n=>n.certeza===x.k);
-      return [`<i class="qd" style="background:${x.cor}"></i>${esc(x.k)}`,`<b style="color:${COR_CAMADA[x.camada]}">${esc(ROT_CAMADA[x.camada])}</b>`,fmtPct(x.p,0),x.entra?'sim':'não (potencial)',
+      return [`<i class="qd" style="background:${x.cor}"></i>${esc(x.k)}`,`<b style="color:${{'Alta confiança':'var(--ok)','Provável':'var(--lar-txt)','Possível':'var(--txt3)'}[x.camada]||'inherit'}">${esc(ROT_CAMADA[x.camada])}</b>`,fmtPct(x.p,0),x.entra?'sim':'não (potencial)',
         fmtN(a.length),fmtBRL(vS(a)),fmtBRL(somar(a,pondNeg)),fmtBRL(vS(e)),fmtBRL(somar(e,prevNeg))]; })
     .concat([['<b>Total</b>','','','',`<b>${fmtN(ab.length)}</b>`,`<b>${fmtBRL(pv.bruto)}</b>`,`<b>${fmtBRL(pv.ponderadoTotal)}</b>`,`<b>${fmtBRL(pv.integral)}</b>`,`<b>${fmtBRL(pv.previsao)}</b>`]])));
   /* previsão por mês de fechamento */
@@ -6597,7 +6616,7 @@ function secCtrLocal(V){ if(!V.length)return '';
   const COLS=[{t:'Cliente',f:1},{t:'Cidade'},{t:'UF'},{t:'Receita / mês',n:1},{t:'Contrato'},{t:'Fonte do local',f:1}];
   ufs.forEach(u=>regLista('ctr-uf-'+u.uf,`Contratos vigentes em ${UF_NOME[u.uf]||u.uf}`,u.a.map(linC),COLS));
   const tiles=Object.entries(UF_POS).map(([uf,[c,r]])=>{ const u=ufs.find(x=>x.uf===uf), q=u?u.n/mx:0;
-    return `<div class="uf ${u?'tem':''}" style="grid-column:${c+1};grid-row:${r+1};${u?`background:${alfa(COR().lar,.18+.82*q)};color:${q>.45?'#fff':'var(--txt)'};cursor:pointer`:''}"
+    return `<div class="uf ${u?'tem':''}" style="grid-column:${c+1};grid-row:${r+1};${u?`background:${alfa(COR().lar,.18+.82*q)};color:${txtMapa(.18+.82*q)};cursor:pointer`:''}"
       ${u?`onclick="abrirLista('ctr-uf-${uf}')" title="${uf}: ${u.n} contrato(s) · ${fmtCompacto(u.rec)}/mês"`:''}><b>${uf}</b>${u?`<span>${fmtN(u.n)}</span>`:''}</div>`; }).join('');
   let h=sec('Onde estão os contratos',`Contratos vigentes por estado e cidade do local atendido. Local do Omie; quando falta, a UF da obra nos pedidos do contrato ou o cadastro do cliente no Ploomes (indicado na lista). Clique num estado para ver os contratos.`,'ctr-uf');
   h+=`<div class="card mapa-cx"><div class="mapa">${tiles}</div>
@@ -6657,7 +6676,7 @@ VISTA.contratos=function(){
     ${cardG({rot:'Aguardando faturamento (total)',val:lnk('ctr-ag',fmtCompacto(v(AG))),tipo:'pos',per:`posição em ${fmtData(R)}`,cls:AG.length?'lar':'',sub:`${fmtN(AG.length)} OS · ${fmtN(AG.filter(o=>o.dt&&o.dt<R).length)} com previsão já passada`,fonte:'Omie · OS'})}
     ${cardG({rot:'Faturado em contratos',val:lnk('ctr-fp',fmtCompacto(v(fatPerC))),tipo:'mov',per:PER.rot,sub:`+ ${fmtCompacto(v(fatPerA))} em OS avulsas`,fonte:'Omie · OS'})}
     ${cardG({rot:'A renovar sem negócio no Ploomes',val:lnk('ctr-sr',fmtN(SR.length)),tipo:'pos',per:`vence em até ${CTR_RENOV} dias`,cls:SR.length?'err':'ok',sub:'cliente sem negócio aberto para a renovação',fonte:'Omie × Ploomes'})}
-    ${cardG({rot:'Encerrados ou cancelados',val:lnk('ctr-enc',fmtN(ENC.length)),tipo:'pos',per:'últimos 120 dias',sub:ENC.map(c=>esc(String(c.cli).split(' ')[0])).join(' · ')||'nenhum',fonte:'Omie'})}
+    ${cardG({rot:'Encerrados ou cancelados',val:lnk('ctr-enc',fmtN(ENC.length)),tipo:'pos',per:'últimos 120 dias',sub:[...new Set(ENC.map(c=>String(c.cli).split(' ')[0]))].map(esc).join(' · ')||'nenhum',fonte:'Omie'})}
     ${cardG({rot:'OS sem número de contrato',val:lnk('ctr-sn',fmtN(SN.length)),tipo:'pos',per:'todas as OS da base',cls:SN.length?'ale':'ok',sub:`${fmtCompacto(v(SN))} — avulsas ou contrato não vinculado no Omie`,fonte:'Omie · OS'})}
   </div>`;
   const nCtrOS=C.L.filter(c=>!c.base).length;
@@ -8044,6 +8063,7 @@ const PRD_ACION={E:'Elétrica',D:'Diesel',J:'Jockey',G:'Gasolina'};
 const PRD_TIPO={MB:'Multiestágio',SC:'Bipartida (split case)',ES:'Sucção axial (end suction)',VT:'Turbina vertical',IL:'In-line',
   AUTOESCORVANTE:'Autoescorvante',MBV:'Multiestágio vertical'};
 const PRD_COR_ABC=()=>({A:COR().lar,B:'#FF9A52',C:'#9E9E9E'});
+const PRD_COR_ABC_TXT={A:'var(--lar-txt)',B:'var(--txt2)',C:'var(--txt3)'};
 const PRD_MB_POR=[['modelo','Modelo da bomba'],['produto','Produto (código)'],['acion','Acionamento'],['tipo','Tipo de bomba'],['norma','Norma']];
 const PRD_MB_FONTE=[['vendido','Vendido (ERP)'],['cotado','Cotado (propostas)'],['ganho','Ganho (propostas)']];
 /* unidades: o ERP rateia o item em parcelas e nem todas caem no período — mostra inteiro (mínimo 1) */
@@ -8107,7 +8127,7 @@ function prdABC(itens,chave,val,qtd){ const g=[...agrupa(itens,chave).entries()]
 function svgPareto(g,tot,o){ o=o||{}; const n=Math.min(g.length,o.max||30); if(!n)return '<p class="pl-vazio">Sem itens no período.</p>';
   const lr=(o.rotMax||16)*6.2*.77, pl=Math.max(58,Math.round(lr)+8), pr=44, pt=24, pb=Math.max(92,Math.round(lr)+20), W=Math.max(640,pl+pr+n*30), H=208+pb, bw=(W-pl-pr)/n, mx=Math.max(1,...g.slice(0,n).map(x=>x.t)), cor=PRD_COR_ABC();
   const Y=v=>H-pb-(H-pb-pt)*(v/mx), Yp=p=>H-pb-(H-pb-pt)*p, rot=s=>{ s=String(s); const L=o.rotMax||16; return s.length>L?s.slice(0,L-1)+'…':s; };
-  const ref=[.8,.95].map(p=>`<line x1="${pl}" x2="${W-pr}" y1="${sx(Yp(p))}" y2="${sx(Yp(p))}" stroke="${corV('--txt3')}" stroke-dasharray="4 4"/>${txtSvg(W-pr+4,Yp(p)+4,fmtPct(p,0),{fs:10.5,c:corV('--txt3')})}`).join('');
+  const ref=[.8,.95].map(p=>`<line x1="${pl}" x2="${W-pr}" y1="${sx(Yp(p))}" y2="${sx(Yp(p))}" stroke="${corV('--txt3')}" stroke-dasharray="4 4"/>${p===.95&&Yp(p)-pt<13?'':txtSvg(W-pr+4,Yp(p)+4,fmtPct(p,0),{fs:10.5,c:corV('--txt3')})}`).join('');
   const barras=g.slice(0,n).map((x,i)=>{ const X=pl+i*bw, y=Y(x.t);
     return `<g${clique(x.lista)}>${x.lista?`<rect x="${sx(X)}" y="${pt}" width="${sx(bw)}" height="${H-pb-pt}" fill="transparent"/>`:''}<title>${esc(x.k)} · ${(o.fmt||fmtBRL)(x.t)} · ${fmtPct(x.pct,1)} · acumulado ${fmtPct(x.acum,0)} · classe ${x.cls}</title><rect x="${sx(X+bw*.14)}" y="${sx(y)}" width="${sx(bw*.72)}" height="${sx(Math.max(1,H-pb-y))}" fill="${cor[x.cls]}"/>
       <text transform="translate(${sx(X+bw/2+3)},${H-pb+8}) rotate(-50)" text-anchor="end" font-size="10.5" fill="${corV('--txt2')}">${esc(rot(x.k))}</text></g>`; }).join('');
@@ -8488,7 +8508,7 @@ VISTA.produtos=function(){
     h+=card('Todos os produtos vendidos',`${fmtN(abcI.g.length)} produtos, do maior para o menor valor.`,
       tab([{t:'#',n:1},{t:'Produto',f:1},{t:'Família'},{t:'Qtd.',n:1},{t:'Pedidos',n:1},{t:'Valor',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
         abcI.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(x.k.slice(0,70))}</a>`,esc(prdFamItem(x.itens[0])),fmtU(x.q),fmtN(new Set(x.itens.map(y=>y.ov)).size),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),
-          `<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]),420));
+          `<b style="color:${PRD_COR_ABC_TXT[x.cls]}">${x.cls}</b>`]),420));
   } else h+=card('','','<p class="pl-vazio">Sem itens de venda do ERP no período. A curva por produto usa a base de itens do OMIE (Importar planilhas).</p>');
   /* ---------- motobombas ---------- */
   const fonteMB=PRD.mbFonte, porMB=PRD.mbPor;
@@ -8511,7 +8531,7 @@ VISTA.produtos=function(){
     h+=`<div class="dupla">${card('Por acionamento','Elétrica, diesel ou jockey (pressurização).',`<div class="gb-c">${svgBarrasH(mix(o=>prdAnalisa(o.desc).acion),{lw:170,rw:150,aria:'Motobombas por acionamento'})}</div>`)}
       ${card('Por norma','Listagem/norma do conjunto (código do produto ou campo da proposta).',`<div class="gb-c">${svgBarrasH(mix(o=>prdNorma(o.x.norma||o.desc)),{lw:170,rw:150,aria:'Motobombas por norma'})}</div>`)}</div>`;
     h+=card(`Detalhe — ${esc(PRD_MB_POR.find(x=>x[0]===porMB)[1])}`,'',tab([{t:'#',n:1},{t:PRD_MB_POR.find(x=>x[0]===porMB)[1],f:1},{t:'Unidades',n:1},{t:'Valor',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
-      abcM.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(String(x.k).slice(0,70))}</a>`,fmtU(x.q),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]),360));
+      abcM.g.map((x,i)=>[fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(String(x.k).slice(0,70))}</a>`,fmtU(x.q),fmtBRL(x.t),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC_TXT[x.cls]}">${x.cls}</b>`]),360));
   } else h+=card('','','<p class="pl-vazio">Nenhum conjunto motobomba nesta base no período.</p>');
   /* ---------- motores vendidos ---------- */
   { const MT=prdMotores(I), ac=PRD.motAc, ML=MT.filter(r=>!ac||r.acion===ac), hpT=r=>r.hp==null?'—':fmtD(r.hp,r.hp%1?1:0)+' HP';
@@ -8548,7 +8568,7 @@ VISTA.produtos=function(){
         h+=card('Ranking dos motores vendidos',`Motor = marca + modelo + potência. <b>Confirmados</b>: marca ou modelo na descrição do item no ERP. <b>Inferidos</b>: o ERP não diz a marca, mas todos os motores descritos com a mesma potência, rotação e acionamento são esse. Clique no motor para ver os pedidos.`,
           tab([{t:'#',n:1},{t:'Motor',f:1},{t:'Acionamento'},{t:'Rotação',n:1},{t:'Vendidos',n:1},{t:'Confirmados',n:1},{t:'Inferidos',n:1},{t:'Clientes',n:1},{t:'Valor dos conjuntos (rateado)',n:1},{t:'%',n:1},{t:'Acumulado',n:1},{t:'Classe'}],
             A.g.map((x,i)=>{ const r0=x.itens[0], vr=somar(x.itens,r=>r.vRat);
-              return [fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(x.rot)}</a>`,esc(r0.acion),r0.rpm?fmtN(r0.rpm)+' rpm':'—',`<b>${fmtU(x.q)}</b>`,x.conf?fmtU(x.conf):'—',x.inf?fmtU(x.inf):'—',fmtN(new Set(x.itens.map(r=>r.x.nCli)).size),fmtBRL(vr),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC()[x.cls]}">${x.cls}</b>`]; }),400)); }
+              return [fmtN(i+1),`<a class="td-link" onclick="abrirLista('${x.lista}')">${esc(x.rot)}</a>`,esc(r0.acion),r0.rpm?fmtN(r0.rpm)+' rpm':'—',`<b>${fmtU(x.q)}</b>`,x.conf?fmtU(x.conf):'—',x.inf?fmtU(x.inf):'—',fmtN(new Set(x.itens.map(r=>r.x.nCli)).size),fmtBRL(vr),fmtPct(x.pct,1),fmtPct(x.acum,0),`<b style="color:${PRD_COR_ABC_TXT[x.cls]}">${x.cls}</b>`]; }),400)); }
       h+=`<div class="g g3">${card('Por acionamento','Unidades no período (todos os acionamentos).',`<div class="gb-c">${svgBarrasH(porAc,{fmt:v=>fmtU(v)+' un.',W:400,lw:80,rw:130,aria:'Motores por acionamento'})}</div>`)}
         ${card('Por potência','Diesel e elétrico; clique para ver os motores.',`<div class="gb-c">${svgBarrasH(porFx,{fmt:v=>fmtU(v)+' un.',W:400,lw:120,rw:60,aria:'Motores por faixa de potência'})}</div>`)}
         ${card('Por marca do motor','Diesel e elétrico, pela descrição do item no ERP.',`<div class="gb-c">${svgBarrasH(marcas,{fmt:v=>fmtU(v)+' un.',W:400,lw:140,rw:60,aria:'Motores por marca'})}</div>`)}</div>`;
