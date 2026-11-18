@@ -433,6 +433,14 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .pq-tipo span{font-size:10.5px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pq-tipo b{font-size:18px}.pq-tipo small{font-size:10px;color:var(--txt3)}
 .pq-tipo:hover{border-color:var(--c)}.pq-tipo.on{background:var(--c);color:#fff;border-color:var(--c)}.pq-tipo.on span,.pq-tipo.on small{color:#fff}
 .pq-tipo.vazio{opacity:.45}
+.ver-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin:0 0 18px}
+.ver-it{all:unset;box-sizing:border-box;display:grid;grid-template-columns:54px 1fr auto;grid-template-rows:auto auto;gap:2px 10px;align-items:center;padding:10px 12px;background:var(--card);border:1px solid var(--linha);border-radius:10px;cursor:pointer;min-width:0}
+.ver-it:hover{border-color:var(--lar)} .ver-it.ok{cursor:default;opacity:.7} .ver-it:focus-visible{outline:2px solid var(--lar)}
+.ver-n{grid-row:1/3;font-size:22px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums}
+.ver-t{min-width:0} .ver-t b{display:block;font-size:12.5px;color:var(--txt)} .ver-t small{display:block;font-size:10.5px;color:var(--txt3);line-height:1.35}
+.ver-a{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:20px;padding:1px 7px;white-space:nowrap}
+.ver-p{grid-column:3;font-size:10px;color:var(--txt3);text-align:right;white-space:nowrap}
+@media (max-width:640px){.ver-lista{grid-template-columns:1fr}}
 .pq-linhas{display:flex;flex-wrap:wrap;gap:10px 18px;margin-bottom:10px}
 .pq-linhas>div,.pq-barra{display:flex;align-items:center;gap:8px}.pq-linhas label,.pq-barra label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3)}
 .seg button.on{background:var(--lar);color:#fff}
@@ -1399,6 +1407,14 @@ const CAMPOS={
   cil:['n cil'],cilindrada:['cilindrada l'],rpm:['rotacao rpm'],hp:['pot comercial hp'],kw:['pot gross kw'],hpGross:['pot gross hp'],regime:['regime de potencia'],
   arref:['arrefecimento'],preco:['preco r'],precoUS:['preco us'],disposicao:['disposicao'],torque:['torque max'],consumo:['consumo 100% l h'],oleo:['cap oleo l'],
   tensao:['tensao sistema v'],bateria:['bateria'],dims:['dimensoes c l a mm'],peso:['peso seco kg'],ruido:['nivel de ruido db a'],obs:['observacoes']},
+ /* Omie pela API (ferramentas/omie_para_planilha.py): cadastro de produtos e impostos de cada item de OV */
+ omieProdutos:{codigo:['codigo do produto cadastro'],descricao:['descricao'],ncm:['ncm'],unidade:['unidade'],codFamilia:['codigo da familia'],familia:['familia'],
+  tipoItem:['tipo do item'],origem:['origem da mercadoria'],cest:['cest'],inativo:['inativo'],dtInc:['data de inclusao'],dtAlt:['data de alteracao'],
+  incluidoPor:['incluido por'],alteradoPor:['alterado por'],vendidoOVs:['vendido ovs']},
+ omieFiscal:{ov:['ov fiscal'],item:['item'],codProduto:['codigo do produto cadastro'],descricao:['descricao do produto'],ncmItem:['ncm do item'],ncmCad:['ncm do cadastro'],
+  cfop:['cfop'],cstIcms:['cst csosn icms'],aliqIcms:['aliquota icms'],cstIpi:['cst ipi'],aliqIpi:['aliquota ipi'],cstPis:['cst pis'],cstCofins:['cst cofins'],
+  categoria:['categoria do item'],tipoItem:['tipo do item'],vendedor:['vendedor'],agente:['agente de negocio'],cliente:['cliente nome fantasia'],
+  ufCliente:['uf do cliente'],dtInc:['data de inclusao'],situacao:['situacao'],incluidoPor:['incluido por ov'],valor:['valor do item']},
  negocios:{id:['id'],codProposta:['codigo da proposta','cod proposta','codigo proposta','proposta'],
   cliente:['cliente','cliente do negocio','nome do cliente'],titulo:['titulo','titulo do negocio','nome do negocio'],
   statusObra:['status da obra','status obra','tipo de obra'],marcadores:['marcadores','marcador','tags','etiquetas'],
@@ -1536,7 +1552,8 @@ const ESSENCIAIS={negocios:['id','cliente','responsavel','valor','estagio','data
   propCab:['cod','rev','valor','data'],os:['cliente','total'],contratos:['cliente','contrato','total'],
   vendasOmie:['cliente','valor','data'],omie:['ov','cliente','totalMerc'],notas:['nf','dtEmissao','valor'],
   carteira:['pv','cliente','saldo'],pedidos:['ov','cliente','valor','dtPedido'],interacoes:['cliente','data','tipo'],
-  empresas:['nome'],historico:['cliente','fase','valor'],motoresCat:['modelo','marca','hp','rpm']};
+  empresas:['nome'],historico:['cliente','fase','valor'],motoresCat:['modelo','marca','hp','rpm'],
+  omieProdutos:['codigo','descricao','ncm'],omieFiscal:['ov','codProduto','ncmItem','cfop']};
 const logFalha=(onde,e)=>{ try{ console.warn('[painel] '+onde+':',e&&e.message||e); }catch(_){} };
 function faltando(cols,base){ const m=mapear(cols,base); return (ESSENCIAIS[base]||[]).filter(k=>m[k]===undefined); }
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
@@ -1550,6 +1567,8 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
   if(tem('nome do responsavel')&&tem('numero da revisao')&&tem('estagio do negocio'))return 'propCab';
   if(tem('codigo da proposta')&&(tem('nome do produto')||tem('valor unitario')))return 'propostas';
   if(tem('modelo comercial')&&tem('pot comercial'))return 'motoresCat';
+  if(tem('ncm do cadastro')&&tem('cfop'))return 'omieFiscal';
+  if(tem('vendido ovs')&&tem('ncm'))return 'omieProdutos';
   if(tem('saldo a faturar')&&tem('valor faturado'))return 'carteira';
   if(tem('valor total da nf')&&(tem('data emissao')||tem('serie')))return 'notas';
   if(tem('ptc')&&tem('data do pedido'))return 'pedidos';
@@ -1701,7 +1720,7 @@ const corrValDe=ref=>{const k=norm(ref); if(!k)return null;
   const c=(CFG.corrVal||[]).find(x=>norm(x.ref)===k); return c?num(c.valor):null;};
 const foraManualOmie=chave=>(CFG.dupOmieFora||[]).some(x=>('n:'+norm(x))===chave);
 
-let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[]};
+let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[]};
 let ETAPAS={}, ORDEM_EST=[], IDX_EMP=new Map();
 let TEM_SEG_CRM=false;                          /* o export do CRM traz a coluna Segmento? */
 const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao cadastral','geracao da cotacao','envio pec engenharia','elaborando proposta','apresentacao da cotacao follow up','negociacao','fechamento','pos vendas'];
@@ -1720,7 +1739,7 @@ function limparCaches(){
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
   limparCaches(); DADOS_VER++; PROPCAB=new Map();
-  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[]};
+  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
   M.negocios.forEach(n=>{
@@ -2978,6 +2997,7 @@ const TELAS=[
  {id:'contratos',bloco:'Análise',ic:'⟳',nome:'Contratos de serviço',tit:'Contratos de serviço',sub:'Vigência, faturamento mês a mês pelas OS, vencimentos e renovação no Ploomes',fase:''},
  {id:'clientes',bloco:'Análise',ic:'◍',nome:'Clientes e mercado',tit:'Clientes e mercado',sub:'Quem compra, quem volta, concentração e regiões',fase:''},
  {id:'produtos',bloco:'Análise',ic:'⬢',nome:'Produtos e mix',tit:'Produtos e mix',sub:'Famílias e itens mais vendidos, curva ABC, motobombas e cotado × ganho',fase:''},
+ {id:'verificacoes',bloco:'Análise',ic:'✓',nome:'Verificações',tit:'Verificações de cadastro',sub:'O que falta ou está errado no Ploomes, no Omie e no Controle: vendedor, agente, impostos, NCM, descrição dos itens',fase:''},
  {id:'relatorios',bloco:'Apoio',ic:'▣',nome:'Relatórios prontos',tit:'Relatórios prontos',sub:'Diário, semanal, individual, engenharia, mensal, trimestral e anual',fase:''},
  {id:'apresentacao',bloco:'Apoio',ic:'▶',nome:'Apresentação',tit:'Apresentação',sub:'A história do período em capítulos, para projetar ou enviar — com o período e os filtros do painel',fase:''},
  {id:'busca',bloco:'Apoio',ic:'⌕',nome:'Consulta detalhada',tit:'Consulta detalhada',sub:'Qualquer cliente, vendedor, analista, cidade ou estado, em todas as bases',fase:''},
@@ -8241,6 +8261,189 @@ function prdMotorId(r){ const hp=r.hp!=null?`${fmtD(r.hp,r.hp%1?1:0)} HP`:'potê
   return {id:norm(r.acion+'|'+hp),rot:`${r.acion} · ${hp} (marca não descrita${sg&&sg.c?' — catálogo sugere '+sg.c.nome:''})`,como:'sem marca',marca:'',modelo:''}; }
 const PRD_MOT_ABC=[['un','Unidades'],['valor','Valor dos conjuntos']];
 const PRD_MOT_AC=[['','Todos'],['Diesel','Diesel'],['Elétrica','Elétrica'],['Jockey','Jockey']];
+/* ======================= VERIFICAÇÕES DE CADASTRO =======================
+   O que falta ou está errado no Ploomes, no Omie e no Controle de Pedidos — os erros
+   cadastrais que passam pelo comercial (vendedor, agente de negócio, impostos, NCM,
+   descrição de item fora do padrão, insumos). Cada regra diz o QUE corrigir, ONDE
+   (sistema e registro) e QUEM (responsável). Nada é corrigido daqui: o painel só lê.
+   Bases do Omie de cadastro de produto e de impostos por item (omieProdutos, omieFiscal)
+   vêm da API (ferramentas/omie_para_planilha.py); sem elas, essas regras ficam como
+   "aguardando a base". */
+const VER={sis:'',area:'',resp:'',vista:'regras'};
+const VER_SIS=[['','Todos'],['Ploomes','Ploomes'],['Omie','Omie'],['Controle','Controle de Pedidos']];
+const VER_AREA=[['','Todas'],['Fiscal','Fiscal'],['Comercial','Comercial'],['Processo','Processo'],['Painel','Análise do painel']];
+const VER_AREA_COR={Fiscal:'var(--err)',Comercial:'var(--lar-txt)',Processo:'var(--ale)',Painel:'var(--txt3)'};
+const verVazio=v=>v==null||String(v).trim()===''||/^(n\/?d|-|—|null|undefined|\(vazio\))$/i.test(String(v).trim());
+const verDig=v=>String(v==null?'':v).replace(/\D/g,'');
+const verSet=(k,v)=>{ VER[k]=v; render(); };
+const verPrdAlvo=p=>!/^s/i.test(String(p.inativo||''))&&(/^(00|01|02|04|07|10)\b/.test(String(p.tipoItem||''))||verVazio(p.tipoItem));
+const verNcmOk=v=>{ const d=verDig(v); return d.length===8&&!/^0+$/.test(d); };
+const _verNomes=new Map();
+/* responsável num nome só: o Omie grava o login (ROBSON, FINANCEIRO), o Ploomes o nome completo */
+function verResp(r){ const t=String(r.resp||'').trim(); if(!t||/^\(/.test(t))return '(sem responsável)'; if(t==='Cadastro de produtos')return t;
+  let v=nomeCurto(vendedor(t))||t; if(v===v.toUpperCase())v=v.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
+  /* "Fabio" e "Fábio" são a mesma pessoa: vale a grafia com acento */
+  const k=norm(v), j=_verNomes.get(k); if(!j||(/[^\x00-\x7f]/.test(v)&&!/[^\x00-\x7f]/.test(j)))_verNomes.set(k,v); return _verNomes.get(k); }
+/* cada registro verificável: {sis, cad, id, rot (o que é), cli, resp, link?} */
+function verRegistros(){
+  const R=[], hoje_=hoje(), ini12=new Date(hoje_.getFullYear()-1,hoje_.getMonth(),hoje_.getDate());
+  /* ---- Ploomes: negócios (criados nos últimos 12 meses ou ainda abertos) ---- */
+  (M.negocios||[]).filter(n=>!n.dtCri||n.dtCri>=ini12||!(n.ganho||n.perdido)).forEach(n=>R.push({sis:'Ploomes',cad:'Negócios',id:'neg:'+n.id,ref:'Negócio '+n.id,cli:n.cli,resp:n.resp||'',x:n,
+    aberto:n.aberto}));
+  /* ---- Ploomes: clientes que têm negócio ---- */
+  const cliNeg=new Set((M.negocios||[]).map(n=>n.nCli));
+  (M.empresas||[]).filter(e=>cliNeg.has(e.nNome)).forEach(e=>R.push({sis:'Ploomes',cad:'Clientes',id:'emp:'+e.nNome,ref:'Cliente',cli:e.nome,resp:e.resp||'',x:e}));
+  /* ---- Ploomes: propostas (revisão mais recente, itens com valor) ---- */
+  const mx=new Map(); (M.propostas||[]).forEach(p=>{ const r=Number(p.rev)||0; if(!mx.has(p.cod)||r>mx.get(p.cod))mx.set(p.cod,r); });
+  (M.propostas||[]).filter(p=>(Number(p.rev)||0)===mx.get(p.cod)&&(p.total||0)>0&&p.dt&&p.dt>=ini12).forEach((p,i)=>R.push({sis:'Ploomes',cad:'Propostas',id:'prop:'+p.cod+':'+i,ref:'Proposta '+p.cod,cli:p.cli,resp:p.respProp||p.responsavel||'',x:p}));
+  /* ---- Omie: pedidos de venda (uma linha por OV, itens juntos) ---- */
+  const porOV=agrupa((M.omie||[]).filter(o=>o.dt&&o.dt>=ini12),o=>String(o.ov||'').trim());
+  for(const [ov,a] of porOV){ if(!ov)continue; R.push({sis:'Omie',cad:'Pedidos de venda',id:'ov:'+ov,ref:'OV '+ov,cli:a[0].cli,resp:a[0].resp&&!/^\(/.test(a[0].resp)?a[0].resp:'',x:a[0],itens:a}); }
+  /* ---- Omie: cadastro de produtos (base da API) ---- */
+  /* só o que entra em nota fiscal: produto de venda (00 revenda, 04 acabado) e insumo (01 matéria-prima,
+     02 embalagem, 07 uso e consumo, 10 outros insumos) — "em processo" (03) é interno e não tem NCM */
+  (M.omieProdutos||[]).filter(verPrdAlvo).forEach(p=>{ const u=String(p.alteradoPor||p.incluidoPor||'').trim();
+    R.push({sis:'Omie',cad:'Produtos',id:'prd:'+p.codigo,ref:'Produto '+p.codigo,cli:String(p.descricao||'').slice(0,60),
+      resp:u&&!/^(p\d{5,}|webservice|enviado)$/i.test(u)?u:'Cadastro de produtos',x:p}); });
+  /* ---- Omie: impostos por item de OV (base da API) ---- */
+  (M.omieFiscal||[]).filter(f=>{ const d=data(f.dtInc); return !d||d>=ini12; }).forEach((f,i)=>R.push({sis:'Omie',cad:'Impostos dos itens',id:'fis:'+f.ov+':'+f.item+':'+i,ref:'OV '+f.ov+' · item '+f.item,cli:f.cliente||'',resp:f.vendedor||(/^(p\d{5,}|webservice|enviado.*)$/i.test(String(f.incluidoPor||'').trim())?'':f.incluidoPor)||'',x:f}));
+  /* ---- Controle de Pedidos ---- */
+  (M.pedidos||[]).filter(p=>p.dt&&p.dt>=ini12).forEach((p,i)=>R.push({sis:'Controle',cad:'Controle de Pedidos',id:'ctl:'+i,ref:p.ov?'OV '+p.ov:'linha sem OV ('+fmtData(p.dt)+')',cli:p.cli,resp:p.resp&&!/^\(/.test(p.resp)?p.resp:'',x:p}));
+  return R; }
+/* contexto calculado uma vez por render: referências cruzadas e padrões por família */
+function verContexto(){
+  const kov=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
+  const ctlPorOV=agrupa((M.pedidos||[]).filter(p=>kov(p.ov)),p=>kov(p.ov));
+  const omiePorOV=new Map(); (M.omie||[]).forEach(o=>{ const k=kov(o.ov); if(!omiePorOV.has(k))omiePorOV.set(k,{v:0,resp:o.resp}); omiePorOV.get(k).v+=o.vNum||0; });
+  /* padrões do cadastro de produtos, aprendidos dos próprios dados: NCM (4 dígitos) dominante
+     e prefixo de descrição dominante por família — não há tabela fixa para envelhecer */
+  const famDe=p=>!verVazio(p.familia)?String(p.familia).trim():!verVazio(p.codFamilia)?String(p.codFamilia).trim():'(sem família)';
+  const fam=agrupa((M.omieProdutos||[]).filter(verPrdAlvo),famDe);
+  const pad=new Map();
+  for(const [f,a] of fam){ if(a.length<5||f==='(sem família)')continue;
+    const dom=(g)=>{ const m=new Map(); a.forEach(p=>{ const k=g(p); if(k)m.set(k,(m.get(k)||0)+1); }); const t=[...m].sort((x,y)=>y[1]-x[1])[0]; return t&&t[1]/a.length>=.8?t[0]:null; };
+    pad.set(f,{ncm4:dom(p=>verNcmOk(p.ncm)?verDig(p.ncm).slice(0,4):null),pref:dom(p=>{ const w=prdTxt(p.descricao).split(' '); return w.length>2&&w[1]==='LSF'?w.slice(0,2).join(' '):w[0]&&w[0].length<=4&&/^[A-Z]{3}$/.test(w[0])?w[0]:null; })}); }
+  const descDup=agrupa((M.omieProdutos||[]).filter(verPrdAlvo),p=>prdTxt(p.descricao).replace(/[^A-Z0-9]/g,''));
+  const ncmCad=new Map((M.omieProdutos||[]).map(p=>[String(p.codigo||'').trim(),verDig(p.ncm)]));
+  return {kov,ctlPorOV,omiePorOV,pad,descDup,ncmCad,famDe}; }
+/* as regras: cada uma diz onde (cad), área, título, por que importa e o que corrigir */
+const VER_REGRAS=[
+  /* ---------- Ploomes · Negócios ---------- */
+  {k:'n-agente',cad:'Negócios',area:'Comercial',t:'Agente de negócio em branco',p:'Define comissão e relacionamento; o campo deve ter o nome do agente ou "Não Aplicável".',
+    f:r=>verVazio(r.x.agente),c:'Preencher "Agente de negócio" (nome ou Não Aplicável)'},
+  {k:'n-segmento',cad:'Negócios',area:'Painel',t:'Segmento do cliente em branco',p:'Sem segmento o negócio fica fora das análises por mercado.',f:r=>verVazio(r.x.segmento),c:'Preencher o segmento no cadastro do cliente'},
+  {k:'n-obra',cad:'Negócios',area:'Processo',t:'Cidade da obra em branco',p:'Local de entrega/execução: frete, impostos por UF e mapa de vendas.',f:r=>verVazio(r.x.cidade),c:'Preencher "Cidade da obra"'},
+  {k:'n-prev',cad:'Negócios',area:'Comercial',t:'Negócio aberto sem previsão de fechamento',p:'Sem data, o negócio não entra na previsão de pedidos.',f:r=>r.aberto&&!r.x.dtPrev,c:'Preencher "Previsão de fechamento"'},
+  {k:'n-condpag',cad:'Negócios',area:'Processo',t:'Condição de pagamento da proposta em branco',p:'A condição vai para o pedido e para o faturamento.',f:r=>!verVazio(r.x.codProposta)&&verVazio(r.x.condPagamento),c:'Preencher a condição de pagamento na proposta'},
+  {k:'n-codprop',cad:'Negócios',area:'Processo',t:'Negócio com proposta, sem código da proposta',p:'Sem o código, o negócio não se liga à proposta nem ao pedido.',f:r=>/propost|negocia|fecha|ganh/i.test(String(r.x.est||'')+(r.x.ganho?' ganh':''))&&verVazio(r.x.codProposta),c:'Informar o código da proposta (PTC) no negócio'},
+  {k:'n-pedido',cad:'Negócios',area:'Processo',t:'Venda ganha sem número do pedido',p:'O pedido do cliente é exigido na NF e liga o CRM ao ERP.',f:r=>r.x.ganho&&verVazio(r.x.pedido),c:'Preencher "Número do pedido" no negócio ganho'},
+  {k:'n-comissao',cad:'Negócios',area:'Comercial',t:'Venda ganha sem comissão do vendedor',p:'A comissão é calculada a partir deste campo.',f:r=>r.x.ganho&&verVazio(r.x.comissao),c:'Preencher "Comissão Vendedor %"'},
+  {k:'n-valor',cad:'Negócios',area:'Comercial',t:'Negócio aberto com valor zero',p:'Distorce pipeline e previsão.',f:r=>r.aberto&&!(r.x.vNum>0),c:'Atualizar o valor do negócio (proposta atual)'},
+  /* ---------- Ploomes · Clientes ---------- */
+  {k:'c-ie',cad:'Clientes',area:'Fiscal',t:'Cliente sem inscrição estadual',p:'A IE (ou "ISENTO") é obrigatória para emitir a NF de produto.',f:r=>verVazio(r.x.ie),c:'Preencher a inscrição estadual (ou ISENTO)'},
+  {k:'c-resp',cad:'Clientes',area:'Comercial',t:'Cliente sem responsável',p:'Carteira sem dono: ninguém acompanha o cliente.',f:r=>verVazio(r.x.responsavel),c:'Definir o responsável pelo cliente'},
+  {k:'c-uf',cad:'Clientes',area:'Fiscal',t:'Cliente sem estado ou cidade',p:'UF define CFOP e impostos da venda.',f:r=>verVazio(r.x.uf)||verVazio(r.x.cidade),c:'Preencher estado e cidade do cliente'},
+  {k:'c-seg',cad:'Clientes',area:'Painel',t:'Cliente sem segmento',p:'Sem segmento o cliente fica fora das análises por mercado.',f:r=>verVazio(r.x.segmento),c:'Preencher o segmento do cliente'},
+  /* ---------- Ploomes · Propostas ---------- */
+  {k:'p-tec',cad:'Propostas',area:'Processo',t:'Motobomba cotada sem vazão, pressão ou norma',p:'Dados técnicos obrigatórios da cotação de conjunto motobomba.',
+    f:r=>prdEhMB(r.x.produto)&&(verVazio(r.x.vazaoNom)&&verVazio(r.x.vazaoProj)||verVazio(r.x.pressao)||verVazio(r.x.norma)||/^(n\/?a|n\/?i)$/i.test(String(r.x.norma||'').trim())),
+    c:r=>'Preencher '+[verVazio(r.x.vazaoNom)&&verVazio(r.x.vazaoProj)?'vazão':'',verVazio(r.x.pressao)?'pressão':'',verVazio(r.x.norma)||/^(n\/?a|n\/?i)$/i.test(String(r.x.norma||'').trim())?'norma':''].filter(Boolean).join(', ')},
+  {k:'p-desc',cad:'Propostas',area:'Processo',t:'Motobomba cotada com descrição fora do padrão de código',p:'O padrão "CMB LSF <acionamento> <tipo> <modelo> <HP> <rpm> … <norma>" é o que o ERP e o painel leem.',
+    f:r=>prdEhMB(r.x.produto)&&!/^(CMB|BMB|SKD|CON)\s+LSF\s+[DEJG]+\s/.test(prdTxt(r.x.produto)),c:'Usar o produto padronizado (código CMB/BMB LSF …) em vez de descrição livre'},
+  /* ---------- Omie · Pedidos de venda ---------- */
+  {k:'o-vend',cad:'Pedidos de venda',area:'Comercial',t:'OV sem vendedor',p:'Sem vendedor não há comissão nem análise por vendedor.',f:r=>verVazio(r.x.vendedor),c:'Informar o vendedor na OV'},
+  {k:'o-vendctl',cad:'Pedidos de venda',area:'Comercial',t:'Vendedor da OV diferente do Controle de Pedidos',p:'Comissão e resultado por vendedor saem diferentes em cada sistema.',
+    f:(r,C)=>{ const c=C.ctlPorOV.get(C.kov(r.x.ov)); if(!c||!r.resp)return false; const v=c.map(p=>p.resp).filter(x=>x&&!/^\(/.test(x)); return v.length&&!v.some(x=>nomeCurto(x)===nomeCurto(r.resp)); },
+    c:(r,C)=>'Conferir o vendedor: Omie "'+nomeCurto(r.resp)+'" × Controle "'+(C.ctlPorOV.get(C.kov(r.x.ov))||[]).map(p=>nomeCurto(p.resp)).join(', ')+'"'},
+  {k:'o-pc',cad:'Pedidos de venda',area:'Fiscal',t:'OV sem número do pedido do cliente',p:'O pedido de compra do cliente é exigido na NF por muitos clientes (ex.: contrato sem PC).',f:r=>verVazio(r.x.pedidoCli),c:'Informar o nº do pedido de compra do cliente na OV'},
+  {k:'o-proj',cad:'Pedidos de venda',area:'Processo',t:'OV sem projeto (departamento)',p:'O projeto liga a OV às medições e à engenharia.',f:r=>!/^[A-Z0-9]{3,4}-[A-Z0-9]{2,5}-\d{3,}/i.test(String(r.x.departamento||'').trim()),c:'Informar o projeto/departamento (ex.: 004-XXX-09999)'},
+  {k:'o-cat',cad:'Pedidos de venda',area:'Fiscal',t:'Categoria do item incoerente com o tipo do produto',p:'Produto fabricado vendido como revenda (ou o contrário) muda o tributo.',
+    f:r=>(r.itens||[r.x]).some(o=>/04\s*-\s*Produto Acabado/i.test(o.tipoProduto||'')&&/revenda/i.test(o.categoria||'')||/00\s*-\s*Mercadoria para Revenda/i.test(o.tipoProduto||'')&&/fabricad/i.test(o.categoria||'')),
+    c:r=>(r.itens||[r.x]).filter(o=>/04\s*-\s*Produto Acabado/i.test(o.tipoProduto||'')&&/revenda/i.test(o.categoria||'')||/00\s*-\s*Mercadoria para Revenda/i.test(o.tipoProduto||'')&&/fabricad/i.test(o.categoria||'')).slice(0,2).map(o=>`${String(o.produto).slice(0,40)}: tipo no cadastro "${String(o.tipoProduto).replace(/^\d+\s*-\s*/,'')}", categoria na OV "${o.categoria}" — corrigir o tipo do item ou a categoria`).join('; ')},
+  {k:'o-fam',cad:'Pedidos de venda',area:'Processo',t:'Item vendido sem família no cadastro',p:'Sem família o produto não entra nas análises de mix e a engenharia não classifica.',f:r=>(r.itens||[r.x]).some(o=>verVazio(o.familia)),c:r=>'Cadastrar a família de: '+(r.itens||[r.x]).filter(o=>verVazio(o.familia)).slice(0,3).map(o=>String(o.produto).slice(0,40)).join('; ')},
+  {k:'o-valctl',cad:'Pedidos de venda',area:'Processo',t:'Valor da OV diferente do Controle de Pedidos',p:'Um dos dois está errado: o pedido do cliente é a referência.',
+    f:(r,C)=>{ const c=C.ctlPorOV.get(C.kov(r.x.ov)), o=C.omiePorOV.get(C.kov(r.x.ov)); if(!c||!o)return false; const vc=somar(c,p=>p.vNum); return vc>0&&Math.abs(o.v-vc)>Math.max(500,.02*vc); },
+    c:(r,C)=>{ const vc=somar(C.ctlPorOV.get(C.kov(r.x.ov)),p=>p.vNum), vo=C.omiePorOV.get(C.kov(r.x.ov)).v; return `Conferir com o pedido do cliente: Omie ${fmtBRL(vo)} × Controle ${fmtBRL(vc)}`; }},
+  /* ---------- Omie · Produtos (cadastro) ---------- */
+  {k:'pd-ncm',cad:'Produtos',area:'Fiscal',t:'Produto sem NCM ou NCM inválido',p:'NCM (8 dígitos) é obrigatório na NF de venda e na entrada do insumo, e define o IPI.',f:r=>!verNcmOk(r.x.ncm),c:r=>(/^(01|02|07|10)\b/.test(String(r.x.tipoItem||''))?'Insumo — trava a entrada da NF de compra: ':'')+(/^0+$/.test(verDig(r.x.ncm))&&verDig(r.x.ncm)?'NCM zerado, preencher o NCM correto':'preencher o NCM com 8 dígitos')},
+  {k:'pd-ncmfam',cad:'Produtos',area:'Fiscal',t:'NCM diferente do usado pela família',p:'Itens da mesma família quase sempre têm a mesma posição de NCM; o diferente costuma ser erro.',
+    f:(r,C)=>{ const pd=C.pad.get(C.famDe(r.x)); const n=verDig(r.x.ncm); return pd&&pd.ncm4&&verNcmOk(n)&&n.slice(0,4)!==pd.ncm4; },
+    c:(r,C)=>'Conferir o NCM '+r.x.ncm+': a família usa '+C.pad.get(C.famDe(r.x)).ncm4+'.xx.xx'},
+  {k:'pd-desc',cad:'Produtos',area:'Processo',t:'Descrição fora do padrão da família',p:'A família segue um padrão de código na descrição (ex.: "CMB LSF …"); o item fora dele não é lido corretamente.',
+    f:(r,C)=>{ const pd=C.pad.get(C.famDe(r.x)); return pd&&pd.pref&&!prdTxt(r.x.descricao).startsWith(pd.pref+' '); },
+    c:(r,C)=>'Ajustar a descrição ao padrão "'+C.pad.get(C.famDe(r.x)).pref+' …"'},
+  {k:'pd-texto',cad:'Produtos',area:'Processo',t:'Produto de venda com problema na descrição',p:'Espaços duplos, "ou similar", minúsculas no código ou texto longo saem assim na NF do cliente.',
+    f:r=>{ const s=String(r.x.descricao||''); if(!/^(00|04)\b/.test(String(r.x.tipoItem||''))&&!(num(r.x.vendidoOVs)>0))return false; return /\s{2,}/.test(s)||/ou similar/i.test(s)||s.length>120||/[a-z]{4,}/.test(s)&&s!==s.toUpperCase()&&/^(CMB|BMB|SKD|CON|PAN)\b/i.test(s); },
+    c:r=>{ const s=String(r.x.descricao||''); return 'Corrigir: '+[/\s{2,}/.test(s)?'espaços duplos':'',/ou similar/i.test(s)?'"ou similar"':'',s.length>120?'mais de 120 caracteres':'',/[a-z]{4,}/.test(s)&&s!==s.toUpperCase()&&/^(CMB|BMB|SKD|CON|PAN)\b/i.test(s)?'minúsculas no código padrão':''].filter(Boolean).join(', '); }},
+  {k:'pd-fam',cad:'Produtos',area:'Processo',t:'Produto sem família ou sem unidade',p:'Família e unidade são obrigatórias para análise e para a NF.',f:r=>verVazio(r.x.familia)&&verVazio(r.x.codFamilia)||verVazio(r.x.unidade),c:r=>'Preencher '+[verVazio(r.x.familia)&&verVazio(r.x.codFamilia)?'família':'',verVazio(r.x.unidade)?'unidade':''].filter(Boolean).join(' e ')},
+  {k:'pd-tipo',cad:'Produtos',area:'Fiscal',t:'Produto sem tipo do item',p:'O tipo (produto acabado, matéria-prima, revenda…) define tributação, estoque e a categoria da venda.',f:r=>verVazio(r.x.tipoItem),c:'Definir o tipo do item (SPED)'},
+  {k:'pd-dup',cad:'Produtos',area:'Processo',t:'Produto duplicado (mesma descrição, códigos diferentes)',p:'Duplicidade espalha vendas e estoque em dois códigos.',
+    f:(r,C)=>{ const k=prdTxt(r.x.descricao).replace(/[^A-Z0-9]/g,''); return k.length>8&&(C.descDup.get(k)||[]).length>1; },
+    c:(r,C)=>'Unificar com '+(C.descDup.get(prdTxt(r.x.descricao).replace(/[^A-Z0-9]/g,''))||[]).filter(p=>p!==r.x).map(p=>p.codigo).join(', ')},
+  /* ---------- Omie · Impostos dos itens ---------- */
+  {k:'f-ncm',cad:'Impostos dos itens',area:'Fiscal',t:'NCM do item diferente do cadastro do produto',p:'O NCM foi alterado na OV e não no cadastro (ou o contrário): a próxima NF repete o erro.',
+    f:(r,C)=>{ const a=verDig(r.x.ncmItem), b=verDig(r.x.ncmCad)||C.ncmCad.get(String(r.x.codProduto||'').trim())||''; return a.length===8&&b.length===8&&a!==b; },c:r=>'Conferir NCM: item '+r.x.ncmItem+' × cadastro '+(r.x.ncmCad||'—')},
+  {k:'f-cfop',cad:'Impostos dos itens',area:'Fiscal',t:'CFOP incoerente com o estado do cliente',p:'Venda dentro de SC usa CFOP 5.xxx; para outro estado, 6.xxx; exterior, 7.xxx.',
+    f:r=>{ const c=verDig(r.x.cfop)[0], uf=String(r.x.ufCliente||'').trim().toUpperCase(); if(!c||!uf)return false; return uf==='SC'?c!=='5':uf==='EX'?c!=='7':c==='5'; },c:r=>'Conferir CFOP '+r.x.cfop+' para cliente em '+r.x.ufCliente},
+  {k:'f-cst',cad:'Impostos dos itens',area:'Fiscal',t:'Item sem CST/CSOSN do ICMS',p:'Sem CST a NF não é emitida corretamente.',f:r=>verVazio(r.x.cstIcms),c:'Preencher o CST do ICMS no item'},
+  {k:'f-ipi',cad:'Impostos dos itens',area:'Fiscal',t:'Produto fabricado sem CST do IPI',p:'Produto acabado de fabricação própria normalmente destaca IPI: conferir a regra do item.',f:r=>/^04\b/.test(String(r.x.tipoItem||''))&&verVazio(r.x.cstIpi),c:'Conferir o IPI do item (CST e alíquota)'},
+  {k:'f-agente',cad:'Impostos dos itens',area:'Comercial',t:'OV sem agente de negócio informado',p:'Se o negócio tem agente, a comissão dele depende deste campo.',f:r=>(M.omieFiscal||[]).some(x=>!verVazio(x.agente))&&verVazio(r.x.agente),c:'Informar o agente de negócio (ou Não Aplicável)'},
+  /* ---------- Controle de Pedidos ---------- */
+  {k:'k-dup',cad:'Controle de Pedidos',area:'Painel',t:'Pedido lançado duas vezes (mesma OV e mesmo valor)',p:'Duplica o resultado por vendedor, cliente e família.',
+    f:(r,C)=>{ const k=C.kov(r.x.ov); return k&&(C.ctlPorOV.get(k)||[]).filter(p=>Math.round(p.vNum)===Math.round(r.x.vNum)).length>1; },c:'Excluir a linha repetida no Controle'},
+  {k:'k-semov',cad:'Controle de Pedidos',area:'Processo',t:'Pedido sem número de OV',p:'Sem OV não há como conferir com o ERP.',f:(r,C)=>!C.kov(r.x.ov),c:'Informar a OV (ou a OS, para serviço)'},
+  {k:'k-vend',cad:'Controle de Pedidos',area:'Comercial',t:'Pedido sem vendedor',p:'Fica fora do resultado por vendedor.',f:r=>!r.resp,c:'Informar o vendedor'},
+  {k:'k-fam',cad:'Controle de Pedidos',area:'Painel',t:'Pedido sem família',p:'Fica fora das análises por família e divisão.',f:r=>verVazio(r.x.familia),c:'Informar a família (CMB, SKD, SMC…)'}];
+/* aplica as regras: [{regra, regs:[{r, oque}]}] */
+function verAplicar(){ const R=verRegistros(), C=verContexto(), por=new Map(R.map(r=>[r.id,{r,pend:[]}]));
+  const res=VER_REGRAS.map(g=>{ const alvo=R.filter(r=>r.cad===g.cad), regs=[]; alvo.forEach(r=>{ let ok=false; try{ ok=g.f(r,C); }catch(e){ ok=false; }
+      if(ok){ const oque=typeof g.c==='function'?g.c(r,C):g.c; regs.push({r,oque}); por.get(r.id).pend.push({g,oque}); } });
+    return {g,regs,base:alvo.length}; });
+  return {res,por:[...por.values()].filter(x=>x.pend.length)}; }
+const VER_COLS=['Sistema','Registro','Cliente / item','Responsável','O que corrigir'];
+const verLinha=(r,oque)=>[esc(r.sis+' · '+r.cad),esc(r.ref),esc(String(r.cli||'').slice(0,50)),esc(verResp(r)),esc(oque)];
+
+VISTA.verificacoes=function(){
+  const {res,por}=verAplicar(), passa=r=>(!VER.sis||r.sis===VER.sis)&&(!VER.resp||verResp(r)===VER.resp);
+  const regras=res.filter(x=>(!VER.sis||verSisDe(x.g)===VER.sis)&&(!VER.area||x.g.area===VER.area))
+    .map(x=>Object.assign({},x,{regs:x.regs.filter(y=>passa(y.r))}));
+  const porF=por.filter(x=>passa(x.r)&&x.pend.some(p=>!VER.area||p.g.area===VER.area));
+  const tot=somar(regras,x=>x.regs.length), resps=[...new Set(por.map(x=>verResp(x.r)))].sort((a,b)=>a.localeCompare(b,'pt'));
+  let h=`<div class="pq-linhas so-tela" style="margin:0 0 12px">
+    <div><label>Sistema</label><div class="seg">${VER_SIS.map(([k,n])=>`<button class="${VER.sis===k?'on':''}" onclick="verSet('sis','${k}')">${n}</button>`).join('')}</div></div>
+    <div><label>Área</label><div class="seg">${VER_AREA.map(([k,n])=>`<button class="${VER.area===k?'on':''}" onclick="verSet('area','${k}')">${n}</button>`).join('')}</div></div>
+    <div><label>Responsável</label><select class="campo" onchange="verSet('resp',this.value)"><option value="">Todos</option>${resps.map(n=>`<option ${VER.resp===n?'selected':''}>${esc(n)}</option>`).join('')}</select></div>
+    <div><label>Ver por</label><div class="seg">${[['regras','Regra'],['registros','Registro'],['pessoas','Responsável']].map(([k,n])=>`<button class="${VER.vista===k?'on':''}" onclick="verSet('vista','${k}')">${n}</button>`).join('')}</div></div></div>`;
+  h+=`<div class="g g4 kpis-2" data-sid="ver-kpi">${kpi('Pendências',fmtN(tot),`em ${fmtN(porF.length)} registros (negócios, clientes, propostas, pedidos, produtos)`,tot?'err':'ok')}
+    ${['Fiscal','Comercial','Processo'].map(a=>kpi(a,fmtN(somar(regras.filter(x=>x.g.area===a),x=>x.regs.length)),a==='Fiscal'?'NCM, CFOP, CST, IE, categoria':a==='Comercial'?'vendedor, agente, comissão, previsão':'pedido do cliente, projeto, descrição padrão','neutro')).join('')}</div>`;
+  if(VER.vista==='registros'){
+    const L=[...porF].sort((a,b)=>b.pend.length-a.pend.length);
+    h+=sec('Pendências por registro','Cada negócio, cliente, proposta, pedido ou produto com tudo o que falta corrigir nele.','ver-reg');
+    h+=card('',`${fmtN(L.length)} registros com pendência.`,tab([{t:'Sistema'},{t:'Registro'},{t:'Cliente / item',f:1},{t:'Responsável'},{t:'Pendências',n:1},{t:'O que corrigir',f:1}],
+      L.slice(0,500).map(x=>[esc(x.r.sis+' · '+x.r.cad),esc(x.r.ref),esc(String(x.r.cli||'').slice(0,45)),esc(verResp(x.r)),fmtN(x.pend.length),
+        x.pend.filter(p=>!VER.area||p.g.area===VER.area).map(p=>`<span style="color:${VER_AREA_COR[p.g.area]}">●</span> ${esc(p.oque)}`).join('<br>')]),520));
+    return h; }
+  if(VER.vista==='pessoas'){
+    const g=[...agrupa(porF,x=>verResp(x.r)).entries()].map(([k,a])=>({k,a,n:somar(a,x=>x.pend.length)})).sort((a,b)=>b.n-a.n);
+    h+=sec('Pendências por responsável','Quem precisa corrigir o quê. Clique no nome para ver a lista dele (com CSV).','ver-pes');
+    h+=card('','',tab([{t:'Responsável',f:1},{t:'Registros',n:1},{t:'Pendências',n:1},{t:'Mais frequentes',f:1}],g.map((x,i)=>{ const top=[...agrupa(x.a.flatMap(y=>y.pend),p=>p.g.t).entries()].sort((a,b)=>b[1].length-a[1].length).slice(0,3).map(([t,a])=>t+' ('+a.length+')').join(' · ');
+      const k=regLista('ver-p'+i,`Pendências — ${x.k}`,x.a.flatMap(y=>y.pend.map(p=>verLinha(y.r,p.oque))),VER_COLS);
+      return [`<a class="td-link" onclick="abrirLista('${k}')">${esc(x.k)}</a>`,fmtN(x.a.length),fmtN(x.n),esc(top)]; })));
+    return h; }
+  /* por regra, agrupado por sistema e cadastro */
+  for(const [cadK,a] of agrupa(regras,x=>verSisDe(x.g)==='Controle'?x.g.cad:verSisDe(x.g)+' · '+x.g.cad)){
+    const n=somar(a,x=>x.regs.length), semBase=a.every(x=>!x.base);
+    h+=sec(esc(cadK),semBase?'Aguardando a base do Omie (cadastro de produtos e impostos dos itens) — chega na próxima atualização pelo botão ↻.':`${fmtN(n)} pendência(s). Clique numa regra para ver a lista do que corrigir.`,'ver-'+slugSec(cadK));
+    if(semBase)continue;
+    h+=`<div class="ver-lista">${a.map((x,i)=>{ const k=regLista('ver-'+x.g.k,`${x.g.t} — ${cadK}`,x.regs.map(y=>verLinha(y.r,y.oque)),VER_COLS), pct=x.base?x.regs.length/x.base:0;
+      return `<button class="ver-it ${x.regs.length?'':'ok'}" ${x.regs.length?`onclick="abrirLista('${k}')"`:'disabled'}>
+        <span class="ver-n" style="color:${x.regs.length?VER_AREA_COR[x.g.area]:'var(--ok)'}">${x.regs.length?fmtN(x.regs.length):'✓'}</span>
+        <span class="ver-t"><b>${esc(x.g.t)}</b><small>${esc(x.g.p)}</small></span>
+        <span class="ver-a" style="border-color:${VER_AREA_COR[x.g.area]};color:${VER_AREA_COR[x.g.area]}">${esc(x.g.area==='Painel'?'Painel':x.g.area)}</span>
+        <span class="ver-p">${x.base?fmtPct(pct,0)+' de '+fmtN(x.base):''}</span></button>`; }).join('')}</div>`; }
+  return h; };
+function verSisDe(g){ return /^(Negócios|Clientes|Propostas)$/.test(g.cad)?'Ploomes':g.cad==='Controle de Pedidos'?'Controle':'Omie'; }
+
 VISTA.produtos=function(){
   const I=prdItens(), V=F.vendas||[], P=prdPropostas(), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
   const nomeFam=c=>CAT_NOME[c]||c||'(sem família)';
@@ -9818,7 +10021,8 @@ addEventListener('afterprint',()=>{ if(document.body.classList.contains('rel-on'
 const HTML_ORIG=document.documentElement.outerHTML;
 const NOMES_BASE={negocios:'Negócios (CRM)',propostas:'Propostas — itens',propCab:'Propostas — cabeçalho',interacoes:'Interações',
   empresas:'Empresas',historico:'Histórico OMIE',pedidos:'Controle de Pedidos',
-  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)',motoresCat:'Motores padronizados (catálogo técnico)'};
+  omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)',motoresCat:'Motores padronizados (catálogo técnico)',
+  omieProdutos:'Omie — cadastro de produtos',omieFiscal:'Omie — impostos dos itens'};
 
 function abrirModal(id){ document.getElementById(id).classList.add('aberto');
   if(id==='m-dados')listarBases(); if(id==='m-cfg')montarCfg(); if(id==='m-glos')montarGlossario(); }

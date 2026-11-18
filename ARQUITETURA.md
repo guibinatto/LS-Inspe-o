@@ -198,3 +198,20 @@ Aba `produtos` (`VISTA.produtos`, funções `prd*`). Três fontes:
 ## Omie pela API (somente leitura)
 
 `ferramentas/omie_coletar.py`: lê pedidos de venda (com itens), clientes, produtos, projetos, vendedores, notas, OS e contratos. Chaves só pelas variáveis de ambiente `OMIE_APP_KEY` / `OMIE_APP_SECRET` (o Omie exige a chave no corpo da requisição, por isso não usa segredo de rede); host `app.omie.com.br` liberado no ambiente. Só chama métodos da lista `PERMITIDOS` (Listar…/Consultar…); qualquer outro é recusado antes de sair. A chave é a mesma da integração Ploomes ↔ Omie (webhook): trocar a chave exige atualizar também o Ploomes. Saída em `omie-coleta/` (fora do git). `ferramentas/omie_para_planilha.py` converte a coleta na planilha de itens de venda com os cabeçalhos do export manual (base `omie`, uma linha por item, cancelados fora, valor cheio — o export manual repetia o item por departamento do rateio com valor proporcional). `ploomes_importar.js` importa também `API-Omie_*.xlsx`; a tarefa do botão ↻ ("Atualizar painel pelo Ploomes e Omie") coleta o Omie como passo opcional. Validação 2026: contando cada produto uma vez por projeto, R$ 35,8 mi (Controle: R$ 36,7 mi); a API traz 19 OVs que faltavam no export.
+
+## Verificações de cadastro (18/11/2026)
+Aba **Verificações** (bloco Análise): o que falta ou está errado nos cadastros, para o comercial corrigir.
+Nada é corrigido pelo painel — ele só lê.
+- Regras em `VER_REGRAS`: cada uma tem cadastro (`cad`), área (Fiscal, Comercial, Processo, Painel),
+  título, por que importa (`p`), teste (`f(registro, contexto)`) e o que corrigir (`c`, texto ou função).
+- Registros em `verRegistros()`: negócios (criados em 12 meses ou abertos), clientes com negócio,
+  propostas (última revisão, 12 meses), OVs do Omie (12 meses, itens juntos), cadastro de produtos
+  do Omie (ativos), impostos de cada item de OV e linhas do Controle de Pedidos (12 meses).
+- Padrões aprendidos dos próprios dados em `verContexto()`: NCM dominante (4 dígitos) e prefixo de
+  descrição dominante ("CMB LSF") por família, quando 60% ou mais da família segue o padrão.
+- Três visões: por regra (clique abre a lista com CSV), por registro (tudo o que corrigir num negócio,
+  pedido ou produto) e por responsável. Filtros: sistema, área, responsável.
+- Bases novas `omieProdutos` e `omieFiscal` vêm de `ferramentas/omie_para_planilha.py`
+  (API-Omie_Produtos.xlsx e API-Omie_Fiscal.xlsx), reconhecidas por `detectar` pelas colunas
+  "Vendido (OVs)" e "NCM do Cadastro". Sem elas, as seções do Omie mostram "aguardando a base".
+- Teste: `testes/verificacoes.js` (registros sintéticos, sem dados de clientes).
