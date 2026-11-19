@@ -77,6 +77,26 @@ const SIMULADOR = ({ escrever }) => {
       gcEquip(lc.id, y.eq[0]._id); const ef = document.querySelector('#m-form form'); ef.querySelector('[name=serie]').value = 'SN-TESTE-001'; ef.requestSubmit(); await new Promise(r => setTimeout(r, 120));
       y = gcContratos().find(k => k.id === lc.id); out.eq.depois = y.eqSemSerie.length; out.eq.busca = gcContratos().filter(k => k.busca.includes(norm('SN-TESTE-001'))).length;
       out.eq.check = y.check.find(c => /série/.test(c[0]))[1]; }
+    /* equipamentos iguais: completar a rotação de um motor 6M16 de 483 HP e propor nos outros */
+    const C3 = gcContratos().filter(k => !k.loc).slice(0, 3).map(k => k.id);
+    const mot = (ctr, rot) => GC.db.collection('ctrEquip').doc().set({ ctr, tipo: 'Motor diesel', fabricante: 'Baudouin', modelo: '6M16', potencia: '483 HP', rotacao: rot, serie: '', situacao: 'Em operação' });
+    await mot(C3[0], ''); await mot(C3[1], ''); await mot(C3[2], '2100'); await new Promise(r => setTimeout(r, 120));
+    out.antes = gcPropostas().filter(p => p.campo === 'rotacao').length;   /* 1 diz 2100, 2 vazios: sugere 2100 nos vazios */
+    const m0 = GC.equip.find(e => e.ctr === C3[0] && e.modelo === '6M16');
+    gcEquip(C3[0], m0._id); const mf = document.querySelector('#m-form form'); mf.querySelector('[name=rotacao]').value = '1800'; mf.requestSubmit();
+    await new Promise(r => setTimeout(r, 900));
+    const rev = document.querySelector('#m-form .gc-rev'); out.rev = rev ? { txt: /Reconheci que .*6M16.*rotação = 1800/s.test(rev.innerText), marcados: [...rev.querySelectorAll('input:checked')].length, total: rev.querySelectorAll('input').length, div: /divergente/.test(rev.innerText) } : null;
+    if (rev) { document.querySelector('#m-form form').requestSubmit(); await new Promise(r => setTimeout(r, 250)); }
+    const m1 = GC.equip.find(e => e.ctr === C3[1] && e.modelo === '6M16'), m2 = GC.equip.find(e => e.ctr === C3[2] && e.modelo === '6M16');
+    out.depois = { m1: m1.rotacao, fonte: (m1.fontes || {}).rotacao || '', m2: m2.rotacao };
+    /* motor de outra potência não é "igual" */
+    out.outraPot = gcMesmoModelo({ tipo: 'Motor diesel', modelo: '6M16', potencia: '483 HP' }, { tipo: 'Motor diesel', modelo: '6 M-16', potencia: '400 HP' });
+    out.mesmoMod = gcMesmoModelo({ tipo: 'Motor diesel', modelo: '6M16', potencia: '483 HP' }, { tipo: 'Motor diesel', modelo: '6 M-16', fabricante: 'BAUDOUIN' });
+    /* ficha sem redundância: o automático vai para um bloco à parte, com o valor à mostra */
+    const ca = gcContratos().find(k => !k.loc && k.c.valorPed && !num(k.f.valorTotal) && k.c.ini);
+    gcEditar(ca.id); const ff = document.querySelector('#m-form form'); const ord = [...ff.querySelectorAll('.gc-fh, [name]')].map(e => e.classList.contains('gc-fh') ? '|' : e.name).join(',');
+    out.redund = { blocoAuto: /Já vem automaticamente/i.test(ff.innerText), valorDepois: ord.indexOf('valorTotal') > ord.lastIndexOf('|'), ph: !!ff.querySelector('[name=valorTotal][placeholder]'), objetoAntes: ord.indexOf('objeto') < ord.lastIndexOf('|') };
+    fecharModal('m-form');
     /* separação: o dashboard Contratos não mostra a gestão; a aba Locação filtra */
     irTela('contratos'); out.dash = { semAbas: !document.querySelector('#tela .gc-abas'), link: /Gestão → Contratos e serviços recorrentes/.test(document.getElementById('tela').innerText) };
     irTela('gestao'); GC.aba = 'loc'; render(); out.abaLoc = [...document.querySelectorAll('#tela [data-sid="gc-lista"] ~ .card tbody tr')].length;
@@ -100,7 +120,13 @@ const SIMULADOR = ({ escrever }) => {
   t(r.eq && r.eq.depois === 0 && r.eq.check && r.eq.busca === 1, 'nº de série preenchido: some o alerta, cadastro marca a série e a busca acha pelo número');
   t(r.dash.semAbas && r.dash.link && r.abaLoc === 2, 'dashboard de contratos separado da gestão; aba Locação lista 2: ' + JSON.stringify(r.dash) + ' ' + r.abaLoc);
   t(r.ind.equip && r.ind.loc, 'indicadores de equipamentos e de locação');
-  t(r.docs === 'contratos,contratos,ctrAnexos,ctrEquip,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
+  t(r.antes >= 2, 'equipamentos iguais: sugestões antes de preencher (' + r.antes + ')');
+  t(r.rev && r.rev.txt && r.rev.marcados === 1 && r.rev.total === 2 && r.rev.div, 'ao salvar a rotação, pergunta: "Reconheci que… 6M16 … rotação = 1800" — vazio marcado, divergente desmarcado: ' + JSON.stringify(r.rev));
+  t(r.depois.m1 === '1800' && /informado agora/.test(r.depois.fonte), 'confirmado: o motor igual recebe a rotação (' + JSON.stringify(r.depois) + ')');
+  t(r.depois.m2 === '2100', 'o divergente não marcado não muda sem confirmação');
+  t(!r.outraPot && r.mesmoMod, 'mesmo modelo com outra potência não é "igual"; "6 M-16" = "6M16" e a marca não se contradiz');
+  t(Object.values(r.redund).every(Boolean), 'ficha sem redundância: o que falta primeiro, o automático depois com o valor à mostra: ' + JSON.stringify(r.redund));
+  t(r.docs === 'contratos,contratos,ctrAnexos,ctrEquip,ctrEquip,ctrEquip,ctrEquip,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
   await p.close();
   /* 3. só leitura: sem botões de edição, aviso de leitura */
   { const q = await abrir(false); const s = await q.evaluate(() => { irTela('gestao'); GC.aba = 'todos'; render(); const id = gcContratos()[0].id; gcFicha(id);

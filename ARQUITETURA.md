@@ -239,3 +239,12 @@ Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`),
   esperadas pela periodicidade), visitas atrasadas, relatórios pendentes, vencimentos 30/60/90,
   faturamento × prazo decorrido (desvio), cadastro incompleto. Entram no relatório do tema Contratos.
 - Teste: `testes/gestao-contratos.js` (banco simulado em memória).
+
+- Sem redundância: na ficha, o que já vem dos sistemas fica num bloco à parte ("Já vem
+  automaticamente"), com o valor à mostra; em branco mantém o automático (`gcFormFicha`).
+- Equipamentos iguais (`gcMesmoModelo`): mesmo grupo (motor/bomba/painel), mesmo modelo sem
+  espaços e traços, marca e potência sem contradição. `gcPropostas` sugere o que falta a partir dos
+  iguais e, para motor diesel, do catálogo de motores (só pelo modelo). Ao salvar um equipamento, o
+  painel pergunta se completa os iguais ("Reconheci que…"); vazios vêm marcados, divergentes
+  desmarcados; nada é gravado sem confirmação. Série, ano, TAG, vazão, pressão e situação nunca são
+  copiados. A origem de cada valor completado fica em `fontes`.

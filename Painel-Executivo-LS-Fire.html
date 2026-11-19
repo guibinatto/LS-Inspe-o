@@ -441,6 +441,8 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .gc-t td{padding:5px 0;border-bottom:1px solid var(--linha);overflow-wrap:anywhere}
 .gc-src{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:99px;padding:0 6px;white-space:nowrap}
 .gc-abas small{margin-left:6px;font-size:10px;opacity:.8;font-weight:400}
+.gc-fh{grid-column:1/-1;margin:6px 0 0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);border-bottom:1px solid var(--linha);padding-bottom:4px}
+.gc-rev{display:grid;gap:12px;max-height:60vh;overflow:auto}.gc-rev-g p{margin:0 0 6px;font-size:12.5px}.gc-rev-i{display:block;font-size:12px;padding:4px 0 4px 4px}
 .gc-sug{margin:8px 0 4px;font-size:12px}.gc-sug summary{cursor:pointer;color:var(--lar-txt);font-weight:600;padding:4px 0}
 .gc-sug-i{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--linha)}
 .gc-check{list-style:none;padding:0;margin:0;font-size:12.5px;display:grid;gap:3px}.gc-check li{color:var(--ale)}.gc-check li.ok{color:var(--ok)}
@@ -6834,6 +6836,8 @@ function gcTelaGestao(){
   let h=gcAvisoEstado();
   h+=`<div class="pl-bar so-tela" style="margin:0 0 12px"><input class="campo" id="gc-q" style="min-width:240px" placeholder="Filtrar: cliente, contrato, PTC, nº de série, modelo…" aria-label="Filtrar contratos" value="${esc(GC.filtro)}" oninput="GC.filtro=this.value;clearTimeout(GC._f);GC._f=setTimeout(()=>{render();const i=document.getElementById('gc-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">
     ${gcEdita()?`<button class="btn" onclick="gcNovo(${cat==='loc'})">＋ ${cat==='loc'?'Nova locação':'Novo contrato'}</button>`:''}<button class="btn sec" onclick="gcExcel()">↓ Excel da gestão</button></div>`;
+  if(gcEdita()&&GC.equip.length){ const P=gcPropostas(), v=P.filter(p=>!p.divergente).length, dv=P.length-v;
+    if(P.length)h+=`<div class="nota so-tela" style="border-left-color:var(--lar)">💡 <b>${fmtN(v)} informação(ões) de equipamentos</b> podem ser completadas com equipamentos iguais já cadastrados e o catálogo de motores${dv?`, e ${fmtN(dv)} estão diferentes entre equipamentos iguais`:''}. Nada muda sem você confirmar. <button class="mini" onclick="gcRevisar(gcPropostas())">revisar</button></div>`; }
   h+=sec(cat==='loc'?'Locações':cat==='itm'?'Contratos de ITM e manutenção':'Contratos e serviços recorrentes',`Uma linha por ${cat==='loc'?'locação':'contrato'}: ativos primeiro, do vencimento mais próximo. Clique no número para abrir a ficha completa (dados, valores, equipamentos, visitas, anexos).`,'gc-lista');
   h+=card('',`${fmtN(F.length)} ${cat==='loc'?'locação(ões)':'contrato(s)'} · barra = quanto do valor já foi faturado; o traço é quanto do prazo já passou.`,tab([{t:'Contrato',f:1},{t:'Cliente',f:1},{t:'Tipo'},{t:'Situação'},{t:'Vigência'},{t:'Mês'},{t:'Valor contratado',n:1},{t:'Faturado × prazo'},{t:'Saldo',n:1},{t:'Equip.',n:1},{t:'Visitas',n:1},{t:'Última visita',n:1},{t:'Cadastro',n:1},{t:'Atenção',f:1}],
     F.map(x=>[`<a class="td-link" onclick="gcFicha('${esc(x.id)}')"><b>${esc(x.num)}</b></a>`,esc(String(x.cli).slice(0,34)),`<span class="tag ${x.loc?'t-az':''}">${x.loc?'Locação':'ITM'}</span>`,gcSit(x.status),
@@ -6889,7 +6893,7 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
             ${lin('Próxima',x.proxVis?`${fmtData(data(x.proxVis.data))} <small class="gc-src">${esc(x.proxVis.src)}</small>`:'—')}</table>
           ${x.alertas.length?`<h4>Atenção</h4><p>${x.alertas.map(a=>`<span class="tag ${/atrasad|vencida|abaixo|sem relat/.test(a)?'t-err':'t-ale'}">${esc(a)}</span>`).join(' ')}</p>`:''}</div></div>
       <h4>Equipamentos ${x.loc?'locados':'do contrato'} (${fmtN(x.eq.length)})</h4>
-      ${ed?`<div class="pl-bar"><button class="btn" onclick="gcEquip('${esc(id)}')">＋ Equipamento</button></div>`:''}
+      ${ed?`<div class="pl-bar"><button class="btn" onclick="gcEquip('${esc(id)}')">＋ Equipamento</button>${(n=>n?`<button class="btn sec" onclick="gcRevisar(gcPropostas().filter(p=>p.alvo.ctr==='${esc(id)}'))">💡 completar ${fmtN(n)} dado(s) com equipamentos iguais</button>`:'')(gcPropostas().filter(p=>p.alvo.ctr===id).length)}</div>`:''}
       ${eqs.length?tab([{t:'Tipo'},{t:'Fabricante / modelo',f:1},{t:'Nº de série'},{t:'Dados técnicos',f:1},{t:'TAG / local · ano · patrimônio',f:1},{t:'Situação'},{t:''}],eqs,320):'<p class="pl-vazio">Nenhum equipamento cadastrado.</p>'}
       ${sug.length?`<details class="gc-sug" ${x.eq.length?'':'open'}><summary>Sugestões a partir do Omie e do Ploomes (${fmtN(sug.length)}) — adicione e complete o nº de série</summary>${sug.map((g,i)=>`<div class="gc-sug-i"><div><b>${esc(g.desc.slice(0,90))}</b><br><small class="gc-src">${esc(g.src)}</small> <small>${g.eq.map(e=>esc(e.tipo+(e.modelo?' '+e.modelo:'')+(e.potencia?' '+e.potencia:''))).join(' · ')}</small></div><button class="mini" onclick="gcAddSug('${esc(id)}',${i})">adicionar ${fmtN(g.eq.length)}</button></div>`).join('')}</details>`:''}
       <h4>Visitas e relatórios</h4>
@@ -6953,7 +6957,79 @@ function gcEquip(id,eid){ const e=eid?GC.equip.find(k=>k._id===eid):null, x=gcCo
       if(e&&fd.apagar){ try{ await ref.delete(); aviso('Equipamento excluído.'); }catch(er){ aviso('Não consegui excluir ('+((er&&er.code)||'erro')+').'); } gcFechaForm(); return; }
       const d=Object.assign({},e||{},{ctr:id},Object.fromEntries(['tipo','situacao','fabricante','modelo','serie','ano','potencia','rotacao','vazao','pressao','tensao','norma','tag','dtInst','patrimonio','horimetro','obs'].map(k=>[k,String(fd[k]==null?'':fd[k]).trim()])),
         e?{}:{criadoEm:new Date().toISOString(),por:GC.uid||null},{atualizadoEm:new Date().toISOString()}); delete d._id;
-      await gcGravar(ref,d,e?'Equipamento atualizado.':'Equipamento cadastrado.'); gcFechaForm(); })(); },e?'Salvar':'Cadastrar'); }
+      const ok=await gcGravar(ref,d,e?'Equipamento atualizado.':'Equipamento cadastrado.'); gcFechaForm();
+      if(ok){ let s2=null; for(let i=0;i<30&&!(s2=GC.equip.find(k=>k._id===ref.id&&k.atualizadoEm===d.atualizadoEm));i++)await new Promise(r=>setTimeout(r,100));
+        const P=s2?gcPropostas(s2):[]; if(P.length)gcRevisar(P,'Equipamentos iguais — completar?'); } })(); },e?'Salvar':'Cadastrar'); }
+
+/* ---------- equipamentos iguais: completar sem redigitar ----------
+   Dois equipamentos são "o mesmo modelo" quando têm o mesmo grupo (motor, bomba, painel), o
+   mesmo modelo (sem espaços e traços: "6M16" = "6 M 16") e não se contradizem na marca nem na
+   potência (motor 6M16 de 483 HP ≠ 6M16 de 400 HP). O que um deles já tem e o outro não tem
+   vira uma SUGESTÃO; para motor diesel, o catálogo técnico de motores também é fonte.
+   Nada é gravado sem o usuário confirmar. Campos que dependem da instalação (série, ano, TAG,
+   vazão, pressão, situação) nunca são copiados. */
+const GC_PROP_CAMPOS={motor:['fabricante','potencia','rotacao','tensao'],bomba:['fabricante','rotacao','norma'],painel:['fabricante','tensao','norma'],outro:['fabricante']};
+const GC_CAMPO_ROT={fabricante:'fabricante',potencia:'potência',rotacao:'rotação',tensao:'tensão',norma:'norma'};
+const gcGrupo=t=>/motor/i.test(t||'')?'motor':/bomba|motobomba/i.test(t||'')?'bomba':/painel/i.test(t||'')?'painel':'outro';
+const gcHP=v=>{ const m=String(v||'').replace(',','.').match(/(\d+(?:\.\d+)?)\s*(hp|cv|kw)?/i); if(!m)return null; const n=+m[1], u=(m[2]||'hp').toLowerCase(); return u==='kw'?n/0.7457:u==='cv'?n*0.9863:n; };
+const gcNormV=(k,v)=>{ const s=String(v==null?'':v).trim(); if(!s)return ''; if(k==='potencia'){ const h=gcHP(s); return h?String(Math.round(h)):norm(s); }
+  if(k==='rotacao'){ const n=parseFloat(s.replace(/\./g,'').replace(',','.')); return isFinite(n)?String(Math.round(n)):norm(s); } if(k==='fabricante')return prdMarcaN(s)||norm(s); return norm(s); };
+function gcMesmoModelo(a,b){ if(a===b)return false; const ga=gcGrupo(a.tipo); if(ga!==gcGrupo(b.tipo))return false;
+  const ka=prdChaveMod(a.modelo), kb=prdChaveMod(b.modelo); if(ka.length<3||ka!==kb)return false;
+  const fa=gcNormV('fabricante',a.fabricante), fb=gcNormV('fabricante',b.fabricante); if(fa&&fb&&fa!==fb)return false;
+  const ha=gcHP(a.potencia), hb=gcHP(b.potencia); if(ha&&hb&&Math.abs(ha-hb)/Math.max(ha,hb)>.03)return false;
+  return true; }
+/* catálogo técnico (só motor diesel, só casamento pelo modelo — nunca por "potência parecida") */
+function gcDoCatalogo(e){ if(gcGrupo(e.tipo)!=='motor'||!/diesel/i.test(e.tipo||'')||typeof prdCasaCatalogo!=='function')return null;
+  const m=prdCasaCatalogo({acion:'Diesel',modelo:e.modelo,marca:e.fabricante,hp:gcHP(e.potencia),rpm:parseFloat(e.rotacao)||null});
+  if(!m||!m.c||!/modelo/.test(m.como))return null; const c=m.c;
+  return {fonte:`catálogo de motores (${c.nome})`,v:{fabricante:c.marca||'',potencia:c.hpN?`${fmtN(c.hpN)} HP`:'',rotacao:c.rpmN?String(c.rpmN):''}}; }
+/* todas as sugestões: [{alvo (equipamento), campo, valor, fonte, divergente, atual}] — limit a um alvo/fonte se pedido */
+function gcPropostas(foco){ const E=GC.equip, out=[], ctrDe=id=>{ const x=gcContratos().find(k=>k.id===id); return x?`${x.num} · ${String(x.cli).slice(0,30)}`:id; };
+  E.forEach(alvo=>{ const campos=GC_PROP_CAMPOS[gcGrupo(alvo.tipo)]||GC_PROP_CAMPOS.outro;
+    const iguais=E.filter(o=>gcMesmoModelo(alvo,o)), cat=gcDoCatalogo(alvo);
+    if(foco&&alvo!==foco&&!iguais.includes(foco))return;
+    campos.forEach(k=>{ const atual=String(alvo[k]||'').trim();
+      /* o que o usuário acabou de digitar num equipamento vale para os iguais a ele */
+      if(foco&&alvo!==foco){ const fv=String(foco[k]||'').trim(); if(!fv||(atual&&gcNormV(k,atual)===gcNormV(k,fv)))return;
+        out.push({alvo,campo:k,valor:fv,atual,divergente:!!atual,fonte:`informado agora em ${ctrDe(foco.ctr)}`,ctr:ctrDe(alvo.ctr)}); return; }
+      if(foco&&alvo===foco&&atual)return;   /* o que o usuário acabou de digitar não é contestado na mesma hora */
+      /* valores conhecidos nos iguais (e no catálogo): o mais frequente vence; empate = não sugere */
+      const cont=new Map(); iguais.forEach(o=>{ const v=String(o[k]||'').trim(); if(!v)return; const n=gcNormV(k,v); const c=cont.get(n)||{v,n:0,de:[]}; c.n++; c.de.push(ctrDe(o.ctr)); cont.set(n,c); });
+      if(cat&&cat.v[k]){ const n=gcNormV(k,cat.v[k]); const c=cont.get(n)||{v:cat.v[k],n:0,de:[]}; c.n+=2; c.de.unshift(cat.fonte); cont.set(n,c); }
+      const vs=[...cont.values()].sort((a,b)=>b.n-a.n); if(!vs.length||(vs[1]&&vs[1].n===vs[0].n))return;
+      const top=vs[0]; if(atual&&gcNormV(k,atual)===gcNormV(k,top.v))return;
+      if(foco&&alvo!==foco&&!(String(foco[k]||'').trim()&&gcNormV(k,foco[k])===gcNormV(k,top.v)))return;
+      out.push({alvo,campo:k,valor:top.v,atual,divergente:!!atual,fonte:top.de.slice(0,2).join(' · ')+(top.de.length>2?` +${top.de.length-2}`:''),ctr:ctrDe(alvo.ctr)}); }); });
+  return out; }
+const gcEqNome=e=>[e.tipo,e.fabricante,e.modelo,e.potencia].filter(Boolean).join(' ');
+/* janela de confirmação: "Reconheci que… Podemos completar?" */
+function gcRevisar(lista,titulo){ if(!lista.length){ aviso('Nenhuma informação a completar.'); return; }
+  const P=lista.slice(0,200); GC._rev=P;
+  const grupos=[...agrupa(P,p=>gcGrupo(p.alvo.tipo)+'|'+prdChaveMod(p.alvo.modelo)+'|'+p.campo+'|'+gcNormV(p.campo,p.valor))];
+  formModal(titulo||'Completar equipamentos iguais',[{k:'x',rot:'',tipo:'html',larg:1,html:`<div class="gc-rev">${grupos.map(([k,a])=>{ const p0=a[0];
+      return `<div class="gc-rev-g"><p>Reconheci que <b>${esc(gcEqNome(p0.alvo)||p0.alvo.modelo)}</b> tem <b>${esc(GC_CAMPO_ROT[p0.campo]||p0.campo)} = ${esc(p0.valor)}</b> <small class="gc-src">${esc(p0.fonte)}</small>.
+        ${a.some(p=>!p.divergente)?`${fmtN(a.filter(p=>!p.divergente).length)} equipamento(s) igual(is) estão sem essa informação.`:''}${a.some(p=>p.divergente)?` ${fmtN(a.filter(p=>p.divergente).length)} têm outro valor (confira antes de corrigir).`:''}</p>
+        ${a.map(p=>`<label class="gc-rev-i"><input type="checkbox" name="ok" value="${P.indexOf(p)}" ${p.divergente?'':'checked'}> ${esc(p.ctr)} · ${esc(p.alvo.tipo||'')} ${esc(p.alvo.serie?'nº '+p.alvo.serie:p.alvo.tag||'')}
+          — ${p.divergente?`hoje: <b>${esc(p.atual)}</b> → <b>${esc(p.valor)}</b> <span class="tag t-ale">divergente</span>`:`vazio → <b>${esc(p.valor)}</b>`}</label>`).join('')}</div>`; }).join('')}</div>`}],
+    fd=>{ const sel=[].concat(fd.ok||[]).map(Number).map(i=>GC._rev[i]).filter(Boolean); if(!sel.length)return true;
+      (async()=>{ const porEq=agrupa(sel,p=>p.alvo._id); let n=0;
+        for(const [eid,ps] of porEq){ const e=GC.equip.find(k=>k._id===eid); if(!e)continue; const d=Object.assign({},e); delete d._id; d.fontes=Object.assign({},e.fontes||{});
+          ps.forEach(p=>{ d[p.campo]=p.valor; d.fontes[p.campo]=p.fonte; }); d.atualizadoEm=new Date().toISOString();
+          if(await gcGravar(GC.db.doc('ctrEquip/'+eid),d))n+=ps.length; }
+        aviso(`${fmtN(n)} informação(ões) completada(s).`); gcFechaForm(); })(); },'Sim, completar os marcados'); }
+
+/* ficha sem redundância: o que já vem do Omie/Controle/Ploomes fica num bloco à parte, com o valor
+   automático à mostra; em branco = mantém o automático. O que falta vem primeiro. */
+function gcFormFicha(x,tit,campos,onOk,txt){ const c=x.c, A={};
+  if(c.ini)A.ini=`${fmtData(c.ini)} · ${c.fonteVig||'Omie'}`; if(c.fim)A.fim=`${fmtData(c.fim)} · ${c.fonteVig||'Omie'}`;
+  if(!num(x.f.meses)&&x.meses&&x.mesesSrc!=='ficha')A.meses=`${x.meses} meses · ${x.mesesSrc}`;
+  if(x.valor!=null&&x.valorSrc!=='ficha')A.valorTotal=`${fmtBRL(x.valor)} · ${x.valorSrc}`; if(c.parcela)A.valorParcela=`${fmtBRL(c.parcela)} · Omie`;
+  if(x.ptc&&x.ptcSrc!=='ficha')A.ptc=`${x.ptc} · ${x.ptcSrc}`; if(x.pc&&x.pcSrc!=='ficha')A.pc=`${x.pc} · ${x.pcSrc}`; if(c.loc&&!x.f.tipo)A.tipo='Locação · Controle/Omie';
+  const falta=[], auto=[];
+  campos.forEach(k=>{ if(A[k.k]&&!(x.f[k.k]!=null&&String(x.f[k.k]).trim())){ auto.push(Object.assign({},k,{ph:A[k.k].split(' · ')[0],ajuda:`✓ automático: <b>${esc(A[k.k])}</b> — em branco mantém`})); } else falta.push(k); });
+  formModal(tit,[{k:'_h1',rot:'',tipo:'html',larg:1,html:'<p class="gc-fh">Preencha o que falta. O que já vem dos sistemas está no fim, só para corrigir.</p>'},...falta,
+    ...(auto.length?[{k:'_h2',rot:'',tipo:'html',larg:1,html:`<p class="gc-fh">Já vem automaticamente (${fmtN(auto.length)}) — altere só se estiver errado</p>`},...auto]:[])],onOk,txt); }
 
 /* ---------- gravação ---------- */
 async function gcGravar(ref,dados,msg){ if(!gcEdita()){ aviso('Sem permissão para gravar.'); return false; }
@@ -6966,16 +7042,16 @@ async function gcGravar(ref,dados,msg){ if(!gcEdita()){ aviso('Sem permissão pa
     return false; } }
 const gcCarimbo=()=>({atualizadoEm:new Date().toISOString(),atualizadoPor:GC.uid||null});
 function gcEditar(id){ const x=gcContratos().find(k=>k.id===id); if(!x)return; const f=x.f;
-  formModal(`Ficha ${x.loc?'da locação':'do contrato'} ${x.num}`,[
-    {k:'tipo',rot:'Tipo',tipo:'sel',ops:['',...GC_TIPOS],v:f.tipo||x.tipo||''},
+  gcFormFicha(x,`Ficha ${x.loc?'da locação':'do contrato'} ${x.num}`,[
+    {k:'tipo',rot:'Tipo',tipo:'sel',ops:['',...GC_TIPOS],v:f.tipo||''},
     {k:'status',rot:'Situação (vazio = a do Omie)',tipo:'sel',ops:GC_STATUS,v:f.status||''},
     {k:'objeto',rot:'Objeto / escopo do contrato',tipo:'area',rows:3,v:f.objeto||'',larg:1},
-    {k:'ini',rot:x.loc?'Entrega do equipamento (início da locação)':'Início da vigência',tipo:'date',v:f.ini||'',ajuda:x.c.ini?`automático: ${fmtData(x.c.ini)} (${esc(x.c.fonteVig||'Omie')})`:''},
-    {k:'fim',rot:x.loc?'Devolução prevista':'Fim da vigência',tipo:'date',v:f.fim||'',ajuda:x.c.fim?`Omie: ${fmtData(x.c.fim)}`:''},
+    {k:'ini',rot:x.loc?'Entrega do equipamento (início da locação)':'Início da vigência',tipo:'date',v:f.ini||''},
+    {k:'fim',rot:x.loc?'Devolução prevista':'Fim da vigência',tipo:'date',v:f.fim||''},
     ...(x.loc?[{k:'devolucao',rot:'Devolvido em (encerra a locação)',tipo:'date',v:f.devolucao||''},{k:'local',rot:'Local de instalação (obra, cidade)',tipo:'text',v:f.local||''},
       {k:'caucao',rot:'Caução / seguro (R$)',tipo:'number',v:f.caucao||''}]:[]),
     {k:'meses',rot:'Duração (meses)',tipo:'number',v:f.meses||'',ajuda:'sem o fim, o painel calcula o fim pelo início + meses'},
-    {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:f.valorTotal||'',ajuda:x.c.valorPed?`Controle: ${fmtBRL(x.c.valorPed)}`:x.c.parcela?`Omie: parcela ${fmtBRL(x.c.parcela)}`:''},
+    {k:'valorTotal',rot:'Valor total contratado (R$)',tipo:'number',v:f.valorTotal||''},
     {k:'valorParcela',rot:x.loc?'Aluguel mensal (R$)':'Valor da parcela (R$)',tipo:'number',v:f.valorParcela||''},
     {k:'fatExtra',rot:'Faturado fora das OS do Omie (R$)',tipo:'number',v:f.fatExtra||'',ajuda:'só se parte do contrato foi faturada sem OS vinculada'},
     {k:'reajuste',rot:'Índice de reajuste',tipo:'sel',ops:GC_REAJ,v:f.reajuste||''},
@@ -6984,8 +7060,8 @@ function gcEditar(id){ const x=gcContratos().find(k=>k.id===id); if(!x)return; c
     {k:'avisoPrevio',rot:'Aviso prévio (dias)',tipo:'number',v:f.avisoPrevio||''},
     {k:'periodicidade',rot:'Periodicidade das visitas',tipo:'html',html:`<select class="campo" name="periodicidade">${GC_PERIOD.map(([k,t])=>`<option value="${k}"${(f.periodicidade||'')===k?' selected':''}>${t}</option>`).join('')}</select>`},
     {k:'visitasPrevistas',rot:'Visitas previstas no contrato',tipo:'number',v:f.visitasPrevistas||'',ajuda:'vazio = calculado pela periodicidade'},
-    {k:'ptc',rot:'PTC / código da proposta',tipo:'text',v:f.ptc||'',ajuda:x.ptc&&!f.ptc?`automático: ${esc(x.ptc)}`:''},
-    {k:'pc',rot:'Pedido de compra do cliente',tipo:'text',v:f.pc||'',ajuda:x.pc&&!f.pc?`automático: ${esc(x.pc)}`:''},
+    {k:'ptc',rot:'PTC / código da proposta',tipo:'text',v:f.ptc||''},
+    {k:'pc',rot:'Pedido de compra do cliente',tipo:'text',v:f.pc||''},
     {k:'respInterno',rot:'Responsável interno (LS Fire)',tipo:'text',v:f.respInterno||'',lista:'dl-pessoas'},
     {k:'contato',rot:'Contato no cliente (nome e função)',tipo:'text',v:f.contato||''},
     {k:'obs',rot:'Observações',tipo:'area',rows:2,v:f.obs||'',larg:1}],fd=>{
@@ -8465,7 +8541,7 @@ function formModal(tit,campos,onOk,txtOk){ let m=document.getElementById('m-form
     <div class="conteudo"><datalist id="dl-pessoas">${pessoas.map(p=>`<option value="${esc(p)}">`).join('')}</datalist><form id="f-form" class="f-form">${campos.map(c=>`<div class="mcampo${c.larg?' larg':''}"><label>${esc(c.rot)}</label>${
       c.tipo==='area'?`<textarea class="campo" name="${c.k}" rows="${c.rows||3}">${esc(c.v||'')}</textarea>`
       :c.tipo==='sel'?`<select class="campo" name="${c.k}">${c.ops.map(o=>`<option${o===c.v?' selected':''}>${esc(o)}</option>`).join('')}</select>`
-      :c.tipo==='html'?c.html:`<input class="campo" name="${c.k}" type="${c.tipo||'text'}" value="${esc(c.v||'')}"${c.lista?` list="${c.lista}"`:''}>`}${c.ajuda?`<small class="nd-m">${c.ajuda}</small>`:''}</div>`).join('')}
+      :c.tipo==='html'?c.html:`<input class="campo" name="${c.k}" type="${c.tipo||'text'}" value="${esc(c.v||'')}"${c.lista?` list="${c.lista}"`:''}${c.ph?` placeholder="${esc(c.ph)}"`:''}>`}${c.ajuda?`<small class="nd-m">${c.ajuda}</small>`:''}</div>`).join('')}
       <div class="pl-bar"><button type="submit" class="btn">${txtOk||'Salvar'}</button><button type="button" class="btn sec" onclick="fecharModal('m-form')">Cancelar</button></div></form></div></div>`;
   m.querySelector('form').onsubmit=e=>{ e.preventDefault(); const fd={}; new FormData(e.target).forEach((v,k)=>{ fd[k]=fd[k]!==undefined?[].concat(fd[k],v):v; });
     if(onOk(fd,e.target)!==false)fecharModal('m-form'); };
