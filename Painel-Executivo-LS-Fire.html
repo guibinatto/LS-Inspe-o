@@ -4285,7 +4285,7 @@ function secEvolucao(){
   h+=`</div><div class="nota">Negócios criados contam o Ploomes e o histórico OMIE pela data de criação; propostas existem no Ploomes desde jul/2026. Interação sem negócio ligado vai para a divisão do cliente ou, sem ela, para a divisão principal do vendedor.</div>`;
   return h; }
 /* data da perda: desfecho; no Ploomes, a última atualização (aproximação — ver dataPerda) */
-const noAnoPerda=x=>noPer(dataPerda(x).dt);
+const noAnoPerda=x=>perdaNoPeriodo(x,PER);
 
 /* aviso de conferência: o total do mês é a planilha oficial; a soma dos pedidos confere */
 function avisoERP(){ const L=divergenciasERP().filter(x=>!EST.ano||String(x.a)===EST.ano); if(!L.length)return '';
@@ -5399,7 +5399,7 @@ function vendasCorpo(){
           <em>${tA>=ant.t?'▲':'▼'} ${fmtPct(Math.abs(tA/ant.t-1),0)} · ${tA>=ant.t?'+':'−'}${fmtCompacto(Math.abs(tA-ant.t))}</em></div>`:''}
         ${graf('v-yoy','alt')}<p class="yoy-nota">Embaixo de cada mês: a variação (▲ acima / ▼ abaixo de ${a-1}; “×” = quantas vezes maior) e a diferença em ${eY.rot}.${emCurso?` O mês em curso (*) é comparado com o mesmo período de ${a-1}, até ${fmtData(HOJE).slice(0,5)}; a barra cinza mostra o mês inteiro, como referência.`:''} “Base baixa” = em ${a-1} o mês quase não teve venda, e a comparação exagera.</p></div>`; } }
   const vend=grupos(V,v=>v.resp||'(sem responsável)',v=>v.valor,12);
-  h+=parQV('v-vend','Por vendedor','Quem vendeu quanto, em R$ e em número de pedidos.',vend.map(x=>Object.assign(x,{k:nomeCurto(x.k)})),{rotQ:'pedidos',stackDiv:true});
+  h+=parQV('v-vend','Por vendedor','Quem vendeu quanto, em R$ e em número de pedidos — pedidos em que é o vendedor responsável (apoio/orçamentista não conta aqui).',vend.map(x=>Object.assign(x,{k:nomeCurto(x.k)})),{rotQ:'pedidos',stackDiv:true});
   /* categoria FISCAL do ERP: parte confirmada (carimbo do ERP), inferida (composição
      da família) e não classificada — antes o total misturava as três como "do ERP" */
   const cats=porCategoriaVenda(V,CAT_MODO).filter(x=>x.valor>0||x.cat===CAT_NEG);
@@ -5434,9 +5434,10 @@ function perdasCorpo(){
   const gan=ganN.concat(ganH);
   const vG=somar(gan,x=>x.vNum||0), vP=somar(perd,x=>x.vNum||0);
   const wrN=pct(gan.length,gan.length+perd.length), wrV=pct(vG,vG+vP);
+  const sdN=periodoAnual(PER)?0:perdasSemDataNo(PER.ini,PER.fim).length, sdTxt=sdN?`<span class="l2"><b>incompleto</b>: até ${fmtN(sdN)} perda(s) sem data confiável podem ser deste período e não entram</span>`:'';
   let h=`<div class="g g4 kpis-2">
-   ${kpi('Win rate (qtd)',isNaN(wrN)?'—':fmtPct(wrN,0),`${fmtN(gan.length)} ganhos de ${fmtN(gan.length+perd.length)} decididos`,'ok')}
-   ${kpi('Win rate (R$)',isNaN(wrV)?'—':fmtPct(wrV,0),`${fmtCompacto(vG)} ganhos de ${fmtCompacto(vG+vP)}`,'ok')}
+   ${kpi('Win rate (qtd)',isNaN(wrN)?'—':fmtPct(wrN,0),`${fmtN(gan.length)} ganhos de ${fmtN(gan.length+perd.length)} decididos${sdTxt}`,sdN?'ale':'ok')}
+   ${kpi('Win rate (R$)',isNaN(wrV)?'—':fmtPct(wrV,0),`${fmtCompacto(vG)} ganhos de ${fmtCompacto(vG+vP)}${sdTxt}`,sdN?'ale':'ok')}
    ${kpi('Perdido',fmtCompacto(vP),`${fmtN(perd.length)} oportunidades`,'err')}
    ${kpi('Ticket perdido',fmtCompacto(perd.length?vP/perd.length:0),`contra ${fmtCompacto(gan.length?vG/gan.length:0)} do ganho`,'neutro')}
   </div>`;
@@ -5463,17 +5464,28 @@ function perdasCorpo(){
     /* o histórico prefixa o motivo com G-/P-/C- (ganho/perda/cancelamento);
        aqui só há perdas, então o prefixo é ruído */
     return s&&s!=='N/D'?s.replace(/^[GPC]\s*-\s*/i,'').trim().slice(0,40):'(sem motivo)'; };
-  /* win rate por mês, pela data da decisão (ganho: data da venda; perda: conclusão) */
-  const dec=gan.map(x=>({x,g:1,d:x.dtVenda||x.dtCri})).concat(perd.map(x=>({x,g:0,d:x.dtFim||x.dtVenda||x.dtCri||x.dt}))).filter(o=>o.d);
-  const mw=meses(dec,o=>o.d).filter(m=>m.itens.length>=3);
-  if(mw.length>=2){
-    const wq=mw.map(m=>m.itens.filter(o=>o.g).length/m.itens.length);
-    const wv=mw.map(m=>{const g=somar(m.itens.filter(o=>o.g),o=>o.x.vNum||0),t=somar(m.itens,o=>o.x.vNum||0);return t?g/t:null;});
-    h+=sec('Win rate por mês','Ganhos ÷ decididos no mês, em quantidade e em R$. Meses com menos de 3 decisões ficam fora — um ganho e zero perdas não é 100%.','perd-wr');
-    agendar('l-wr',cfgLinha(mw.map(m=>m.k),[
-      {label:'em quantidade',data:wq,cor:COR().ok,itens:mw.map(m=>m.itens.map(o=>o.x))},
-      {label:'em R$',data:wv,cor:COR().neu,tracejado:true,rot:false}],'pct'));
-    h+=card('','',graf('l-wr')); }
+  /* win rate por mês: a MESMA base da tabela "Evolução dentro do período" (indicadores do mês):
+     ganho pela data da venda; perda pela data do desfecho. Perda sem data confiável (Ploomes: só a
+     última atualização) não entra em nenhum mês; o mês em que ela pode ter acontecido fica sem ponto
+     ("incompleto") em vez de um 100% falso. Antes o gráfico usava a CRIAÇÃO do negócio como data da
+     perda e a tabela a última atualização — por isso divergiam. */
+  const perdD=perd.filter(x=>!dataPerda(x).aprox), perdSD=perd.filter(x=>dataPerda(x).aprox);
+  const dec=gan.map(x=>({x,g:1,d:x.dtVenda})).concat(perdD.map(x=>({x,g:0,d:dataPerda(x).dt}))).filter(o=>o.d);
+  const mAll=meses(dec,o=>o.d).map(m=>{ const [a,mm]=m.key.split('-').map(Number), ini=_d(a,mm-1,1), fim=menorData(fimMes(a,mm-1),hoje()); return Object.assign(m,{sd:perdasSemDataNo(ini,fim,perdSD).length}); });
+  const mw=mAll.filter(m=>m.itens.length>=3), completos=mw.filter(m=>!m.sd);
+  const gN=m=>m.itens.filter(o=>o.g).length, pN=m=>m.itens.filter(o=>!o.g).length;
+  if(mw.length){
+    h+=sec('Win rate por mês','Ganhos ÷ decididos no mês, com a mesma base da tabela "Evolução dentro do período": ganho pela data da venda, perda pela data do desfecho. Perda sem data confiável (o Ploomes só traz a última atualização) não entra em nenhum mês; o mês em que ela pode ter acontecido (entre a criação e a última atualização do negócio) tem conversão incompleta e aparece como faixa, nunca como uma taxa única.','perd-wr');
+    if(completos.length>=2){
+      agendar('l-wr',cfgLinha(mw.map(m=>m.k),[
+        {label:'em quantidade',data:mw.map(m=>m.sd?null:gN(m)/m.itens.length),cor:COR().ok,itens:mw.map(m=>m.itens.map(o=>o.x))},
+        {label:'em R$',data:mw.map(m=>{ if(m.sd)return null; const g=somar(m.itens.filter(o=>o.g),o=>o.x.vNum||0),t=somar(m.itens,o=>o.x.vNum||0);return t?g/t:null;}),cor:COR().neu,tracejado:true,rot:false}],'pct'));
+      h+=card('','meses com conversão incompleta ficam sem ponto (ver a tabela)',graf('l-wr')); }
+    else h+=`<div class="nota" style="border-left-color:var(--ale)"><b>Win rate mensal indisponível no gráfico:</b> ${completos.length?`só ${fmtN(completos.length)} mês com conversão completa`:'nenhum mês tem conversão completa'} — em cada mês pode ter acontecido alguma perda sem data confiável. Win rate do ${periodoAnual(PER)?'período':'ano'}: <b>${isNaN(wrN)?'—':fmtPct(wrN,0)}</b> (${fmtN(gan.length)} ganhos, ${fmtN(perd.length)} perdidos). A tabela mostra, mês a mês, a faixa possível.</div>`;
+    h+=card('Decididos por mês','faixa do win rate: máximo = só com as perdas que têm data; mínimo = se todas as perdas sem data que podem ser do mês fossem dele',tab([{t:'Mês'},{t:'Ganhos',n:1},{t:'Perdas com data',n:1},{t:'Perdas sem data possíveis',n:1},{t:'Win rate',n:1}],
+      mAll.map(m=>{ const g=gN(m), p=pN(m); return [m.k,fmtN(g),fmtN(p),m.sd?fmtN(m.sd):'0',
+        m.sd?`<span class="nd-m">incompleto</span><br><small>entre ${fmtPct(g/(g+p+m.sd),0)} e ${g+p?fmtPct(g/(g+p),0):'—'}</small>`:g+p>=3?fmtPct(g/(g+p),0):'<span class="nd-m">menos de 3 decisões</span>']; })));
+    if(perdSD.length)h+=`<div class="nota"><b>${fmtN(perdSD.length)} perdas sem data confiável</b> (o Ploomes não exporta a data da perda; só a última atualização do negócio) ficam fora dos meses e entram no total do ${periodoAnual(PER)?'período':'ano'}. "Perdas sem data possíveis" de meses diferentes se repetem: a mesma perda pode ser de vários meses.</div>`; }
   if(gan.length+perd.length){ h+=sec('Decididos','Cada quadrado é 1% das oportunidades decididas no recorte.','perd-dec');
     h+=waffle(`De cada 100 decididos, ${Math.round(wrN*100)} foram ganhos`,[{k:'ganhos',n:gan.length,t:vG,cor:COR().ok},{k:'perdidos',n:perd.length,t:vP,cor:COR().err}],
       `Em valor, o aproveitamento é de ${fmtPct(wrV,0)}: ${fmtCompacto(vG)} ganhos de ${fmtCompacto(vG+vP)} decididos.`); }
@@ -5487,12 +5499,12 @@ function perdasCorpo(){
     if(aprox)h+=`<div class="nota">${fmtN(aprox)} de ${fmtN(perd.length)} perdas com data APROXIMADA (última atualização do negócio no Ploomes). A distribuição por mês pode estar deslocada.</div>`; }
   const pv=grupos(perd,x=>x.resp||'(sem responsável)',x=>x.vNum||0,12);
   h+=parQV('l-vend','Perdas por vendedor','Quem perdeu quanto.',pv.map(x=>Object.assign(x,{k:nomeCurto(x.k)})),{rotQ:'oportunidades',stackDiv:true});
-  const ms=meses(perd,x=>x.dtFim||x.dtVenda||x.dtCri||x.dt);
-  h+=parQV('l-mes','Perdas por mês','Pela data de conclusão.',ms.map(m=>Object.assign({k:m.k,parcial:m.parcial},resumo(m.itens,x=>x.vNum||0),{itens:m.itens})),{rotQ:'oportunidades',stackDiv:true});
+  const ms=meses(perd.filter(x=>!dataPerda(x).aprox),x=>dataPerda(x).dt);
+  h+=parQV('l-mes','Perdas por mês',`Pela data do desfecho. ${perd.filter(x=>dataPerda(x).aprox).length?`${fmtN(perd.filter(x=>dataPerda(x).aprox).length)} perdas sem data confiável ficam fora dos meses (ver Win rate por mês).`:''}`,ms.map(m=>Object.assign({k:m.k,parcial:m.parcial},resumo(m.itens,x=>x.vNum||0),{itens:m.itens})),{rotQ:'oportunidades',stackDiv:true});
   h+=card('Maiores perdas','As 15 maiores em valor, com a norma e o item principal da proposta (o de maior valor).',
     tab([{t:'Cliente',f:1},{t:'Norma'},{t:'Item perdido',f:1},{t:'Motivo'},{t:'Vendedor'},{t:'Div.'},{t:'Data'},{t:'Valor',n:1}],
       [...perd].sort((a,b)=>(b.vNum||0)-(a.vNum||0)).slice(0,15).map(x=>{ const pd=perdaDetalhe(x); return [esc(x.cli).slice(0,34),esc(pd.norma||'—'),pd.item?esc(pd.item)+(pd.nItens>1?` <small>+${pd.nItens-1} itens</small>`:''):'—',
-        esc(motivo(x))+(motivoPerdaOrig(x)&&norm(motivoPerdaOrig(x))!==norm(motivo(x))?`<br><small>${esc(motivoPerdaOrig(x))} · ${esc(x.fonte==='Ploomes'?'Ploomes':'OMIE')}</small>`:''),esc(nomeCurto(x.resp)),esc(x.div||'—'),fmtData(x.dtFim||x.dtVenda||x.dtCri),fmtBRL(x.vNum)]; })));
+        esc(motivo(x))+(motivoPerdaOrig(x)&&norm(motivoPerdaOrig(x))!==norm(motivo(x))?`<br><small>${esc(motivoPerdaOrig(x))} · ${esc(x.fonte==='Ploomes'?'Ploomes':'OMIE')}</small>`:''),esc(nomeCurto(x.resp)),esc(x.div||'—'),dataPerda(x).aprox?`${fmtData(dataPerda(x).dt)}<br><small>sem data confiável</small>`:fmtData(dataPerda(x).dt),fmtBRL(x.vNum)]; })));
   return h;
 };
 
@@ -5508,7 +5520,8 @@ VISTA.desempenho=function(){
     const meta=((metasDoAno(EST.ano)||{}).metas||[]).find(m=>m.vend===k);
     const mt=meta?(EST.div==='SEQ'?(num(meta.seq)||0):EST.div==='SPV'?(num(meta.spv)||0):(num(meta.seq)||0)+(num(meta.spv)||0)):0;
     return {k,vendN:vv.length,vendT:somar(vv,v=>v.valor),negN:nn.length,negT:somar(nn,n=>n.vNum||0),
-      cliCart:new Set(F.emp.filter(e=>e.resp===k).map(e=>e.nNome)).size,cliAb:new Set(nn.map(n=>n.nCli)).size,
+      /* clientes no cadastro (v2026.11-3): cada cadastro de empresa do Ploomes (unidade/filial) conta uma vez, ativos + inativos — a mesma definição do gráfico "Carteira por vendedor" (antes a tabela contava nomes distintos e o gráfico, cadastros) */
+      cliCart:F.emp.filter(e=>e.resp===k).length,cliCartAt:F.emp.filter(e=>e.resp===k&&e.ativa).length,cliAb:new Set(nn.map(n=>n.nCli)).size,
       propN:pp.length,propT:somar(pp,x=>x.val),wr:(g+p)?g/(g+p):null,meta:mt,itensV:vv,itensN:nn,itensP:propsDrill(pp)};}).sort((a,b)=>b.vendT-a.vendT);
   /* % da meta anual sozinho pune todo mundo em setembro: o que importa é a
      projeção — onde o vendedor fecha o ano se seguir no ritmo de hoje */
@@ -5522,13 +5535,13 @@ VISTA.desempenho=function(){
    ${kpi('Abaixo de 85% da meta',fmtN(abx.length),abx.length?abx.map(x=>`${esc(nomeCurto(x.k))} ${fmtPct(pj(x),0)}`).join(' · '):'ninguém abaixo de 85%',abx.length?'err':'ok')}
    ${kpi('Maior vendedor',top?esc(nomeCurto(top.k)):'—',top?`${fmtCompacto(top.vendT)} · ${fmtPct(tV?top.vendT/tV:0,0)} do vendido`:'','lar')}
   </div>`;
-  h+=sec('Vendedores','Carteira (negócios abertos e clientes), produção (propostas) e resultado (vendido e win rate).'
+  h+=sec('Vendedores','Carteira (negócios abertos e clientes), produção (propostas) e resultado (vendido e win rate). Vendido e pedidos = pedidos em que a pessoa é o vendedor responsável; apoio (orçamentista) não conta aqui — a participação da Amanda como apoio está em Resultados → Serviços (SPV).'
     +(fr>0&&fr<1?` <b>Projeção por ritmo</b> = % da meta em que o vendedor fecha o ano se seguir no ritmo realizado até a referência (${fmtPct(fr,0)} do ano decorrido). Premissa, não previsão. Verde a partir de 100%, amarelo de 85%. Vendido = soma dos pedidos do vendedor (valor original); a diferença de conciliação com o oficial não é atribuída a vendedores.`:''),'des-vend');
-  h+=card('','',tab([{t:'Vendedor',f:1},{t:'Vendido',n:1},{t:'Pedidos',n:1},{t:'Meta',n:1},{t:'% meta',n:1},{t:'Projeção',n:1},{t:'Negócios abertos',n:1},{t:'R$ em carteira',n:1},{t:'Clientes c/ negócio',n:1},{t:'Clientes no cadastro',n:1},{t:'Propostas',n:1},{t:'R$ propostas',n:1},{t:'Win rate',n:1}],
+  h+=card('','',tab([{t:'Vendedor',f:1},{t:'Vendido',n:1},{t:'Pedidos (responsável)',n:1},{t:'Meta',n:1},{t:'% meta',n:1},{t:'Projeção',n:1},{t:'Negócios abertos',n:1},{t:'R$ em carteira',n:1},{t:'Clientes c/ negócio',n:1},{t:'Empresas no cadastro (ativas + inativas)',n:1},{t:'Propostas',n:1},{t:'R$ propostas',n:1},{t:'Win rate',n:1}],
     linhas.map(x=>[esc(x.k),fmtBRL(x.vendT),fmtN(x.vendN),x.meta?fmtBRL(x.meta):'—',
       x.meta?fmtPct(x.vendT/x.meta,0):'—',
       x.meta&&fr?`<b style="color:var(--${corRitmo(x.vendT/(x.meta*fr))})">${fmtPct(x.vendT/(x.meta*fr),0)}</b>`:'—',
-      fmtN(x.negN),fmtBRL(x.negT),fmtN(x.cliAb),fmtN(x.cliCart),fmtN(x.propN),fmtBRL(x.propT),x.wr==null?'—':fmtPct(x.wr,0)])));
+      fmtN(x.negN),fmtBRL(x.negT),fmtN(x.cliAb),`${fmtN(x.cliCart)}<br><small>${fmtN(x.cliCartAt)} ativas</small>`,fmtN(x.propN),fmtBRL(x.propT),x.wr==null?'—':fmtPct(x.wr,0)])));
   const ct=cartoesVend(linhas,fr);
   h+=roscaDiv('e-div','Vendido pelo time: SEQ × SPV','O vendido do recorte por divisão, em R$ e em pedidos.',F.vendas,v=>v.valor,'pedidos');
   if(ct)h+=sec('Cartões dos vendedores','Um cartão por vendedor: o anel é quanto da meta anual já foi vendido; a cor é a projeção do ano.','des-cartoes')+ct;
@@ -5989,7 +6002,7 @@ VISTA.clientes=function(){
   agendar('c-ab',{type:'bar',ehQtd:true,data:{labels:cliAb.map(x=>x.k),datasets:[{label:'clientes com negócio aberto',fmt:'n',data:cliAb.map(x=>x.n),itens:cliAb.map(x=>x.itens),backgroundColor:COR().az,borderRadius:3,maxBarThickness:40}]},
     options:{scales:{x:{grid:{display:false}},y:{ticks:{precision:0}}}}});
   h+=sec('Carteira por vendedor','Quem responde por mais clientes — no cadastro e com negócio aberto agora.','cli-cart');
-  h+=`<div class="dupla">${card('Clientes no cadastro','empresas do Ploomes por responsável, ativas e inativas',graf('c-cart','alt'))}${card('Clientes com negócio aberto','clientes distintos no pipeline de cada vendedor',graf('c-ab','alt'))}</div>`;
+  h+=`<div class="dupla">${card('Empresas no cadastro (ativas + inativas)','cadastros de empresa do Ploomes por responsável: cada cadastro (unidade/filial) conta uma vez — a mesma definição da tabela Vendedores',graf('c-cart','alt'))}${card('Clientes com negócio aberto','clientes distintos no pipeline de cada vendedor',graf('c-ab','alt'))}</div>`;
   const uf=grupos(V,v=>v.uf||'(sem UF)',v=>v.valor,12);
   h+=parQV('c-uf','Clientes por estado','Onde estão os clientes que compraram — em R$ e em pedidos.',uf,{rotQ:'pedidos',horiz:true,stackDiv:true});
   h+=card('Todos os clientes com venda','Do maior para o menor.',
@@ -6023,6 +6036,22 @@ const estaParado=n=>(n.diasEst||0)>(num(CFG.parParado)||30);
    data da perda —, a última atualização do negócio, MARCADA como aproximação */
 function dataPerda(x){ if(x.dtFim)return {dt:x.dtFim,aprox:false}; if(x.dtVenda)return {dt:x.dtVenda,aprox:false};
   if(x.dtAtu)return {dt:x.dtAtu,aprox:true,base:'última atualização'}; return {dt:x.dtCri||x.dt||null,aprox:true,base:'criação'}; }
+/* ---------- perdas sem data confiável (regras v2026.11-3) ----------
+   O Ploomes não exporta a data da perda: o painel só sabe que ela aconteceu entre a criação do
+   negócio e a última atualização. Usar a última atualização juntava perdas antigas no mês em que
+   os negócios foram editados (nov/26: 74 perdas). Regra:
+   - recorte de um ANO inteiro (ano, acumulado do ano, "Tudo"): a perda entra, pelo ano da última
+     atualização (como antes);
+   - recorte MENOR que o ano (mês, trimestre, semana, dia) e séries mensais: a perda fica FORA da
+     contagem e da conversão; o mês/trimestre em que ela PODE ter acontecido (entre a criação e a
+     última atualização) fica marcado como "conversão incompleta" — não aparece 100% falso. */
+function periodoAnual(P){ if(!P||!P.ini)return true; if(['ano','tudo','ytd'].includes(P.modo))return true;
+  const f=P.fimCal||P.fim; return P.modo==='int'&&f&&diasDe(P.ini,f)>=364; }
+function perdaNoPeriodo(x,P){ P=P||PER; const d=dataPerda(x); if(!d.dt)return false;
+  if(P&&P.ini&&(d.dt<P.ini||d.dt>P.fim))return false; return !d.aprox||periodoAnual(P); }
+/* perdas sem data que podem ter acontecido dentro de [ini, fim] (intervalo criação → última atualização) */
+function perdasSemDataNo(ini,fim,lista){ return (lista||F.perd||[]).filter(x=>{ const d=dataPerda(x); if(!d.aprox)return false;
+  const a=x.dtCri||null, z=d.dt||hoje(); return (!a||a<=fim)&&z>=ini; }); }
 
 /* ---------- card gerencial: valor, unidade, período, base, condição ---------- */
 function cardG(o){
@@ -6064,7 +6093,7 @@ function saldoFaturar(){
 /* ---------- conversão dos negócios decididos no período ---------- */
 function conversaoPeriodo(){
   const gan=F.neg.filter(n=>n.ganho&&noPer(n.dtVenda||n.dtConv)).concat(F.hist.filter(o=>o.ganho&&noPer(o.dtVenda)));
-  const perdT=F.perd.map(x=>Object.assign({x},dataPerda(x))).filter(o=>noPer(o.dt));
+  const perdT=F.perd.map(x=>Object.assign({x},dataPerda(x))).filter(o=>perdaNoPeriodo(o.x,PER));
   const perd=perdT.map(o=>o.x), aprox=perdT.filter(o=>o.aprox).length;
   const vg=somar(gan,x=>x.vNum||0), vp=somar(perd,x=>x.vNum||0);
   return {gan,perd,aprox,n:gan.length+perd.length,wrN:gan.length+perd.length?gan.length/(gan.length+perd.length):null,
@@ -6283,7 +6312,7 @@ VISTA.executiva=function(){
     base:sf.oficial&&sf.faturado!=null?`original ${fmtCompacto(sf.original)} − faturado ${fmtCompacto(sf.faturado)}`:'',tipo:'pos',fonte:sf.oficial?`Carteira de faturamento de ${fmtData(ultimaData('carteira'))}`:'Controle de Pedidos',cond:sf.oficial?null:'não é saldo confirmado'}));
   ks.push(cv.n?cardG({rot:'Conversão dos decididos',val:fmtPct(cv.wrN,0),per,cls:'ok',
       sub:`${fmtN(cv.gan.length)} ganhos de ${fmtN(cv.n)} decididos · ${fmtPct(cv.wrV,0)} em valor<span class="l2">abertos não entram: não são perdas</span>`,base:'negócios decididos no período',tipo:'mov',fonte:'Ploomes + histórico OMIE',
-      cond:cv.aprox?`${fmtN(cv.aprox)} perdas com data aproximada`:null,condCls:'neutro'})
+      cond:(()=>{ const sd=periodoAnual(PER)?0:perdasSemDataNo(PER.ini,PER.fim).length; return sd?`incompleto: até ${fmtN(sd)} perdas sem data podem ser do período`:cv.aprox?`${fmtN(cv.aprox)} perdas com data aproximada`:null; })(),condCls:'neutro'})
     :cardG({rot:'Conversão dos decididos',val:naoDisp(),per,sub:'Nenhum negócio decidido no período.'}));
   if(temFatOficial()){ const FR=faturamentoRealizado();
     ks.push(cardG({rot:'Faturamento realizado',val:FR.total!=null?fmtCompacto(FR.total):naoDisp('sem comparativo para o período'),per,cls:'neutro',
@@ -6463,7 +6492,7 @@ function divergenciasCarteiraNF(){ if(!temCarteira()||!(M.notas||[]).length)retu
     const cs=[n.ov,n.os].filter(Boolean).map(k=>porPV.get(String(k).replace(/^0+/,''))||[]).flat()
       .filter(c=>w1(c.nCli)===w1(n.nCli)); if(cs.length!==1)return; const c=cs[0];
     if(c.vNum>=n.vNum-tol(n.vNum)&&(c.vFat||0)<n.vNum-tol(n.vNum))
-      out.push({nf:n,c,txt:`NF ${n.nf} de ${fmtData(n.dt)} (${fmtBRL(n.vNum)}) para o PV ${c.ov} de ${c.cli}, mas a carteira de ${pos?fmtData(pos):'—'} ainda mostra saldo de ${fmtBRL(c.vNum)} e faturado de ${fmtBRL(c.vFat||0)}`}); });
+      out.push({nf:n,c,dias:pos?diasDe(n.dt,pos):null,txt:`NF ${n.nf} de ${fmtData(n.dt)} (${fmtBRL(n.vNum)}) para o PV ${c.ov} de ${c.cli}, mas a carteira de ${pos?fmtData(pos):'—'} ainda mostra saldo de ${fmtBRL(c.vNum)} e faturado de ${fmtBRL(c.vFat||0)}${pos?` · nota ${diasDe(n.dt,pos)<=2?`emitida ${diasDe(n.dt,pos)} dia(s) antes da posição: provável atraso da planilha`:`emitida ${diasDe(n.dt,pos)} dias antes da posição: conferir a baixa com o financeiro`}`:''}`}); });
   return out; }
 function secFaturamento(){
   const FR=faturamentoRealizado(), R=hoje();
@@ -7625,7 +7654,12 @@ const spvForaDe=x=>spvFora().find(f=>norm(x&&x.cli).includes(norm(f.cli)))||null
 function spvDados(){ const R=hoje(), marco=data(CFG.spvMarco||'2026-10-01'), am=x=>/amanda/i.test(String(x||'')), val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
   const ano=R.getFullYear(), meses=[...Array(R.getMonth()+1).keys()].map(m=>mesKey(new Date(ano,m,1)));
   const ped=F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt<=R&&(!EST.vend||v.resp===EST.vend)&&!spvForaDe(v));
-  const pedAm=v=>am(v.orcNome||v.orc)||am(v.reg&&v.reg.orc);
+  /* pedidos com a Amanda (v2026.11-3) = pedidos em que PARTICIPOU: vendedora responsável (Controle de
+     Pedidos ou Vendas Ploomes×Omie) OU orçamentista/apoio (coluna Orçamentista do Controle). Antes
+     contava só o apoio (orçamentista) e deixava de fora as vendas em que ela é a responsável.
+     A tabela de vendedores conta só a responsável — critério diferente, escrito nas duas telas. */
+  const amResp=v=>am(v.resp)||(v.respTodos||[]).some(am), amApoio=v=>am(v.orcNome||v.orc)||am(v.reg&&v.reg.orc);
+  const pedAm=v=>amResp(v)||amApoio(v);
   const serie=meses.map(k=>{ const a=ped.filter(v=>mesKey(v.dt)===k), b=ped.filter(v=>mesKey(v.dt)===String(ano-1)+k.slice(4));
     return {k,rot:mesRot(k),n:a.length,v:somar(a,val),nAm:a.filter(pedAm).length,vAm:somar(a.filter(pedAm),val),nAnt:b.length,vAnt:somar(b,val),grande:a.filter(v=>val(v)>=SPV_GRANDE)}; });
   const propsTodas=propostasRecorte().filter(x=>x.div==='SPV'&&x.dt&&x.dt<=R), props=propsTodas.filter(x=>!spvForaDe(x));
@@ -7639,11 +7673,16 @@ function spvDados(){ const R=hoje(), marco=data(CFG.spvMarco||'2026-10-01'), am=
   const ngA=negSPV.filter(n=>antes(n.dtCri)), ngD=negSPV.filter(n=>depois(n.dtCri));
   const comp=[['Pedidos por mês',pA.length/3,pD.length/mesesDepois,'int'],['Propostas por mês',prA.length/3,prD.length/mesesDepois,'int'],['Negócios novos por mês',ngA.length/3,ngD.length/mesesDepois,'int'],
     ['Valor em pedidos por mês',somar(pA,val)/3,somar(pD,val)/mesesDepois,'mi'],['Valor por mês, sem pedidos acima de R$ 500 mil',somar(semG(pA),val)/3,somar(semG(pD),val)/mesesDepois,'mi']];
-  const amPed=pD.filter(pedAm), ytd=somar(ped.filter(v=>v.dt.getFullYear()===ano),val), ytdAnt=somar(F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt.getFullYear()===ano-1&&v.dt<=new Date(ano-1,R.getMonth(),R.getDate())),val);
+  const amTodos=pD.filter(pedAm);
+  /* mesma venda nas duas bases sem vínculo (Controle sem OV × Vendas): mesmo valor (±1%) em até 3 dias,
+     uma como responsável e outra como apoio — conta uma vez e fica sinalizada para corrigir na origem */
+  const amDup=amTodos.filter(v=>amResp(v)&&!amApoio(v)&&amTodos.some(w=>w!==v&&amApoio(w)&&w.fonte!==v.fonte&&Math.abs(val(w)-val(v))<=Math.max(2,val(v)*.01)&&Math.abs(w.dt-v.dt)<=3*864e5))
+    .map(v=>({v,par:amTodos.find(w=>w!==v&&amApoio(w)&&w.fonte!==v.fonte&&Math.abs(val(w)-val(v))<=Math.max(2,val(v)*.01)&&Math.abs(w.dt-v.dt)<=3*864e5)}));
+  const amPed=amTodos.filter(v=>!amDup.some(d=>d.v===v)), ytd=somar(ped.filter(v=>v.dt.getFullYear()===ano),val), ytdAnt=somar(F.todas.filter(v=>v.div==='SPV'&&v.dt&&v.dt.getFullYear()===ano-1&&v.dt<=new Date(ano-1,R.getMonth(),R.getDate())),val);
   const foraItens=[...F.todas.filter(v=>v.dt&&v.dt>=ini&&v.dt<=R&&spvForaDe(v)&&(v.div==='SPV')).map(v=>({t:'pedido',cli:v.cli,v:val(v),f:spvForaDe(v)})),
     ...propsTodas.filter(x=>x.dt>=ini&&spvForaDe(x)).map(x=>({t:'proposta '+x.cod,cli:x.cli,v:x.val||0,f:spvForaDe(x)})),
     ...(M.negocios||[]).filter(n=>n.div==='SPV'&&n.dtCri&&n.dtCri>=ini&&n.dtCri<=R&&spvForaDe(n)).map(n=>({t:'negócio',cli:n.cli,v:n.vNum||0,f:spvForaDe(n)}))];
-  return {foraItens,marco,ini,R,serie,propM,negM,comp,amPed,amVal:somar(amPed,val),pD,shareAm:pD.length?amPed.length/pD.length:null,amProp:prD.filter(x=>am(x.resp)||am(x.respProp)||am(x.orc)).length,prD,mesesDepois,ytd,ytdAnt,
+  return {foraItens,marco,ini,R,serie,propM,negM,comp,amPed,amVal:somar(amPed,val),amNResp:amPed.filter(amResp).length,amNApoio:amPed.filter(v=>amApoio(v)&&!amResp(v)).length,amDup,pD,shareAm:pD.length?amPed.length/pD.length:null,amProp:prD.filter(x=>am(x.resp)||am(x.respProp)||am(x.orc)).length,prD,mesesDepois,ytd,ytdAnt,
     grandes:pA.filter(v=>val(v)>=SPV_GRANDE).map(v=>({cli:v.cli,v:val(v),dt:v.dt}))}; }
 
 /* ---------- follow-up dos negócios (a régua da seção FUP): último FUP dentro do
@@ -7726,13 +7765,16 @@ function secSpv(){ if(EST.div==='SEQ')return ''; const Q=spvDados(); if(!Q.serie
   const seta=(a,b)=>a?`${b>=a?'▲':'▼'} ${fmtPct(Math.abs(b/a-1),0)}`:'—', cls=(a,b)=>!a?'':b/a-1>=.05?'ok':b/a-1<=-.05?'err':'';
   let h=sec('Serviços (SPV): antes e depois da Amanda',`Marco ${fmtData(Q.marco)}: chegada da Amanda Rohte no comercial da SPV (primeiro negócio e primeiro pedido dela). Antes = os 3 meses cheios anteriores; depois = do marco até ${fmtData(Q.R)}, proporcional aos dias. Pedidos acima de R$ 500 mil aparecem à parte porque distorcem a média.`,'res-spv');
   h+=`<div class="g g4 kpis-2">${Q.comp.map(([t,a,b,f])=>cardG({rot:t,val:f==='mi'?fmtCompacto(b):fmtD(b,1),per:`depois de ${fmtData(Q.marco)}`,cls:cls(a,b),sub:`antes: ${f==='mi'?fmtCompacto(a):fmtD(a,1)} · <b>${seta(a,b)}</b>`,tipo:'mov',fonte:t.startsWith('Propostas')||t.startsWith('Negócios')?'Ploomes':'Pedidos'})).join('')}
-    ${cardG({rot:'Pedidos com a Amanda',val:fmtN(Q.amPed.length),per:`desde ${fmtData(Q.marco)}`,cls:'lar',sub:`${Q.shareAm==null?'—':fmtPct(Q.shareAm,0)} dos pedidos da SPV · ${fmtCompacto(Q.amVal)}`,tipo:'mov',fonte:'Controle de Pedidos'})}</div>`;
+    ${cardG({rot:'Pedidos com a Amanda',val:fmtN(Q.amPed.length),per:`desde ${fmtData(Q.marco)}`,cls:'lar',sub:`pedidos em que participou (vendedora responsável ou apoio/orçamentista) · ${Q.shareAm==null?'—':fmtPct(Q.shareAm,0)} dos pedidos da SPV · ${fmtCompacto(Q.amVal)}<span class="l2">${fmtN(Q.amNResp)} como vendedora responsável · ${fmtN(Q.amNApoio)} como apoio (orçamentista)${Q.amDup.length?` · ${fmtN(Q.amDup.length)} venda(s) em duas bases contada(s) uma vez`:''}</span>`,tipo:'mov',fonte:'Controle de Pedidos e Vendas Ploomes×Omie'})}</div>`;
   const lab=Q.serie.map(m=>m.rot);
-  regLista('spv-p','Pedidos da SPV com a Amanda',Q.amPed.map(v=>[fmtData(v.dt),esc(String(v.cli).slice(0,40)),esc(nomeCurto(v.resp)),fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),[{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Valor',n:1}]);
+  regLista('spv-p','Pedidos da SPV em que a Amanda participou (vendedora responsável ou apoio)',Q.amPed.map(v=>[fmtData(v.dt),esc(String(v.cli).slice(0,40)),esc(nomeCurto(v.resp)),/amanda/i.test(String(v.resp||''))?'responsável':'apoio (orçamentista)',fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),[{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor responsável'},{t:'Papel da Amanda'},{t:'Valor',n:1}]);
   h+=`<div class="dupla">${blocoGraf({id:'spv-n',tit:'Pedidos da SPV por mês',perg:'A quantidade de pedidos cresceu depois do marco?',per:String(Q.R.getFullYear()),unid:'pedidos',fonte:'Controle de Pedidos e Ploomes',
-      corpo:svgColunas(lab,Q.serie.map(m=>m.n),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Pedidos','Com a Amanda','Valor','Ano anterior'],linhas:Q.serie.map(m=>[m.rot,m.n,m.nAm,fmtBRL(m.v),m.nAnt])},nota:`<a class="td-link" onclick="abrirLista('spv-p')">ver pedidos com a Amanda</a>`})}
+      corpo:svgColunas(lab,Q.serie.map(m=>m.n),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Pedidos','Com a Amanda (responsável ou apoio)','Valor','Ano anterior'],linhas:Q.serie.map(m=>[m.rot,m.n,m.nAm,fmtBRL(m.v),m.nAnt])},nota:`<a class="td-link" onclick="abrirLista('spv-p')">ver pedidos em que a Amanda participou</a> (responsável ou apoio)`})}
     ${blocoGraf({id:'spv-pr',tit:'Propostas da SPV por mês',perg:'O volume de propostas acompanhou?',per:String(Q.R.getFullYear()),unid:'propostas',fonte:'Ploomes (desde jul/2026)',
       corpo:svgColunas(lab,Q.propM.map(m=>m.n||null),{fmt:fmtN,W:560}),tabela:{cols:['Mês','Propostas','Da Amanda'],linhas:Q.propM.map(m=>[mesRot(m.k),m.n,m.nAm])}})}</div>`;
+  { const cf=DIV_CONFLITO.filter(d=>d.de==='SPV'||d.para==='SPV');
+    if(cf.length)h+=`<div class="nota" style="border-left-color:var(--ale)"><b>⚠ Divisão diferente entre Ploomes e Controle de Pedidos:</b> ${cf.map(d=>`${esc(String(d.n.cli).slice(0,30))} — negócio ${esc(String(d.n.id))} (proposta ${esc(String(d.n.codProposta||'—'))}, ${fmtBRL(d.n.vNum||0)}) está como <b>${d.de}</b> no Ploomes; ${d.ped.length>1?'os pedidos':'o pedido'} ${d.ped.map(p=>esc(String(p.ov||p.ptc))+' ('+fmtBRL(p.vNum||0)+', '+esc(p.cat||p.familia||'')+')').join(' e ')} ${d.ped.length>1?'são':'é'} <b>${d.para}</b> no Controle`).join('; ')}. O painel usa a divisão do Controle (pedido oficial) em negócios, propostas, conversão e estudos. <b>Corrigir no Ploomes</b> a divisão do negócio.</div>`; }
+  if(Q.amDup.length)h+=`<div class="nota" style="border-left-color:var(--ale)"><b>⚠ Mesma venda em duas bases, sem vínculo:</b> ${Q.amDup.map(d=>`${esc(refVenda(d.v))} (${esc(d.v.fonte)}, ${esc(String(d.v.cli).slice(0,30))}, responsável ${esc(nomeCurto(d.v.resp))}) e ${esc(refVenda(d.par))} (${esc(d.par.fonte)}, ${esc(String(d.par.cli).slice(0,30))}, responsável ${esc(nomeCurto(d.par.resp))}, apoio Amanda) — ${fmtBRL(d.v.valorDet!==undefined?d.v.valorDet:d.v.valor)} em ${fmtData(d.v.dt)}`).join('; ')}. Aqui contam uma vez; nos totais de pedidos as duas linhas somam, porque a linha do Controle de Pedidos está sem o nº da OV/VP. <b>Corrigir no Controle de Pedidos</b>: preencher a OV (ou o nº do VP) e o vendedor da linha, para o painel juntar as duas.</div>`;
   if(Q.foraItens.length)h+=`<div class="nota"><b>Fora do estudo:</b> ${[...new Set(Q.foraItens.map(x=>x.f.cli))].map(c=>{ const it=Q.foraItens.filter(x=>x.f.cli===c); return `${esc(it[0].cli)}: ${it.map(x=>esc(x.t)+' '+fmtBRL(x.v)).join(', ')} — ${esc(it[0].f.motivo)}`; }).join('; ')}.</div>`;
   if(Q.grandes.length)h+=`<div class="nota">Antes do marco: ${Q.grandes.map(g=>`${esc(g.cli)} ${fmtBRL(g.v)} (${fmtData(g.dt)})`).join('; ')} — pedidos acima de R$ 500 mil. O período depois do marco ainda é curto (${fmtD(Q.mesesDepois,1)} mês): a leitura fica mais firme a cada mês.</div>`;
   return h; }
@@ -7888,7 +7930,7 @@ const cpFaixaSinal=s=>!(s>0)?'Sem sinal':s<=.2?'Até 20%':s<=.35?'21% a 35%':s<=
 const cpFaixaPrazo=d=>d==null?'Sem prazo':d<=0?'No faturamento (0 dia)':d<=15?'1 a 15 dias':d<=30?'16 a 30 dias':d<=60?'31 a 60 dias':d<=90?'61 a 90 dias':'Mais de 90 dias';
 function condPagDados(){ const vd=x=>!EST.vend||x.resp===EST.vend, dv=x=>!EST.div||x.div===EST.div;
   const neg=(M.negocios||[]).filter(n=>dv(n)&&vd(n)&&dimOK(n,'neg')).map(n=>Object.assign({n},condPagInfo(n.condPagamento),{v:n.vNum||0,div:n.div}));
-  const gan=neg.filter(x=>x.n.ganho&&x.n.dtVenda&&noPer(x.n.dtVenda)), per=neg.filter(x=>x.n.perdido&&noPer(dataPerda(x.n).dt||x.n.dtAtu)), ab=neg.filter(x=>x.n.aberto);
+  const gan=neg.filter(x=>x.n.ganho&&x.n.dtVenda&&noPer(x.n.dtVenda)), per=neg.filter(x=>x.n.perdido&&perdaNoPeriodo(x.n,PER)), ab=neg.filter(x=>x.n.aberto);
   const porTipo=CP_TIPOS.map(k=>{ const g=gan.filter(x=>x.tipo===k), p=per.filter(x=>x.tipo===k), a=ab.filter(x=>x.tipo===k);
     return {k,n:g.length,v:somar(g,x=>x.v),g,nPer:p.length,nAb:a.length,vAb:somar(a,x=>x.v),win:g.length+p.length?g.length/(g.length+p.length):null}; });
   const cs=gan.filter(x=>x.sinal>0), vG=somar(gan,x=>x.v);
@@ -8029,6 +8071,23 @@ try{ const a=localStorage.getItem('ls-res-aba'); if(a&&RES_ABAS.some(x=>x.k===a)
    O valor original fica em n.vPloomes e o negócio entra no alerta. */
 const RE_ADICIONAL=/teste|start.?up|comissionamento|treinamento|documenta|laudo|ficha|supervis|visita tecnica|assistencia tecnica/;
 let VALOR_AJUSTADO=[];
+/* ---------- divisão do negócio ganho pelo pedido oficial (v2026.11-3) ----------
+   Negócio GANHO ligado a pedidos do Controle de Pedidos (pelas OVs do export "Vendas" com o Id do
+   negócio, ou pelo código da proposta = PTC): se todos esses pedidos são de UMA divisão e ela é
+   diferente da do Ploomes, vale a do Controle (fonte oficial do pedido) e o conflito fica sinalizado
+   (Verificações e tela da SPV) para corrigir no Ploomes. Caso Braskem: negócio 607100246 = SPV no
+   Ploomes, pedidos 500221 e 500222 = SEQ (CMB) no Controle. A divisão original fica em n.divPloomes. */
+let DIV_CONFLITO=[];
+function divisaoPeloPedido(){ DIV_CONFLITO=[]; const kc=x=>String(x==null?'':x).replace(/\D/g,'').replace(/^0+/,'');
+  const porOV=new Map(), porPTC=new Map();
+  (M.pedidos||[]).forEach(p=>{ if(p.div!=='SEQ'&&p.div!=='SPV')return; const o=kc(p.ov), t=kc(p.ptc); if(o)porOV.set(o,p); if(t.length>=4)porPTC.set(t,p); });
+  const ovsDoNeg=new Map();
+  (M.vendasOmie||[]).forEach(v=>{ if(!v.negId)return; const o=kc(v.ov||v.numVP); if(!o)return; if(!ovsDoNeg.has(v.negId))ovsDoNeg.set(v.negId,new Set()); ovsDoNeg.get(v.negId).add(o); });
+  (M.negocios||[]).forEach(n=>{ if(n.divPloomes){ n.div=n.divPloomes; delete n.divPloomes; } if(!n.ganho)return;
+    const w1=x=>String(x||'').split(' ').filter(y=>y.length>2)[0]||'', ped=[...(ovsDoNeg.get(String(n.id))||[])].map(o=>porOV.get(o)).filter(Boolean), pt0=porPTC.get(kc(n.codProposta)), pt=pt0&&w1(pt0.nCli)===w1(n.nCli)?pt0:null;   /* PTC igual só vale com o mesmo cliente */
+    if(pt&&!ped.includes(pt))ped.push(pt);
+    const ds=new Set(ped.map(p=>p.div)); if(ds.size!==1)return; const d=[...ds][0]; if(d===n.div)return;
+    n.divPloomes=n.div; n.div=d; DIV_CONFLITO.push({n,ped,de:n.divPloomes,para:d}); }); }
 /* estágio usado nas contas = o do MARCADOR quando ele está à frente do funil:
    marcador 3 e 4 → Apresentação da cotação / Follow-Up (o funil não tem estágio de negociação), 5 → Fechamento
    (o nome do estágio é o que existe no export). O do funil fica em n.estFunil e
@@ -8985,6 +9044,14 @@ function proximaAtividade(n){ const X=idxInter(), f=X.fut.get(String(n.id)), p=p
   const L=[]; if(f)L.push({dt:f,txt:'interação agendada no Ploomes',fonte:'Ploomes'}); if(p&&p.prazo)L.push({dt:data(p.prazo),txt:p.texto,fonte:'painel',passo:p});
   else if(p)L.push({dt:null,txt:p.texto,fonte:'painel',passo:p});
   return L.sort((a,b)=>(a.dt||9e15)-(b.dt||9e15))[0]||null; }
+/* "Sem próximo passo" (v2026.11-3): o próximo passo vem das interações AGENDADAS do Ploomes (data
+   futura no export de interações) e dos passos registrados no painel. O export de interações da API
+   (InteractionRecords) traz só o que já aconteceu; as tarefas agendadas do Ploomes não são coletadas.
+   Sem nenhuma interação futura na base, não dá para saber se o negócio tem próximo passo: o indicador
+   fica INDISPONÍVEL (antes contava todos os abertos como "sem próximo passo"). */
+function agendaDisp(){ return idxInter().fut.size>0; }
+const AGENDA_INDISP='indisponível: o export de interações do Ploomes não traz atividades agendadas';
+function semProximoPasso(n){ return agendaDisp()?!proximaAtividade(n):null; }
 function novoPasso(negId){ const n=M.negocios.find(x=>String(x.id)===String(negId)); if(!n)return;
   formModal(`Próximo passo — ${String(n.cli).slice(0,50)}`,[
     {k:'texto',rot:'Próximo passo (o que precisa acontecer)',tipo:'area',rows:2},
@@ -9037,7 +9104,7 @@ function prioridadeNeg(n){ const K=CRITS(), R=hoje(), comp=[], mot=[];
   const ad=adiamentos(n.id), nc=CFG.comp.filter(c=>new Date(c.per.fim)<R&&c.itens.some(i=>String(i.id)===String(n.id))).length&&n.aberto?1:0, rr=ad+nc;
   comp.push(['Reincidência',Math.min(1,rr/3)*K.pReinc,rr?`${ad} adiamento(s) observado(s)${nc?' · já esteve em compromisso não cumprido':''}`:'']); if(rr)mot.push(`${rr} reincidência(s)`);
   const ca=contasA().has(n.nCli); comp.push(['Importância da conta',ca?K.pConta:0,ca?'conta A (80% dos pedidos em 24 meses)':'']); if(ca)mot.push('conta A');
-  if(!proximaAtividade(n))mot.push('sem próximo passo');
+  if(semProximoPasso(n))mot.push('sem próximo passo');
   const tot=K.pValor+K.pPrazo+K.pInativ+K.pReinc+K.pConta||1, sc=Math.round(somar(comp,c=>c[1])/tot*100);
   return {score:sc,comp,mot}; }
 const intervencao=()=>F.ab.map(n=>Object.assign({n},prioridadeNeg(n))).sort((a,b)=>b.score-a.score);
@@ -9128,7 +9195,7 @@ function cobre(base,P){ const a=M[base]||[], f=DATA_BASE[base]; if(!a.length||!f
    fotografia (snapshot) daquela data. */
 /* contexto explícito do motor: período, referência, pessoa, divisão, filtros,
    versões das bases e políticas. O resultado traz o próprio contexto de volta. */
-const REGRAS_VERSAO='2026.11-2';
+const REGRAS_VERSAO='2026.11-3';
 function contexto(P,fx){ fx=fx||{}; const at=snapAtual(), imp=(BRUTO._meta&&BRUTO._meta.imp)||{};
   return {P,ref:hoje(),vend:fx.vend||EST.vend||'',div:fx.div!==undefined?fx.div:(EST.div||''),dims:filtrosForaDaMeta(),
     versoes:{negocios:at?{id:at.id,carga:at.carga}:null,cargas:Object.fromEntries(Object.entries(imp).map(([k,v])=>[k,v&&v.em]))},
@@ -9143,19 +9210,26 @@ function indicadores(C){ const P=C.P; if(!P||!P.ini)return null;
   const neg=F.neg.filter(n=>okV(n)&&okD(n)), hist=F.hist.filter(o=>okV(o)&&okD(o));
   const novas=neg.filter(n=>noP(n.dtCri));
   const gan=neg.filter(n=>n.ganho&&noP(n.dtVenda)).concat(hist.filter(o=>o.ganho&&noP(o.dtVenda)));
-  const per=neg.filter(n=>n.perdido&&noP(dataPerda(n).dt)).concat(hist.filter(o=>o.perdido&&noP(dataPerda(o).dt)));
+  const per=neg.filter(n=>n.perdido&&perdaNoPeriodo(n,P)).concat(hist.filter(o=>o.perdido&&perdaNoPeriodo(o,P)));
   const aprox=per.filter(x=>dataPerda(x).aprox).length;
+  /* recorte menor que o ano: perdas sem data que podem ser deste período (ficaram fora da contagem) */
+  const semDataPossiveis=periodoAnual(P)?[]:perdasSemDataNo(P.ini,P.fim,neg.filter(n=>n.perdido).concat(hist.filter(o=>o.perdido)));
   const props=propostasTodas().filter(p=>noP(p.dt)&&okV(p)&&(!div||p.div===div)&&(!p.neg||dimOK(p.neg,'neg')));
   const intAll=M.interacoes.filter(i=>!i.futura&&i.dt&&noP(i.dt)&&i.dt<=R&&okV(i)&&(!div||!i.div||i.div===div));
   const {out:inter,dup}=dedupInter(intAll), cli=new Set(inter.map(i=>i.nCli));
   const ciclos=gan.map(x=>x.dtCri&&x.dtVenda?diasDe(x.dtCri,x.dtVenda):null).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b);
   const med=a=>mediana(a);   /* mediana correta (antes, com nº par, pegava o elemento superior) */
+  /* base comparável (v2026.11-3): conversão sem nenhuma perda registrada (ex.: histórico OMIE de 2025) ou
+     com perdas sem data que podem ser do período não é comparável; ciclo sem data de abertura, ou com a
+     abertura registrada no próprio fechamento (mediana ≤ 1 dia), também não. */
+  const convBase=semDataPossiveis.length?`conversão incompleta: ${semDataPossiveis.length} perda(s) sem data confiável podem ser deste período`:!per.length?'sem perdas registradas no período':null;
+  const cicloBase=!ciclos.length?'sem data de abertura':med(ciclos)<=1?'abertura registrada no próprio fechamento (mediana ≤ 1 dia)':null;
   const atual=P.fim>=R||isoD(P.fim)===isoD(R);
   /* posição: no período em andamento é a posição atual; num período encerrado,
      a fotografia da data de encerramento — nunca a posição de hoje */
-  const ab=F.ab.filter(n=>okV(n)&&okD(n)), semPasso=ab.filter(n=>!proximaAtividade(n));
+  const ab=F.ab.filter(n=>okV(n)&&okD(n)), agOk=agendaDisp(), semPasso=agOk?ab.filter(n=>!proximaAtividade(n)):null;
   let pos=null, foto=null, fotoMsg='';
-  if(atual)pos={abN:ab.length,abV:vS(ab),semPasso:semPasso.length,semPassoV:vS(semPasso),comData:ab.length?ab.filter(n=>n.dtPrev).length/ab.length:null,comPasso:ab.length?1-semPasso.length/ab.length:null,prevVenc:ab.filter(n=>n.dtPrev&&n.dtPrev<R).length};
+  if(atual)pos={abN:ab.length,abV:vS(ab),semPasso:semPasso?semPasso.length:null,semPassoV:semPasso?vS(semPasso):null,comData:ab.length?ab.filter(n=>n.dtPrev).length/ab.length:null,comPasso:semPasso&&ab.length?1-semPasso.length/ab.length:null,prevVenc:ab.filter(n=>n.dtPrev&&n.dtPrev<R).length};
   else { const fe=P.fimCal&&P.fimCal<R?P.fimCal:P.fim; foto=fotoAte(fe);
     if(foto){ const A=[...snapMapa(foto).values()].filter(x=>x.sit==='A'&&(!vend||x.resp===vend)&&(!div||x.div===div)), fx=isoD(fe);
       pos={abN:A.length,abV:somar(A,x=>x.valor||0),semPasso:null,comData:A.length?A.filter(x=>x.prev).length/A.length:null,comPasso:null,prevVenc:A.filter(x=>x.prev&&x.prev<fx).length,
@@ -9177,7 +9251,7 @@ function indicadores(C){ const P=C.P; if(!P||!P.ini)return null;
     meta:mp,metaIntegral:mi,ating:mp&&mp.valor?ped/mp.valor:null,desvio:mp&&mp.valor?ped-mp.valor:null,
     fat:fr?fr.total:null,fatParcial:fr&&fr.parcial,
     novas:novas.length,novasV:vS(novas),props:props.length,propsV:somar(props,p=>p.val||0),
-    gan:gan.length,ganV:somar(gan,x=>x.vNum||x.valor||0),per:per.length,perV:somar(per,x=>x.vNum||x.valor||0),perAprox:aprox,
+    gan:gan.length,ganV:somar(gan,x=>x.vNum||x.valor||0),per:per.length,perV:somar(per,x=>x.vNum||x.valor||0),perAprox:aprox,perSemData:semDataPossiveis.length,convBase,cicloBase,
     conv:gan.length+per.length?gan.length/(gan.length+per.length):null,convV:(()=>{ const g=somar(gan,x=>x.vNum||x.valor||0), p=somar(per,x=>x.vNum||x.valor||0); return g+p?g/(g+p):null; })(),
     ciclo:med(ciclos),nCiclo:ciclos.length,
     inter:inter.length,dup,cli:cli.size,visitas:inter.filter(i=>i.visita).length,porTipo:[...agrupa(inter,i=>TIPO_ATIV(i.tipo)).entries()].map(([k,a])=>[k,a.length]),
@@ -9204,12 +9278,12 @@ const DIC_IND=[
  ['Propostas emitidas','Propostas (última revisão conta uma vez) emitidas no período.','Ploomes — propostas e cabeçalho','data da proposta (emissão)','qtd e R$','contagem de códigos de proposta com data no período','responsável da proposta / negócio','Ploomes desde jul/2026','revisões não somam de novo.'],
  ['Negócios ganhos','Negócios convertidos em pedido no período.','Ploomes + histórico OMIE','data de conversão / venda','qtd e R$','contagem com data de conversão no período','responsável do negócio','2025 em diante','—'],
  ['Negócios perdidos','Negócios encerrados como perdidos no período.','Ploomes + histórico OMIE','data do desfecho; no Ploomes, última atualização (aproximada)','qtd e R$','contagem com data de perda no período','responsável do negócio','2025 em diante','Ploomes não exporta a data da perda: marcado como aproximado.'],
- ['Conversão dos decididos','Ganhos sobre decididos (ganhos + perdidos) do período.','Ploomes + histórico OMIE','datas de ganho e de perda','%','ganhos ÷ (ganhos + perdidos), em quantidade e em valor — recalculado para o período inteiro, nunca média de taxas','responsável do negócio','idem','abertos não entram: não são perdas.'],
+ ['Conversão dos decididos','Ganhos sobre decididos (ganhos + perdidos) do período.','Ploomes + histórico OMIE','datas de ganho e de perda','%','ganhos ÷ (ganhos + perdidos), em quantidade e em valor — recalculado para o período inteiro, nunca média de taxas','responsável do negócio','idem','abertos não entram: não são perdas. Perdas sem data confiável (Ploomes) só entram em recortes de um ano inteiro; em mês, trimestre e semana a conversão fica "incompleta". Sem perdas registradas, sem data de abertura ou com a abertura no próprio fechamento: "sem base comparável".'],
  ['Ciclo comercial','Mediana de dias entre a criação e a conversão dos negócios ganhos no período.','Ploomes + histórico OMIE','data de conversão','dias','mediana(conversão − criação)','responsável do negócio','idem','negócio criado antes do CRM atual tem a criação do histórico.'],
  ['Interações registradas','Contatos registrados (ligação, e-mail, WhatsApp, reunião, visita, registro simples).','Ploomes — interações','data da interação','qtd','contagem sem duplicar (mesma conta, dia, tipo, descrição e proposta = uma)','responsável do negócio ou da conta — o export não identifica quem executou','Ploomes desde mai/2026','não há tarefas planejadas no export: cumprimento de agenda não é calculável a partir do Ploomes.'],
  ['Clientes distintos contatados','Contas diferentes com ao menos uma interação no período.','Ploomes — interações','data da interação','qtd','contagem de contas distintas','idem','idem','—'],
  ['Visitas','Interações do tipo visita (com ou sem check-in verificado).','Ploomes — interações','data da interação','qtd','contagem','idem','idem','—'],
- ['Negócios sem próximo passo','Negócios abertos sem interação agendada no Ploomes e sem próximo passo registrado no painel.','Ploomes + registros do painel','posição na data de referência','qtd e R$','abertos − (com interação futura ou passo aberto)','responsável do negócio','posição atual','campo necessário para medir sem o painel: "próxima tarefa/atividade" no export do Ploomes.'],
+ ['Negócios sem próximo passo','Negócios abertos sem interação agendada no Ploomes e sem próximo passo registrado no painel. Indisponível quando o export de interações não traz nenhuma atividade agendada (não há como saber).','Ploomes + registros do painel','posição na data de referência','qtd e R$','abertos − (com interação futura ou passo aberto)','responsável do negócio','posição atual','campo necessário para medir sem o painel: "próxima tarefa/atividade" no export do Ploomes.'],
  ['Previsões vencidas','Negócios abertos com previsão de fechamento anterior à referência.','Ploomes — negócios','posição na data de referência','qtd e R$','abertos com previsão < referência','responsável do negócio','posição atual','—'],
  ['Avanços, recuos e adiamentos','Mudanças observadas entre duas cargas do pipeline.','Histórico de cargas (snapshots) do painel','data das cargas comparadas','qtd e R$','comparação por id do negócio entre a carga de referência e a atual','responsável na carga atual','desde a primeira carga registrada','mudanças observadas entre cargas, sem a data exata; ausente numa carga não é perda.'],
  ['Pipeline elegível e previsão','Negócios abertos com previsão no horizonte; previsão = ponderada pela política de probabilidade.','Ploomes + política de probabilidade','posição na data de referência','R$','Σ valor (elegível) e Σ valor × probabilidade (previsão)','responsável do negócio','posição atual','posição: não se soma entre meses.'],
@@ -9261,7 +9335,7 @@ const lnk=(k,txt)=>`<a class="td-link" onclick="abrirLista('${k}')">${txt}</a>`;
 /* pendências de um negócio aberto, com os mesmos critérios em todas as telas */
 function pendenciasNeg(n){ const R=hoje(), K=CRITS(), L=[], ui=ultimaInterNeg(n), uc=ultimaInter(n);
   if(!n.dtPrev)L.push('sem data de fechamento'); else if(n.dtPrev<R)L.push('previsão vencida');
-  if(!proximaAtividade(n))L.push('sem próximo passo');
+  if(semProximoPasso(n))L.push('sem próximo passo');
   if(!ui)L.push(uc?`sem interação no negócio (conta: ${fmtData(uc.dt)})`:'sem interação registrada'); else if(diasDe(ui.dt,R)>K.diasSemAtiv)L.push(`${diasDe(ui.dt,R)} dias sem interação no negócio`);
   if(n.certeza==='Não classificado')L.push('não classificado');
   if(!n.vNum)L.push('sem valor'); return L; }
@@ -9270,7 +9344,7 @@ function linhaNeg(n,extra){ const ui=ultimaInter(n), pa=proximaAtividade(n), R=h
   return [`${lnkNeg(n,`<b>${esc(String(n.cli).slice(0,38))}</b>`)}<br><small>${esc(nomeCurto(n.resp)||n.resp||'—')}${n.div?' · '+esc(n.div):''}</small>`,fmtBRL(n.vNum||0),
     `${esc(String(n.est||'—').slice(0,26))}<br><small>${n.estFunil?'no funil: '+esc(n.estFunil)+' · ':''}${n.diasEst!=null?fmtN(n.diasEst)+' dias na etapa':''}</small>`,
     ui?`${fmtData(ui.dt)}${ui.nivel==='cliente'?'<br><small>(no cliente)</small>':''}`:'<span class="nd-m">nenhuma</span>',
-    pa?`${pa.dt?fmtData(pa.dt)+'<br>':''}<small>${esc(String(pa.txt).slice(0,40))}</small>${pa.passo?` <a class="td-link so-tela" onclick="passoEditar(${jsq(pa.passo.id)})">editar</a>`:''}`:'<span class="kg-cond">sem próximo passo</span>',
+    pa?`${pa.dt?fmtData(pa.dt)+'<br>':''}<small>${esc(String(pa.txt).slice(0,40))}</small>${pa.passo?` <a class="td-link so-tela" onclick="passoEditar(${jsq(pa.passo.id)})">editar</a>`:''}`:agendaDisp()?'<span class="kg-cond">sem próximo passo</span>':'<span class="nd-m" title="o export do Ploomes não traz atividades agendadas">agenda indisponível</span>',
     `${n.dtPrev?`<span style="color:${n.dtPrev<R?'var(--err)':'inherit'}">${fmtData(n.dtPrev)}</span>`:'sem data'}<br><small>${esc(ROT_CAMADA[camadaNeg(n)]||camadaNeg(n)||'—')}</small>`,
     `<small>${esc((extra||pendenciasNeg(n)).join(' · '))}</small>`,`<button class="mini so-tela" onclick="novoPasso(${jsq(n.id)})" title="Registrar próximo passo">＋ passo</button>`]; }
 
@@ -9581,6 +9655,7 @@ const VER_REGRAS=[
   {k:'n-prev',cad:'Negócios',area:'Comercial',t:'Negócio aberto sem previsão de fechamento',p:'Sem data, o negócio não entra na previsão de pedidos.',f:r=>r.aberto&&!r.x.dtPrev,c:'Preencher "Previsão de fechamento"'},
   {k:'n-condpag',cad:'Negócios',area:'Processo',t:'Condição de pagamento da proposta em branco',p:'A condição vai para o pedido e para o faturamento.',f:r=>!verVazio(r.x.codProposta)&&verVazio(r.x.condPagamento),c:'Preencher a condição de pagamento na proposta'},
   {k:'n-codprop',cad:'Negócios',area:'Processo',t:'Negócio com proposta, sem código da proposta',p:'Sem o código, o negócio não se liga à proposta nem ao pedido.',f:r=>/propost|negocia|fecha|ganh/i.test(String(r.x.est||'')+(r.x.ganho?' ganh':''))&&verVazio(r.x.codProposta),c:'Informar o código da proposta (PTC) no negócio'},
+  {k:'n-divped',cad:'Negócios',area:'Processo',t:'Divisão do negócio ganho diferente da do pedido no Controle',p:'O painel usa a divisão do pedido oficial (Controle de Pedidos); no Ploomes o negócio está em outra divisão e distorce conversão, propostas e estudos por divisão.',f:r=>r.x.ganho&&!!r.x.divPloomes,c:r=>`Corrigir no Ploomes a divisão do negócio ${r.x.id}: ${r.x.divPloomes} → ${r.x.div} (pedido${(DIV_CONFLITO.find(d=>d.n===r.x)||{ped:[]}).ped.length>1?'s':''} ${(DIV_CONFLITO.find(d=>d.n===r.x)||{ped:[]}).ped.map(p=>p.ov||p.ptc).join(', ')} no Controle)`},
   {k:'n-pedido',cad:'Negócios',area:'Processo',t:'Venda ganha sem número do pedido',p:'O pedido do cliente é exigido na NF e liga o CRM ao ERP.',f:r=>r.x.ganho&&verVazio(r.x.pedido),c:'Preencher "Número do pedido" no negócio ganho'},
   {k:'n-anexo',cad:'Negócios',area:'Processo',t:'Venda ganha sem documento anexado no Ploomes',p:'Pedido de compra ou proposta assinada anexados ao negócio fecham o ciclo comercial e evitam retrabalho no faturamento.',
     f:r=>r.x.ganho&&(BRUTO.negocios&&(BRUTO.negocios.cols||[]).some(c=>norm(c)==='anexos do negocio'))&&verVazio(r.x.anexos),c:'Anexar ao negócio no Ploomes o pedido de compra ou a proposta assinada'},
@@ -9958,7 +10033,7 @@ function reuniaoNova(tipo,pessoa){ const P=PER;
     {k:'titulo',rot:'Título (opcional)'}],fd=>{ const X=indicadoresPeriodo(P,fd.pessoa?{vend:fd.pessoa}:{});
       const ind=X?[['Período',P.rot],['Pedidos recebidos',fmtBRL(X.ped)],['Meta do período',X.meta?fmtBRL(X.meta.valor):'—'],['Atingimento',X.ating!=null?fmtPct(X.ating,0):'—'],
         ['Propostas emitidas',X.props==null?'sem base':`${fmtN(X.props)} · ${fmtBRL(X.propsV)}`],['Novas oportunidades',X.novas==null?'sem base':fmtN(X.novas)],['Ganhos / perdidos',`${X.gan} / ${X.per}`],['Interações',X.inter==null?'sem base':fmtN(X.inter)],['Clientes contatados',X.cli==null?'sem base':fmtN(X.cli)],
-        ['Negócios abertos',X.abN!=null?`${fmtN(X.abN)} · ${fmtBRL(X.abV)}`:'—'],['Sem próximo passo',X.semPasso!=null?fmtN(X.semPasso):'—'],['Previsões vencidas',X.prevVenc!=null?fmtN(X.prevVenc):'—'],['Ações vencidas',fmtN(X.acVenc)]]:[];
+        ['Negócios abertos',X.abN!=null?`${fmtN(X.abN)} · ${fmtBRL(X.abV)}`:'—'],['Sem próximo passo',X.semPasso!=null?fmtN(X.semPasso):agendaDisp()?'—':'indisponível (sem agenda no export do Ploomes)'],['Previsões vencidas',X.prevVenc!=null?fmtN(X.prevVenc):'—'],['Ações vencidas',fmtN(X.acVenc)]]:[];
       const r={id:novoId('r'),tipo:fd.tipo,data:fd.data,pessoa:fd.pessoa||'',participantes:fd.participantes||'',titulo:fd.titulo||`${fd.tipo}${fd.pessoa?' — '+fd.pessoa:''} · ${fmtData(data(fd.data))}`,
         per:{rot:P.rot,ini:isoD(P.ini),fim:isoD(P.fimCal||P.fim)},ind,capturado:new Date().toISOString(),decisoes:'',bloqueadores:'',apoio:'',status:'Planejada',criada:new Date().toISOString()};
       CFG.reunioes.push(r); REU_SEL=r.id; centralGuardar(); irTela('reunioes'); },'Abrir reunião'); }
@@ -9997,9 +10072,9 @@ function fichaPessoa(v){ const P=PER, R=hoje(), X=indicadoresPeriodo(P,EST.vend?
   h+=`<div class="g g4 kpis-2">${cardG({rot:'Pedidos recebidos',val:fmtCompacto(X.ped),per:P.rot,tipo:'mov',fonte:'pedidos do vendedor (soma dos registros)',sub:`${fmtN(X.nPed)} pedidos`})}
     ${cardG({rot:'Meta e atingimento',val:X.ating!=null?fmtPct(X.ating,0):naoDisp(),per:P.rot,cls:X.ating!=null?corRitmo(X.ating):'',sub:X.meta?`meta ${fmtCompacto(X.meta.valor)} · ${esc(X.meta.metodo)}`:'sem meta cadastrada para o vendedor',tipo:'mov'})}
     ${cardG({rot:'Interações vinculadas à carteira',val:X.inter==null?naoDisp('interações sem cobertura no período'):fmtN(X.inter),per:P.rot,tipo:'mov',fonte:'Ploomes — interações; o export não identifica o executor',sub:X.inter==null?'':`${fmtN(X.cli)} clientes distintos · ${fmtN(X.visitas)} visitas`})}
-    ${cardG({rot:'Pipeline aberto',val:fmtCompacto(vS(a)),per:`posição em ${fmtData(R)}`,tipo:'pos',fonte:'Ploomes',sub:`${fmtN(a.length)} negócios · ${fmtN(a.filter(n=>!proximaAtividade(n)).length)} sem próximo passo · ${fmtN(a.filter(n=>n.dtPrev&&n.dtPrev<R).length)} com previsão vencida`})}
+    ${cardG({rot:'Pipeline aberto',val:fmtCompacto(vS(a)),per:`posição em ${fmtData(R)}`,tipo:'pos',fonte:'Ploomes',sub:`${fmtN(a.length)} negócios · ${agendaDisp()?fmtN(a.filter(n=>!proximaAtividade(n)).length)+' sem próximo passo':'próximo passo indisponível'} · ${fmtN(a.filter(n=>n.dtPrev&&n.dtPrev<R).length)} com previsão vencida`})}
     ${cardG({rot:'Propostas',val:X.props==null?naoDisp('Ploomes sem cobertura no período'):fmtN(X.props),per:P.rot,tipo:'mov',fonte:'Ploomes — propostas',sub:X.props==null?'':fmtCompacto(X.propsV)})}
-    ${cardG({rot:'Conversão dos decididos',val:X.conv!=null?fmtPct(X.conv,0):naoDisp(),per:P.rot,tipo:'mov',sub:`${X.gan} ganhos · ${X.per} perdidos${X.perAprox?` (${X.perAprox} com data aproximada)`:''}`})}
+    ${cardG({rot:'Conversão dos decididos',val:X.convBase&&/incompleta/.test(X.convBase)?'incompleta':X.convBase?'sem base comparável':X.conv!=null?fmtPct(X.conv,0):naoDisp(),per:P.rot,tipo:'mov',sub:`${X.gan} ganhos · ${X.per} perdidos${X.perAprox?` (${X.perAprox} com data aproximada)`:''}${X.convBase?`<span class="l2">${esc(X.convBase)}${X.conv!=null?` · com o que tem data: ${fmtPct(X.conv,0)}`:''}</span>`:''}`})}
     ${cardG({rot:'Previsão confirmada',val:cp?fmtCompacto(cp.total):naoDisp('sem compromisso registrado'),per:cp?esc(cp.per.rot):'—',tipo:'prev',sub:cp?`${cp.itens.length} negócios · confirmado em ${fmtData(new Date(cp.em))}`:''})}
     ${cardG({rot:'Compromissos (ações)',val:fmtN(acs.filter(x=>x.status!=='Concluída'&&x.status!=='Cancelada').length),per:'em aberto',sub:`${fmtN(acs.filter(x=>prazoSit(x)==='vencida').length)} vencida(s) · ${fmtN(acs.filter(x=>x.status==='Concluída').length)} concluída(s)`,cls:acs.some(x=>prazoSit(x)==='vencida')?'err':''})}</div>`;
   h+=card('Negócios em risco','pela pontuação de intervenção (critérios na Central de supervisão)',iv.length?tab([{t:'Pontos',n:1},...COLS_NEG],iv.slice(0,12).map(x=>[x.score,...linhaNeg(x.n,x.mot)])):'<p class="pl-vazio">Sem negócios abertos.</p>');
@@ -10025,6 +10100,10 @@ function fmtInd(v,u){ return v==null?'<span class="nd-m">sem base</span>':u==='R
 function secIndicadoresPeriodo(){ const P=PER; if(!P.ini)return '';
   const X=indicadoresPeriodo(P), A=periodoPrecedente(P), B=periodoAnoAnt(P), XA=A?indicadoresPeriodo(Object.assign({},P,{ini:A.ini,fim:A.fim,fimCal:A.fim,parcial:false})):null, XB=B&&B.ini?indicadoresPeriodo(Object.assign({},P,{ini:B.ini,fim:B.fim,fimCal:B.fim,parcial:false})):null;
   const comp=(a,b,u)=>a==null||b==null?'—':u==='%'?`${a>=b?'+':'−'}${fmtD(Math.abs(a-b)*100,0)} p.p.`:b?varPct(a,b):'—';
+  /* conversão e ciclo só se comparam quando as duas bases são comparáveis (ver convBase/cicloBase em indicadores) */
+  const baseK=k=>k==='conv'||k==='convV'?'convBase':k==='ciclo'?'cicloBase':null;
+  const valCel=(Y,k,u)=>{ const bk=baseK(k); return bk&&Y[bk]?`<span class="nd-m">${/incompleta/.test(Y[bk])?'incompleta':'sem base comparável'}</span><br><small>${esc(Y[bk])}</small>`:fmtInd(Y[k],u); };
+  const colCmp=(Y,k,u)=>{ const bk=baseK(k); if(bk&&Y[bk])return valCel(Y,k,u); if(bk&&X[bk])return `${fmtInd(Y[k],u)}<br><small>sem base comparável</small>`; return `${fmtInd(Y[k],u)}<br><small>${comp(X[k],Y[k],u)}</small>`; };
   const metodos=new Set(), mt=k=>{ const m=metaPer(k,P,EST.vend||(EST.div||'Empresa')); if(!m)return '—'; metodos.add(`${META_IND[k][0]}: ${m.metodo}`); return fmtInd(m.valor,META_IND[k][1]); };
   if(X.meta)metodos.add(`Pedidos: ${X.meta.metodo}`);
   const metaPed=X.meta?`${fmtBRL(X.meta.valor)}${X.metaIntegral&&X.metaIntegral!==X.meta&&X.metaIntegral.valor!==X.meta.valor?`<br><small>esperada até ${fmtData(P.fim)} · integral ${fmtBRL(X.metaIntegral.valor)}</small>`:''}`:'—';
@@ -10035,11 +10114,11 @@ function secIndicadoresPeriodo(){ const P=PER; if(!P.ini)return '';
     ['Negócios abertos','abN','qtd','pos'],['Sem próximo passo','semPasso','qtd','pos',mt('comPasso')],['Previsões vencidas','prevVenc','qtd','pos'],['Com data de fechamento','comData','%','pos',mt('comData')],['Pipeline elegível (horizonte)','elegivel','R$','pos'],['Previsão ponderada','previsao','R$','pos'],['Saldo a faturar','saldo','R$','pos'],['Ações vencidas','acVenc','qtd','pos']];
   const cobK=k=>['inter','cli','visitas'].includes(k)?'int':['props','propsV'].includes(k)?'prop':['novas','novasV'].includes(k)?'neg':null;
   /* posição de período encerrado: só pela fotografia da data; sem ela, indisponível */
-  const posCel=(Y,k,u)=>!Y?'—':Y[k]!=null?`${fmtInd(Y[k],u)}${Y.foto?`<br><small>fotografia de ${fmtData(new Date(Y.foto.carga))}</small>`:''}`:`<span class="nd-m">${Y.atual?'—':Y.foto?'não guardado na fotografia':'sem fotografia'}</span>`;
+  const posCel=(Y,k,u)=>!Y?'—':Y[k]!=null?`${fmtInd(Y[k],u)}${Y.foto?`<br><small>fotografia de ${fmtData(new Date(Y.foto.carga))}</small>`:''}`:`<span class="nd-m">${Y.atual?(k==='semPasso'&&!agendaDisp()?'indisponível</span><br><small>o export de interações do Ploomes não traz atividades agendadas</small><span>':'—'):Y.foto?'não guardado na fotografia':'sem fotografia'}</span>`;
   const linhas=L.map(([rot,k,u,t,m])=>{ const v=X[k], ck=cobK(k), semCob=ck&&X.cob[ck]==='parcial';
-    return [`${rot}${t==='pos'?` <small class="kg-tipo pos">${X.atual?'posição atual':'posição no encerramento'}</small>`:''}${semCob?` <small class="kg-cond">cobertura parcial: base desde ${fmtData(inicioBase(ck))}</small>`:''}`,t==='pos'?posCel(X,k,u):fmtInd(v,u),
-      t==='pos'?posCel(XA,k,u):XA?`${fmtInd(XA[k],u)}<br><small>${comp(v,XA[k],u)}</small>`:'—',
-      t==='pos'?posCel(XB,k,u):XB?`${fmtInd(XB[k],u)}<br><small>${comp(v,XB[k],u)}</small>`:'—',m||'—']; });
+    return [`${rot}${t==='pos'?` <small class="kg-tipo pos">${X.atual?'posição atual':'posição no encerramento'}</small>`:''}${semCob?` <small class="kg-cond">cobertura parcial: base desde ${fmtData(inicioBase(ck))}</small>`:''}`,t==='pos'?posCel(X,k,u):valCel(X,k,u),
+      t==='pos'?posCel(XA,k,u):XA?colCmp(XA,k,u):'—',
+      t==='pos'?posCel(XB,k,u):XB?colCmp(XB,k,u):'—',m||'—']; });
   if(X.mv)linhas.push(['Avançaram / recuaram de etapa',`${X.mv.av} / ${X.mv.rec}`,'—','—','—'],['Previsões adiadas',`${X.mv.adi} · ${fmtBRL(X.mv.adiV)}`,'—','—','—']);
   else linhas.push(['Avanços, recuos e previsões adiadas',`<span class="nd-m">${MSG_SEM_HIST()}</span>`,'—','—','—']);
   let h=sec('Indicadores do período',`${esc(P.rot)} contra o período anterior equivalente (${A?esc(A.rot):'—'}${A&&A.trecho?', mesmo trecho':''}) e o mesmo período do ano anterior (${B?esc(B.rot):'—'}). Taxas recalculadas do numerador e denominador do período inteiro. Posições (pipeline, saldo) não se somam nem se comparam sem fotografia da data.${P.parcial?' <b>Período em andamento</b>: comparações usam o mesmo trecho.':''}`,'res-ind');
@@ -10057,10 +10136,12 @@ function secIndicadoresPeriodo(){ const P=PER; if(!P.ini)return '';
   const R=hoje(), ev=B2.map(([i,f,r])=>{ const fut=i>R; if(fut)return {r,fut}; const XX=indicadoresPeriodo(Object.assign({},P,{ini:i,fim:menorData(f,R),fimCal:f,modo:g==='mes'?'mes':g==='semana'?'semana':'dia'})); return {r,X:XX,parc:f>R}; });
   h+=sec('Evolução dentro do período',`Por ${g==='dia'?'dia':g==='semana'?'semana ISO (segunda a domingo)':'mês'}. Movimentos de cada intervalo; * = intervalo em andamento.`,'res-evo');
   h+=card('','',tab([{t:g==='dia'?'Dia':g==='semana'?'Semana':'Mês'},{t:'Pedidos',n:1},{t:'Nº',n:1},{t:'Propostas',n:1},{t:'Novas oport.',n:1},{t:'Ganhos',n:1},{t:'Perdidos',n:1},{t:'Interações',n:1},{t:'Clientes',n:1}],
-    ev.map(e=>e.fut?[e.r,'futuro','','','','','','','']:[e.r+(e.parc?'*':''),fmtBRL(e.X.ped),fmtN(e.X.nPed),fmtInd(e.X.props,'qtd'),fmtInd(e.X.novas,'qtd'),fmtN(e.X.gan),fmtN(e.X.per),fmtInd(e.X.inter,'qtd'),fmtInd(e.X.cli,'qtd')])));
+    ev.map(e=>e.fut?[e.r,'futuro','','','','','','','']:[e.r+(e.parc?'*':''),fmtBRL(e.X.ped),fmtN(e.X.nPed),fmtInd(e.X.props,'qtd'),fmtInd(e.X.novas,'qtd'),fmtN(e.X.gan),`${fmtN(e.X.per)}${e.X.perSemData?`<br><small>+ até ${fmtN(e.X.perSemData)} sem data</small>`:''}`,fmtInd(e.X.inter,'qtd'),fmtInd(e.X.cli,'qtd')])));
+  { const sd=ev.filter(e=>!e.fut&&e.X.perSemData).length, XT=indicadoresPeriodo(P);
+    if(sd)h+=`<div class="nota"><b>Perdas sem data confiável.</b> O Ploomes não exporta a data da perda. ${fmtN((F.perd||[]).filter(x=>dataPerda(x).aprox&&perdaNoPeriodo(x,P)).length)} perdas do período só têm a data da última atualização do negócio: entram no total ${periodoAnual(P)?'do período':'anual'} (${fmtN(XT.per)} perdidos), mas ficam fora dos meses. "+ até N sem data" = quantas delas podem ter acontecido naquele mês (entre a criação do negócio e a última atualização); nesses meses a conversão mensal fica incompleta.</div>`; }
   if(P.modo==='ano'){ const T=[0,1,2,3].map(q=>{ const i=_d(P.ano,q*3,1), f=fimMes(P.ano,q*3+2); if(i>R)return null; return [q,indicadoresPeriodo(Object.assign({},P,{ini:i,fim:menorData(f,R),fimCal:f,modo:'tri'})),f>R]; }).filter(Boolean);
     h+=card('Por trimestre','taxas recalculadas por trimestre (não é média das taxas mensais)',tab([{t:'Trimestre'},{t:'Pedidos',n:1},{t:'Meta',n:1},{t:'Atingimento',n:1},{t:'Conversão',n:1},{t:'Ciclo',n:1}],
-      T.map(([q,x,p])=>[`${q+1}º tri${p?'*':''}`,fmtBRL(x.ped),x.meta?fmtBRL(x.meta.valor):'—',x.ating!=null?fmtPct(x.ating,0):'—',x.conv!=null?fmtPct(x.conv,0):'—',x.ciclo!=null?x.ciclo+' d':'—'])));
+      T.map(([q,x,p])=>[`${q+1}º tri${p?'*':''}`,fmtBRL(x.ped),x.meta?fmtBRL(x.meta.valor):'—',x.ating!=null?fmtPct(x.ating,0):'—',x.convBase?`<span class="nd-m">${/incompleta/.test(x.convBase)?'incompleta':'sem base'}</span>`:x.conv!=null?fmtPct(x.conv,0):'—',x.cicloBase?'<span class="nd-m">sem base</span>':x.ciclo!=null?x.ciclo+' d':'—'])));
   }
   /* recuperação de desvio: só ações registradas pelo gestor */
   if(X.ating!=null&&X.ating<CRIT().metaRisco/100){ const ac=(CFG.plano||[]).filter(a=>['Meta','Resultado','Divisão SEQ','Divisão SPV'].includes(a.tema)&&a.status!=='Cancelada');
@@ -10514,7 +10595,7 @@ function situacaoBases(){ const imp=(BRUTO._meta&&BRUTO._meta.imp)||{}, R=hojeRe
 VISTA.supervisao=function(){
   const R=hoje(), K=CRITS(), P=PER, ab=F.ab, vS=a=>somar(a,n=>n.vNum||0), iv=intervencao(), sla=num(CFG.slaCot)||7, ref=refNegocios();
   const crit=iv.filter(x=>x.score>=K.limiarCritico), passosV=recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&p.prazo&&p.prazo<isoD(R));
-  const semP=ab.filter(n=>!proximaAtividade(n)), semInt=ab.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), fila=F.neg.filter(naFilaOrc), filaAtr=fila.filter(n=>n.dtCri&&diasDe(n.dtCri,ref)>sla);
+  const semP=agendaDisp()?ab.filter(n=>!proximaAtividade(n)):[], semInt=ab.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), fila=F.neg.filter(naFilaOrc), filaAtr=fila.filter(n=>n.dtCri&&diasDe(n.dtCri,ref)>sla);
   const prevV=ab.filter(n=>n.dtPrev&&n.dtPrev<R), acV=recorte('acao',CFG.plano).filter(a=>prazoSit(a)==='vencida');
   const S2=snapsOrd(), mAd=S2.length>1?mudancas(S2[S2.length-2],PER,S2[S2.length-1]):null, adiados=mAd&&mAd.ok?ab.filter(n=>(mAd.out.get(String(n.id))||[]).some(x=>x.k==='adiado')):null;
   const CA=contasA(), contas=[...agrupa(ab.filter(n=>CA.has(n.nCli)),n=>n.nCli).values()].filter(a=>a.every(n=>semAcompanhamento(n,K.diasSemAtiv)));
@@ -10534,7 +10615,7 @@ VISTA.supervisao=function(){
   h+=sec('O que exige atenção agora','Seis indicadores prioritários. Cada um abre a lista de origem; a partir dela registre o próximo passo ou a ação.','sup-topo');
   regLista('pedPer',`Filtro: pedidos recebidos em ${P.rot}`,(F.vendas||[]).map(v=>[esc(refVenda(v)),fmtData(v.dt),esc(v.cli),esc(v.resp||'—'),esc(v.div||'—'),fmtBRL(v.valorDet!==undefined?v.valorDet:v.valor)]),['Referência','Data','Cliente','Vendedor','Div.','Valor']);
   h+=`<div class="kband">${kb('pedPer','Pedidos recebidos',X?fmtCompacto(X.ped):'—',X&&X.meta?`${fmtPct(X.ating,0)} da meta esperada até ${fmtData(P.fim).slice(0,5)}`:'sem meta compatível',X&&X.ating!=null?(X.ating>=1?'ok':X.ating>=.85?'ale':'err'):'')}
-    ${kb('semP','Sem próximo passo',fmtN(semP.length),`${fmtCompacto(vS(semP))} · ${ab.length?fmtPct(semP.length/ab.length,0):'—'} dos abertos`,semP.length?'ale':'ok')}
+    ${agendaDisp()?kb('semP','Sem próximo passo',fmtN(semP.length),`${fmtCompacto(vS(semP))} · ${ab.length?fmtPct(semP.length/ab.length,0):'—'} dos abertos`,semP.length?'ale':'ok'):kb('semP','Sem próximo passo','indisponível','o export de interações do Ploomes não traz atividades agendadas','neutro')}
     ${kb('semInt','Sem interação recente',fmtN(semInt.length),`no próprio negócio há mais de ${K.diasSemAtiv} dias`,semInt.length?'ale':'ok')}
     ${kb('prevV','Previsões vencidas',fmtN(prevV.length),fmtCompacto(vS(prevV)),prevV.length?'ale':'ok')}
     ${kb('filaAtr','Propostas atrasadas',fmtN(filaAtr.length),`fila de cotação acima de ${sla} dias`,filaAtr.length?'ale':'ok')}
@@ -10585,7 +10666,7 @@ VISTA.supervisao=function(){
     <div class="pnl"><h4>Ações vencidas</h4><div class="q">O que passou do prazo sem conclusão?</div>${li(acV,a=>`<li><span>${esc(String(a.acao||a.evidencia||'—').slice(0,48))}<br><small>${esc(a.resp||'sem responsável')}</small></span><span class="d" style="color:var(--err)">${fmtData(data(a.prazo)).slice(0,5)}</span></li>`,'Nenhuma ação vencida.')}</div>
     <div class="pnl"><h4>Bloqueadores e apoio</h4><div class="q">O que está travando e que apoio foi pedido?</div>${li(bloq,b=>`<li><span>${esc(String(b[1]).slice(0,60))}<br><small>${esc(String(b[0]).slice(0,40))} · ${esc(b[2]||'—')}</small></span></li>`,'Nenhum bloqueador registrado.')}</div></div>`;
   /* infográficos: distribuição de pendências e situação das ações */
-  const tipos=[['previsão vencida',n=>n.dtPrev&&n.dtPrev<R,'--err'],['sem data de fechamento',n=>!n.dtPrev,'--g4'],['sem próximo passo (com data em dia)',n=>n.dtPrev&&n.dtPrev>=R&&!proximaAtividade(n),'--g2'],['em dia',n=>n.dtPrev&&n.dtPrev>=R&&proximaAtividade(n),'--ok']];
+  const tipos=[['previsão vencida',n=>n.dtPrev&&n.dtPrev<R,'--err'],['sem data de fechamento',n=>!n.dtPrev,'--g4'],...(agendaDisp()?[['sem próximo passo (com data em dia)',n=>n.dtPrev&&n.dtPrev>=R&&!proximaAtividade(n),'--g2'],['em dia',n=>n.dtPrev&&n.dtPrev>=R&&proximaAtividade(n),'--ok']]:[['com data em dia (próximo passo indisponível)',n=>n.dtPrev&&n.dtPrev>=R,'--ok']])];
   const pend=tipos.map(([r,f,c],j)=>{ const a=ab.filter(f); regLista('pd'+j,`Filtro: negócios abertos — ${r}`,a.map(n=>linhaNeg(n)),COLS_NEG); return {rot:r,val:a.length,cor:corV(c),k:'pd'+j,v:vS(a)}; });
   const PL=recorte('acao',CFG.plano), st=[['não iniciadas',a=>(!a.status||a.status==='Não iniciada')&&prazoSit(a)!=='vencida','--g6'],['em andamento',a=>a.status==='Em andamento'&&prazoSit(a)!=='vencida','--g1'],['vencidas',a=>prazoSit(a)==='vencida','--err'],['concluídas',a=>a.status==='Concluída','--ok'],['canceladas',a=>a.status==='Cancelada','--txt3']];
   const fl=st.map(([r,f,c],j)=>{ const a=PL.filter(f); regLista('fa'+j,`Filtro: ações ${r}`,a.map(x=>[esc(x.acao||x.evidencia||'—'),esc(x.resp||'—'),x.prazo?fmtData(data(x.prazo)):'—',esc(x.status||'—')]),['Ação','Responsável','Prazo','Status']); return {rot:r,val:a.length,cor:corV(c),k:'fa'+j}; });
@@ -10600,10 +10681,10 @@ VISTA.supervisao=function(){
     ped:['Pedidos recebidos',(v,d)=>(F.todas||[]).filter(x=>x.resp===v&&x.dt&&x.dt>=d&&x.dt<=addDias(d,6)).length,'quantidade de pedidos']}, mm=metr[HEAT.m]||metr.inter;
   const Mx=vs.map(v=>sem6.map(d=>{ const c=mm[1](v,d); return HEAT.m==='inter'&&i0&&addDias(d,6)<i0?null:c; }));
   h+=sec('Supervisão por pessoa','Posição do pipeline e movimento recente de cada vendedor. Sem ranking nem nota: compare cada pessoa com a própria carteira, região e meta.','sup-vend');
-  const linV=vs.map(v=>{ const a=ab.filter(n=>n.resp===v), sp=a.filter(n=>!proximaAtividade(n)), si=a.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), pv=a.filter(n=>n.dtPrev&&n.dtPrev<R), k=norm(v).replace(/ /g,'_');
-    regLista('v_sp_'+k,`Filtro: ${v} — sem próximo passo`,sp.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_si_'+k,`Filtro: ${v} — sem interação no negócio > ${K.diasSemAtiv} dias`,si.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_pv_'+k,`Filtro: ${v} — previsões vencidas`,pv.map(n=>linhaNeg(n)),COLS_NEG);
+  const linV=vs.map(v=>{ const a=ab.filter(n=>n.resp===v), sp=agendaDisp()?a.filter(n=>!proximaAtividade(n)):null, si=a.filter(n=>semAcompanhamento(n,K.diasSemAtiv)), pv=a.filter(n=>n.dtPrev&&n.dtPrev<R), k=norm(v).replace(/ /g,'_');
+    if(sp)regLista('v_sp_'+k,`Filtro: ${v} — sem próximo passo`,sp.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_si_'+k,`Filtro: ${v} — sem interação no negócio > ${K.diasSemAtiv} dias`,si.map(n=>linhaNeg(n)),COLS_NEG); regLista('v_pv_'+k,`Filtro: ${v} — previsões vencidas`,pv.map(n=>linhaNeg(n)),COLS_NEG);
     const ped=somar((F.todas||[]).filter(x=>x.resp===v&&noPer(x.dt)&&(!EST.div||x.div===EST.div)),x=>x.valorDet!==undefined?x.valorDet:x.valor), mt=metaPedidos(PER,v), acv=recorte('acao',CFG.plano).filter(x=>x.resp===v&&prazoSit(x)==='vencida').length;
-    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/[&"<>]/g,_escA)})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',si.length?lnk('v_si_'+k,fmtN(si.length)):'0',pv.length?lnk('v_pv_'+k,fmtN(pv.length)):'0',
+    return [`<a class="td-link" onclick="abrirFicha(${JSON.stringify(v).replace(/[&"<>]/g,_escA)})"><b>${esc(nomeCurto(v)||v)}</b></a>`,`${fmtN(a.length)} · ${fmtCompacto(vS(a))}`,!sp?'<span class="nd-m">indisp.</span>':sp.length?lnk('v_sp_'+k,fmtN(sp.length)):'0',si.length?lnk('v_si_'+k,fmtN(si.length)):'0',pv.length?lnk('v_pv_'+k,fmtN(pv.length)):'0',
       `${fmtCompacto(ped)}${mt&&mt.valor?` <small>(${fmtPct(ped/mt.valor,0)})</small>`:''}`,acv?`<b style="color:var(--err)">${acv}</b>`:'0']; });
   h+=card('','',tab([{t:'Vendedor',f:1},{t:'Abertos',n:1},{t:'Sem próximo passo',n:1},{t:'Sem interação recente',n:1},{t:'Previsão vencida',n:1},{t:`Pedidos em ${P.curto||P.rot}`,n:1},{t:'Ações vencidas',n:1}],linV)+'<div class="drill" id="sup-lista2"></div>');
   vs.forEach((v,i)=>sem6.forEach((d,j)=>{ const tit=`Filtro: ${v} — ${mm[0].toLowerCase()} na semana ${lab6[j]}`;
@@ -10698,7 +10779,7 @@ function narrativaRel(k){ const P=PER, X=indicadoresPeriodo(P); if(!X)return '';
   const A=periodoPrecedente(P), XA=A?indicadoresPeriodo(Object.assign({},P,{ini:A.ini,fim:A.fim,fimCal:A.fim,parcial:false})):null, R=hoje();
   /* variação só quando a base de comparação é comparável; base muito pequena: valores lado a lado */
   const comp=(a,b,f)=>a==null?'sem base':b==null?f(a):!b||a/b>5||b/a>5?`${f(a)} contra ${f(b)} em ${A.rot}`:`${f(a)} (${a>=b?'+':'−'}${fmtPct(Math.abs(a/b-1),0)} contra ${f(b)} em ${A.rot})`;
-  const L=[], ab=F.ab, pend=`${fmtN(ab.filter(n=>!proximaAtividade(n)).length)} negócios sem próximo passo, ${fmtN(ab.filter(n=>n.dtPrev&&n.dtPrev<R).length)} previsões vencidas e ${fmtN(recorte('acao',CFG.plano).filter(a=>prazoSit(a)==='vencida').length)} ações vencidas`;
+  const L=[], ab=F.ab, pend=`${agendaDisp()?fmtN(ab.filter(n=>!proximaAtividade(n)).length)+' negócios sem próximo passo':'próximo passo indisponível (sem agenda no export)'}, ${fmtN(ab.filter(n=>n.dtPrev&&n.dtPrev<R).length)} previsões vencidas e ${fmtN(recorte('acao',CFG.plano).filter(a=>prazoSit(a)==='vencida').length)} ações vencidas`;
   const prox=[...recorte('acao',CFG.plano).filter(a=>a.status!=='Concluída'&&a.status!=='Cancelada'&&a.prazo&&data(a.prazo)<=addDias(R,7)).map(a=>`${a.acao||a.evidencia} — ${a.resp||'sem responsável'} até ${fmtData(data(a.prazo))}`),
     ...recorte('passo',CFG.passos).filter(p=>p.status==='Aberto'&&p.prazo&&data(p.prazo)<=addDias(R,7)).map(p=>`${p.cli}: ${p.texto} — ${p.resp||'—'} até ${fmtData(data(p.prazo))}`)];
   const mud=X.mv?`${X.mv.av} negócios avançaram e ${X.mv.rec} recuaram de etapa; ${X.mv.adi} previsões foram adiadas (${fmtBRL(X.mv.adiV)}).`:MSG_SEM_HIST();
@@ -10715,7 +10796,7 @@ function narrativaRel(k){ const P=PER, X=indicadoresPeriodo(P); if(!X)return '';
       const mC=by(v=>v.resp||'(sem vendedor)',cur), mA=by(v=>v.resp||'(sem vendedor)',ant), dl=[...new Set([...mC.keys(),...mA.keys()])].map(p=>[p,(mC.get(p)||0)-(mA.get(p)||0)]).sort((a,b)=>a[1]-b[1]);
       const neg=dl.filter(x=>x[1]<0).slice(0,2), pos=dl.filter(x=>x[1]>0).slice(-2).reverse();
       L.push(['Variações observadas',`${pos.length?'maiores aumentos: '+pos.map(([p,d])=>`${nomeCurto(p)||p} +${fmtBRL(d)}`).join(', '):''}${pos.length&&neg.length?'; ':''}${neg.length?'maiores quedas: '+neg.map(([p,d])=>`${nomeCurto(p)||p} −${fmtBRL(-d)}`).join(', '):''} (soma dos pedidos por vendedor; diferença de conciliação não é distribuída).`]); }
-    L.push(['Conversão',X.conv==null?'sem negócios decididos no período.':`${fmtPct(X.conv,0)} dos negócios decididos (${X.gan} ganhos, ${X.per} perdidos${X.perAprox?`, ${X.perAprox} perdas com data aproximada`:''}); abertos não entram na conta.`]);
+    L.push(['Conversão',X.convBase&&/incompleta/.test(X.convBase)?`${X.convBase}; com o que tem data, ${X.conv!=null?fmtPct(X.conv,0):'—'} (${X.gan} ganhos, ${X.per} perdidos).`:X.conv==null?'sem negócios decididos no período.':`${fmtPct(X.conv,0)} dos negócios decididos (${X.gan} ganhos, ${X.per} perdidos${X.perAprox?`, ${X.perAprox} perdas com data aproximada`:''}); abertos não entram na conta.`]);
     if(X.fat!=null)L.push(['Faturamento',`${fmtBRL(X.fat)}${X.fatParcial?' (mês corrente parcial)':''}.`]);
     const rec=recorte('acao',CFG.plano).filter(a=>['Meta','Resultado','Divisão SEQ','Divisão SPV'].includes(a.tema)&&a.status!=='Cancelada');
     if(X.ating!=null&&X.ating<1)L.push(['Recuperação do desvio',rec.length?rec.slice(0,5).map(a=>`${a.acao||a.evidencia} — ${a.resp||'sem responsável'}${a.prazo?' até '+fmtData(data(a.prazo)):''} (${a.status})`).join('; ')+'.':'nenhuma ação de recuperação registrada no plano.']); }
@@ -10766,7 +10847,7 @@ function secDesfechos(){ const L=CFG.desfechos||[];
       <span class="nd-m">Sem ranking nem nota geral: compare cada pessoa com a própria meta, carteira e período de atuação.</span></div>`;
     if(v)h+=EST.fichaTipo==='eng'||(an.includes(v)&&!vs.includes(v))?fichaAnalista(v):fichaPessoa(v);
     return h+sec('Equipe','Indicadores lado a lado, cada um com seu contexto (carteira, região, divisão). A ordem é alfabética ou por valor — não é ranking de desempenho.','des-eq')+_des(); };
-  construir=function(){ const r=_cons.apply(this,arguments); try{ snapGarantir(); }catch(e){ console.error(e); } /* a fotografia guarda o export como veio; o valor pela proposta e o estágio pelo marcador vêm depois */ try{ valorPelaProposta(); }catch(e){ console.error(e); } try{ estagioPeloMarcador(); }catch(e){ console.error(e); } try{ aplicarDesfechos(); }catch(e){ console.error(e); } return r; }; }
+  construir=function(){ const r=_cons.apply(this,arguments); try{ snapGarantir(); }catch(e){ console.error(e); } /* a fotografia guarda o export como veio; o valor pela proposta e o estágio pelo marcador vêm depois */ try{ valorPelaProposta(); }catch(e){ console.error(e); } try{ divisaoPeloPedido(); }catch(e){ console.error(e); } try{ estagioPeloMarcador(); }catch(e){ console.error(e); } try{ aplicarDesfechos(); }catch(e){ console.error(e); } return r; }; }
 
 let REL_ULTIMO=null;
 
@@ -11085,10 +11166,16 @@ function relMetodologia(){
    ['Pedidos recebidos',`Pedido colocado (booking), não faturamento. Total ${c.rotTotal}. A composição por divisão, vendedor, cliente e produto usa o valor original de cada pedido; a diferença para o oficial (${fmtBRL(c.dif)} no período) aparece como "diferença de conciliação", não distribuída.${CFG.modoValor==='ajustado'?' ATENÇÃO: o painel está no modo "ajustado ao oficial" — valores por vendedor/cliente são estimativa proporcional.':''}`],
    ['Meta',`${pesosMes(a).fonte}. Meta do período = meta anual × fração dos meses (dia a dia no mês) até a referência. Filtro de cliente, família, região ou etapa não tem meta compatível.`],
    ['Projeção por ritmo','Realizado ÷ fração do ano decorrida: supõe que o restante do ano siga o ritmo realizado. É premissa, não previsão das oportunidades.'],
-   ['Previsão de pedidos',`Negócios abertos com previsão de fechamento de ${J.rot}, ponderados pela política única de probabilidade (por classificação do negócio): ${POL().map(x=>`${x.k} ${fmtPct(x.p,0)}${x.entra?'':' (fora da previsão)'}`).join('; ')}. Probabilidades convencionais, não estatística histórica. Negócio sem data ou com data vencida fica fora do horizonte.`],
+   ['Previsão de pedidos',`Negócios abertos com previsão de fechamento de ${J.rot}, ponderados pela política única de probabilidade (por classificação do negócio): ${POL().map(x=>`${x.k} ${fmtPct(x.p,0)}${x.entra?'':' (fora da previsão)'}`).join('; ')}. Probabilidades convencionais, não estatística histórica, definidas no código (POLITICA_PADRAO) e editáveis em Dados e configurações; nenhuma foi alterada nesta versão. Negócio sem data ou com data vencida fica fora do horizonte.`],
    ['Pipeline','Posição de carteira no último export do Ploomes (não é recortado pelo período). A distribuição por estágio é estoque, não taxa de conversão; a conversão entre etapas não pode ser calculada (o export não traz o histórico de etapas).'],
    ['Saldo a faturar',`${sf.fonte}. A previsão de faturamento usa a data de ENTREGA do Controle como aproximação (a carteira não traz data de faturamento). Contratos recorrentes (${fmtN(sf.contratos.length)}) não têm cronograma e não são alocados num mês.`],
-   ['Conversão',`Win rate = ganhos ÷ (ganhos + perdidos) dos negócios decididos no período (Ploomes + histórico OMIE). ${cv.aprox?`${fmtN(cv.aprox)} perdas do Ploomes estão datadas pela última atualização do negócio (aproximação: o Ploomes não exporta a data da perda).`:''}`],
+   ['Conversão',`Win rate = ganhos ÷ (ganhos + perdidos) dos negócios decididos no período (Ploomes + histórico OMIE). O gráfico "Win rate por mês" e a tabela "Evolução dentro do período" usam a mesma base: ganho pela data da venda, perda pela data do desfecho.`],
+   ['Perdas sem data confiável (v2026.11-3)',`O Ploomes não exporta a data da perda; só se sabe que ela aconteceu entre a criação do negócio e a última atualização. ${fmtN((F.perd||[]).filter(x=>dataPerda(x).aprox&&perdaNoPeriodo(x,PER)).length)} perdas do período estão nessa situação. Recorte de um ano inteiro (ano, acumulado do ano, "Tudo"): entram, pelo ano da última atualização. Recortes menores (mês, trimestre, semana) e séries mensais: ficam fora da contagem; o mês ou trimestre em que podem ter acontecido aparece com conversão "incompleta" (sem ponto no gráfico), em vez de uma taxa enviesada. Antes, todas caíam no mês da última atualização (nov/26: 74 perdas) e o gráfico usava a data de criação — por isso divergiam.`],
+   ['Base comparável (v2026.11-3)','Conversão (quantidade e valor) e ciclo comercial só se comparam entre períodos quando as duas bases são comparáveis. Sem base comparável: período sem nenhuma perda registrada (ex.: histórico OMIE de 2025, que não registra perdas no período), período com perdas sem data que podem ser dele, período sem data de abertura dos negócios ou com a abertura registrada no próprio fechamento (mediana do ciclo ≤ 1 dia). Nesses casos aparece "sem base comparável" em vez da variação.'],
+   ['Próximo passo (v2026.11-3)',`Vem das interações agendadas do Ploomes (data futura no export de interações) e dos passos registrados no painel. ${agendaDisp()?'O export atual traz atividades agendadas.':'O export atual de interações (API, InteractionRecords) traz só o que já aconteceu e não há passos registrados: o indicador "sem próximo passo" fica INDISPONÍVEL (antes contava todos os negócios abertos). Para medir, a coleta precisa trazer as tarefas agendadas do Ploomes.'}`],
+   ['Pedidos com a Amanda (v2026.11-3)','Na tela da SPV: pedidos em que ela participou — vendedora responsável (Controle de Pedidos ou Vendas Ploomes×Omie) OU apoio/orçamentista (coluna Orçamentista do Controle). Venda presente nas duas bases sem vínculo (mesmo valor, até 3 dias) conta uma vez e fica sinalizada. Na tabela e no gráfico de vendedores: só pedidos em que a pessoa é a vendedora responsável.'],
+   ['Divisão do negócio ganho (v2026.11-3)',`Negócio ganho ligado a pedidos do Controle (OVs do export Vendas com o Id do negócio, ou código da proposta = PTC com o mesmo cliente) segue a divisão do pedido oficial quando ela é única e diferente da do Ploomes. ${fmtN(DIV_CONFLITO.length)} negócio(s) nessa situação, listados em Verificações para corrigir no Ploomes.`],
+   ['Clientes no cadastro (v2026.11-3)','Cada cadastro de empresa do Ploomes (unidade/filial) conta uma vez, ativos + inativos, na tabela de vendedores e no gráfico "Carteira por vendedor".'],
    ['Vínculos e duplicidades',`Proposta → negócio pelo código; sem ele, só quando o cliente tem um negócio (inferido). ${fmtN(amb)} itens de proposta ficaram sem vínculo por ambiguidade. ${fmtN(CONFLITOS.length)} possíveis duplicidades entre fontes foram mantidas na soma e listadas para revisão (Dados e configurações → Conciliação).`],
    ['Destaques e riscos','Gerados automaticamente por critérios explícitos (citados em cada item). Indicam associação, não causa.']];
   return `<div class="sec" data-sid="rel-met"><h3>Metodologia, premissas e limitações</h3></div><dl class="rel-met">${L.map(([t,d])=>`<dt>${t}</dt><dd>${d}</dd>`).join('')}</dl>`; }

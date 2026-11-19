@@ -25,8 +25,10 @@ const src=process.argv[2]; const R=[]; const ok=(n,c,d)=>R.push([c?'OK ':'FALHA'
  ok('Indicadores do período = mesmos pedidos do painel (36.730.682,39) e faturamento',Math.abs(ind.ped-36730682.39)<.02&&Math.abs(ind.ped-ind.real)<.02&&Math.abs(ind.fat-47373343.28)<.02,JSON.stringify(ind));
  ok('Sem histórico: aviso de comparação indisponível com a data de início',await p.evaluate(()=>{ irTela('pipeline'); return document.getElementById('tela').innerText.includes('Comparação histórica indisponível. Acompanhamento iniciado em 26/10/2026'); }));
  // taxa anual recalculada (não média das mensais)
- const tx=await p.evaluate(()=>{ const X=indicadoresPeriodo(PER); let g=0,pp=0; for(let m=0;m<10;m++){ const x=indicadoresPeriodo(Object.assign({},PER,{ini:_d(2026,m,1),fim:menorData(fimMes(2026,m),hoje()),modo:'mes'})); g+=x.gan; pp+=x.per; } return {anual:X.conv,soma:g/(g+pp),g,pp,G:X.gan,P:X.per}; });
- ok('Conversão anual = Σ ganhos ÷ Σ decididos dos meses (numerador/denominador)',Math.abs(tx.anual-tx.soma)<1e-9,JSON.stringify(tx));
+ /* v2026.11-3: perdas sem data confiável entram no ano e ficam fora dos meses — a soma dos meses + essas perdas = o ano */
+ const tx=await p.evaluate(()=>{ const X=indicadoresPeriodo(PER); let g=0,pp=0; for(let m=0;m<12;m++){ const i=_d(2026,m,1); if(i>hoje())break; const x=indicadoresPeriodo(Object.assign({},PER,{ini:i,fim:menorData(fimMes(2026,m),hoje()),fimCal:fimMes(2026,m),modo:'mes'})); g+=x.gan; pp+=x.per; }
+   const sd=(F.perd||[]).filter(x=>dataPerda(x).aprox&&perdaNoPeriodo(x,PER)).length; return {anual:X.conv,soma:g/(g+pp+sd),g,pp,sd,G:X.gan,P:X.per}; });
+ ok('Conversão anual = Σ ganhos dos meses ÷ (Σ decididos com data dos meses + perdas sem data do ano)',Math.abs(tx.anual-tx.soma)<1e-9&&tx.G===tx.g&&tx.P===tx.pp+tx.sd,JSON.stringify(tx));
  // passo, plano, compromisso, reunião
  const fl=await p.evaluate(async()=>{ const n=F.ab[0]; novoPasso(n.id); const f=document.getElementById('f-form'); f.texto.value='Ligar para confirmar PO'; f.resp.value='Fábio Dalagnolo'; f.prazo.value='2026-10-20'; f.requestSubmit();
    const ps=CFG.passos[CFG.passos.length-1], venc=situacaoPasso(ps), sem=proximaAtividade(n)?true:false;

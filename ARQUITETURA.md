@@ -341,3 +341,18 @@ quando alguém clica em ↻ (modo rápido, fora da madrugada). Ela chama `ferram
   e testes rápidos (`fumaca`, `futuro`, `condicoes-pagamento`, `produtos`, cerca de 20 s);
 - modo completo: todos os anexos e também `apresentacao` e `clica-tudo`.
 Tempo medido em 19/11/2026: coleta de 16 min → 4,2 min; script inteiro em 4,6 min (antes, ~30 min no total).
+
+## Regras v2026.11-3 (revisão do Consolidado anual de 19/11/2026)
+
+- **Perdas sem data confiável** (`periodoAnual`, `perdaNoPeriodo`, `perdasSemDataNo`): perda só com a data da
+  última atualização (Ploomes) entra em recortes de um ano inteiro e fica fora de mês/trimestre/semana; o mês em
+  que pode ter acontecido tem conversão "incompleta". "Win rate por mês" usa a mesma base da "Evolução".
+- **Base comparável** (`convBase`, `cicloBase` em `indicadores`): sem perdas registradas, com perdas sem data
+  possíveis, sem data de abertura ou com mediana do ciclo ≤ 1 dia → "sem base comparável".
+- **Pedidos com a Amanda** (`spvDados`): responsável OU apoio (orçamentista); venda nas duas bases sem vínculo
+  conta uma vez e é sinalizada. Vendedores: só responsável.
+- **Divisão do negócio ganho** (`divisaoPeloPedido`, `DIV_CONFLITO`): segue o pedido oficial do Controle quando
+  único e diferente; regra `n-divped` em Verificações.
+- **Clientes no cadastro**: cadastros (ativos + inativos) na tabela e no gráfico.
+- **Sem próximo passo** (`agendaDisp`, `semProximoPasso`): indisponível sem atividades agendadas no export.
+Teste: `testes/inconsistencias-v3.js`; relatório para revisão: `testes/relatorio-anual.js`.

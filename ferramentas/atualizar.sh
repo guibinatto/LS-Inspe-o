@@ -23,7 +23,7 @@ if [ "$(cat /tmp/ploomes.rc)" != 0 ]; then echo "FALHA: coleta do Ploomes"; tail
 OMIE=sim; if [ "$(cat /tmp/omie.rc)" != 0 ]; then OMIE="não ($(grep -m1 -E 'Error|FALHA|Faltam' /tmp/omie.log | cut -c1-160))"; rm -f /tmp/coleta/API-Omie_*.xlsx; fi
 node ferramentas/ploomes_importar.js /tmp/painel.html /tmp/coleta > /tmp/importar.log 2>&1 || { echo "FALHA: importação"; tail -5 /tmp/importar.log; exit 1; }
 passo "importado: $(grep -m1 '^referência' /tmp/importar.log)"
-TESTES=(fumaca futuro condicoes-pagamento produtos); [ "$MODO" = completa ] && TESTES+=(apresentacao clica-tudo)
+TESTES=(fumaca inconsistencias-v3 futuro condicoes-pagamento produtos); [ "$MODO" = completa ] && TESTES+=(apresentacao clica-tudo)
 for t in "${TESTES[@]}"; do
   out=$(timeout 600 node "testes/$t.js" /tmp/painel.html 2>&1); rc=$?
   if [ $rc != 0 ] || echo "$out" | grep -qE '^✗|ERROS \([1-9]|ERROS JS: [^n]'; then echo "FALHA: teste $t"; echo "$out" | grep -E '✗|ERROS|verificações' | head -8; exit 1; fi
