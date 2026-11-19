@@ -248,3 +248,15 @@ Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`),
   painel pergunta se completa os iguais ("Reconheci que…"); vazios vêm marcados, divergentes
   desmarcados; nada é gravado sem confirmação. Série, ano, TAG, vazão, pressão e situação nunca são
   copiados. A origem de cada valor completado fica em `fontes`.
+
+## Preenchimento por toque e base instalada (19/11/2026)
+- `formModal` aceita `tipo:'chips'` (escolha única) e `tipo:'checks'` (várias): botões de marcar no
+  lugar de listas e digitação. Usado em toda a gestão (tipo, situação, reajuste, mês, renovação,
+  periodicidade, tipo e situação do equipamento, tipo de anexo) e no checklist da visita
+  (`GC_VFEITO`: o que foi feito na visita, em caixas de marcar).
+- **Gestão → Base instalada e oportunidades** (`VISTA.baseinst`, `biModelo`): pedidos de equipamento
+  do Controle (2025+) e vendas conquistadas do Histórico OMIE antes de 2025, por cliente (`biChave`:
+  duas primeiras palavras do nome, sem LTDA/SA/DE…), contra os contratos ativos de ITM/manutenção da
+  Gestão e os negócios SPV abertos no Ploomes. KPIs: base, com contrato (cobertura), oportunidades,
+  potencial anual estimado (oportunidades × mediana anual dos contratos ativos), completam 1 ano em
+  90 dias. Andamento de cada oportunidade em `baseOport/<cliente>`. Alerta na Central de supervisão.

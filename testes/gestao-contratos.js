@@ -45,7 +45,8 @@ const SIMULADOR = ({ escrever }) => {
     /* ficha: valor, vigência de 12 meses começando há ~6 meses, visita mensal */
     const R = hoje(), ini = new Date(R.getFullYear(), R.getMonth() - 6, R.getDate() - 3);
     gcEditar(a.id); const f = document.querySelector('#m-form form');
-    const set = (n, v) => { const e = f.querySelector(`[name="${n}"]`); e.value = v; };
+    const set = (n, v) => { const op = f.querySelector(`[name="${n}"][value="${v}"]`); if (op && /radio|checkbox/.test(op.type)) { op.checked = true; return; } f.querySelector(`[name="${n}"]`).value = v; };
+    out.toque = ['tipo', 'status', 'reajuste', 'mesReajuste', 'renovAuto', 'periodicidade'].every(n => (f.querySelector(`[name="${n}"]`) || {}).type === 'radio');
     set('valorTotal', '120000'); set('ini', isoD(ini)); set('fim', ''); set('meses', '12'); set('periodicidade', 'mensal'); set('respInterno', 'Responsável Teste'); set('reajuste', 'IPCA'); set('ptc', '99999');
     f.requestSubmit(); await new Promise(r => setTimeout(r, 120));
     let x = gcContratos().find(k => k.id === a.id);
@@ -53,10 +54,11 @@ const SIMULADOR = ({ escrever }) => {
     /* duas visitas realizadas (uma com relatório) e uma agendada */
     for (const [d, st, comRel] of [[isoD(new Date(+ini + 5 * 864e5)), 'Realizada', true], [isoD(new Date(+ini + 40 * 864e5)), 'Realizada', false], [isoD(new Date(+R + 10 * 864e5)), 'Agendada', false]]) {
       gcVisita(a.id); const g = document.querySelector('#m-form form');
-      g.querySelector('[name=data]').value = d; g.querySelector('[name=status]').value = st; g.querySelector('[name=tecnico]').value = 'Técnico Teste'; g.querySelector('[name=resumo]').value = 'Teste';
+      g.querySelector('[name=data]').value = d; g.querySelector(`[name=status][value="${st}"]`).checked = true; g.querySelector('[name=tecnico]').value = 'Técnico Teste'; g.querySelector('[name=resumo]').value = 'Teste';
+      [...g.querySelectorAll('[name=feito]')].slice(0, 3).forEach(c => { c.checked = true; });
       if (comRel) { const dt = new DataTransfer(); dt.items.add(new File(['%PDF-1.4 teste'], 'relatorio.pdf', { type: 'application/pdf' })); g.querySelector('[name=rel]').files = dt.files; }
       g.requestSubmit(); await new Promise(r => setTimeout(r, 150)); }
-    x = gcContratos().find(k => k.id === a.id);
+    x = gcContratos().find(k => k.id === a.id); out.feito = x.vis.map(v => (v.feito || []).length);
     out.vis = { realizadas: x.realizadas.length, esperadas: x.esperadas, atraso: x.visAtraso, semRel: x.semRel.length, prox: x.proxVis && x.proxVis.src, ult: x.ultVis && x.ultVis.data, blobs: window.__SIM.blobs.size,
       relId: (x.vis.find(v => v.relatorio) || {}).relatorio || '' };
     /* anexo do contrato */
@@ -97,6 +99,12 @@ const SIMULADOR = ({ escrever }) => {
     gcEditar(ca.id); const ff = document.querySelector('#m-form form'); const ord = [...ff.querySelectorAll('.gc-fh, [name]')].map(e => e.classList.contains('gc-fh') ? '|' : e.name).join(',');
     out.redund = { blocoAuto: /Já vem automaticamente/i.test(ff.innerText), valorDepois: ord.indexOf('valorTotal') > ord.lastIndexOf('|'), ph: !!ff.querySelector('[name=valorTotal][placeholder]'), objetoAntes: ord.indexOf('objeto') < ord.lastIndexOf('|') };
     fecharModal('m-form');
+    /* base instalada: clientes que compraram equipamento × contratos ativos; andamento por toque */
+    irTela('baseinst'); const B = biModelo(), sem = B.C.find(c => !c.temCtr);
+    out.bi = { clientes: B.C.length, forn: B.F.length, ctrOk: B.C.filter(c => c.temCtr).every(c => c.ctr.every(x => x.ativo && !x.loc)), kpi: /BASE INSTALADA/i.test(document.getElementById('tela').innerText) && /OPORTUNIDADES SEM CONTRATO/i.test(document.getElementById('tela').innerText) };
+    biAndamento(sem.k); const bf = document.querySelector('#m-form form'); bf.querySelector('[name=status][value="Oferecido"]').checked = true; bf.querySelector('[name=oferta]').checked = true; bf.requestSubmit();
+    await new Promise(r => setTimeout(r, 200)); const B2 = biModelo(); out.bi.st = (B2.C.find(c => c.k === sem.k) || {}).st; out.bi.of = ((B2.C.find(c => c.k === sem.k) || {}).op || {}).oferta;
+    irTela('supervisao'); out.bi.chip = /Base instalada sem contrato/.test(document.getElementById('tela').innerText);
     /* separação: o dashboard Contratos não mostra a gestão; a aba Locação filtra */
     irTela('contratos'); out.dash = { semAbas: !document.querySelector('#tela .gc-abas'), link: /Gestão → Contratos e serviços recorrentes/.test(document.getElementById('tela').innerText) };
     irTela('gestao'); GC.aba = 'loc'; render(); out.abaLoc = [...document.querySelectorAll('#tela [data-sid="gc-lista"] ~ .card tbody tr')].length;
@@ -110,6 +118,8 @@ const SIMULADOR = ({ escrever }) => {
   t(r.ficha.esperadas === 7, 'visitas mensais esperadas desde o início (6 meses e 3 dias → 7): ' + r.ficha.esperadas);
   t(r.ficha.saldo === Math.max(0, 120000 - r.ficha.fat), 'saldo = valor − faturado no Omie: ' + r.ficha.saldo);
   t(r.ficha.ptc === '99999', 'PTC da ficha');
+  t(r.toque, 'ficha preenchida por toque: tipo, situação, reajuste, mês, renovação e periodicidade são opções de marcar');
+  t(r.feito && r.feito.every(n => n === 3), 'visita: itens feitos marcados como caixas (3 marcados por visita): ' + JSON.stringify(r.feito));
   t(r.vis.realizadas === 2 && r.vis.atraso === 5 && r.vis.semRel === 1, 'visitas: 2 realizadas, 5 atrasadas, 1 sem relatório: ' + JSON.stringify(r.vis));
   t(r.vis.prox === 'agendada' && r.vis.blobs === 1 && r.vis.relId, 'próxima visita = a agendada; relatório enviado ao armazenamento');
   t(r.anexo.n === 1 && r.anexo.tipo === 'Contrato', 'anexo classificado como Contrato pelo nome do arquivo');
@@ -126,7 +136,9 @@ const SIMULADOR = ({ escrever }) => {
   t(r.depois.m2 === '2100', 'o divergente não marcado não muda sem confirmação');
   t(!r.outraPot && r.mesmoMod, 'mesmo modelo com outra potência não é "igual"; "6 M-16" = "6M16" e a marca não se contradiz');
   t(Object.values(r.redund).every(Boolean), 'ficha sem redundância: o que falta primeiro, o automático depois com o valor à mostra: ' + JSON.stringify(r.redund));
-  t(r.docs === 'contratos,contratos,ctrAnexos,ctrEquip,ctrEquip,ctrEquip,ctrEquip,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
+  t(r.bi.clientes > 0 && r.bi.forn >= r.bi.clientes && r.bi.ctrOk && r.bi.kpi, 'base instalada: ' + r.bi.clientes + ' clientes, ' + r.bi.forn + ' fornecimentos; com contrato = contrato ativo de ITM/manutenção');
+  t(r.bi.st === 'Oferecido' && Array.isArray(r.bi.of) && r.bi.of.length === 1 && r.bi.chip, 'andamento da oportunidade por toque e alerta na Central de supervisão');
+  t(r.docs === 'baseOport,contratos,contratos,ctrAnexos,ctrEquip,ctrEquip,ctrEquip,ctrEquip,ctrVisitas,ctrVisitas,ctrVisitas', 'gravou só nas coleções da gestão: ' + r.docs);
   await p.close();
   /* 3. só leitura: sem botões de edição, aviso de leitura */
   { const q = await abrir(false); const s = await q.evaluate(() => { irTela('gestao'); GC.aba = 'todos'; render(); const id = gcContratos()[0].id; gcFicha(id);
