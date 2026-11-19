@@ -287,3 +287,19 @@ Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`),
   Ploomes `Deals $expand=Attachments` (coluna "Anexos do Negócio"). A ficha do contrato lista os
   documentos já anexados nos sistemas e o cadastro os considera (sem pedir de novo). Verificações:
   "OV sem nenhum documento anexado" e "Venda ganha sem documento anexado no Ploomes".
+
+## Olhar da SPV: o que, para quem e onde
+
+Em Resultados e metas, depois de "Serviços (SPV): antes e depois da Amanda", a seção
+`secSpvVolume()` (dados em `spvVolume()`) faz o estudo de volume da SPV no período:
+
+- **o que**: cada item das propostas da SPV vira um tipo pela descrição (`spvTipo`, tabela
+  `SPV_TIPOS`: serviços — inspeção/ITM, manutenção, testes, adequação, treinamento, locação,
+  documentação; peças — peças de bomba, painéis e elétrica, motor diesel e consumíveis,
+  válvulas, instrumentos, tanques, equipamentos completos). Uma proposta conta uma vez em cada
+  tipo. "O que mais vendemos" usa os itens do Omie das ordens de venda dos pedidos da SPV;
+- **para quem**: segmento do negócio (ou do cadastro do cliente) — negócios criados no
+  período, propostas, pedidos e conversão;
+- **onde**: região e estado da obra (ou do cliente) das propostas, negócios e pedidos;
+- cruzamento segmento × tipo mais pedido × região e as peças mais pedidas.
+Clientes fora do estudo da SPV (`spvForaDe`) ficam fora. Teste: `testes/spv-volume.js`.

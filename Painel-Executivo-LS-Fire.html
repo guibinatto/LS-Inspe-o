@@ -7705,6 +7705,114 @@ function secSpv(){ if(EST.div==='SEQ')return ''; const Q=spvDados(); if(!Q.serie
   if(Q.foraItens.length)h+=`<div class="nota"><b>Fora do estudo:</b> ${[...new Set(Q.foraItens.map(x=>x.f.cli))].map(c=>{ const it=Q.foraItens.filter(x=>x.f.cli===c); return `${esc(it[0].cli)}: ${it.map(x=>esc(x.t)+' '+fmtBRL(x.v)).join(', ')} — ${esc(it[0].f.motivo)}`; }).join('; ')}.</div>`;
   if(Q.grandes.length)h+=`<div class="nota">Antes do marco: ${Q.grandes.map(g=>`${esc(g.cli)} ${fmtBRL(g.v)} (${fmtData(g.dt)})`).join('; ')} — pedidos acima de R$ 500 mil. O período depois do marco ainda é curto (${fmtD(Q.mesesDepois,1)} mês): a leitura fica mais firme a cada mês.</div>`;
   return h; }
+/* ---------- olhar da SPV (serviços e pós-venda): o que, para quem e onde ----------
+   Estudo de volume do recorte: que tipo de serviço e de peça/acessório a SPV mais
+   propõe e vende, para quais segmentos e em quais regiões. Fontes:
+     · propostas da SPV (Ploomes, desde jul/2026) — cada item vira um tipo pela descrição;
+     · negócios da SPV criados no período (segmento e conversão);
+     · pedidos da SPV (Controle de Pedidos) e itens das ordens de venda do Omie.
+   Uma proposta conta uma vez em cada tipo que contém; o valor é a soma dos itens daquele tipo. */
+const SPV_TIPOS=[
+  ['s','Inspeção e contrato ITM',/inspe|contrato|nfpa.?25|\bitm\b/],
+  ['s','Manutenção (prev. e corretiva)',/manuten|corretiv|preventiv|reparo|revisao|recuper/],
+  ['s','Testes, start-up, alinhamento',/start.?up|comission|teste|curva|alinhamento|performance|levantamento/],
+  ['s','Adequação e instalação',/adequa|moderniza|instala|montagem|retrofit/],
+  ['s','Treinamento',/treinamento/],
+  ['s','Locação',/loca[cç]/],
+  ['s','Documentação e laudos',/document|laudo|ficha|catalogo|certifica|art\b/],
+  ['p','Instrumentos e medição',/manometro|manovacuometro|pressostato|flowmeter|medidor|transmissor|testador|sensor de|termometro|chave de fluxo|facts|teste para bomba/],
+  ['p','Tanques de combustível',/tanque|boia/],
+  ['p','Peças de bomba',/rotor|rolamento|retentor|gaxeta|junta|anel|selo mec|luva|eixo|bucha|carcaca|impelidor|corpo de descarga|kit reparo|defletor|mancal|coupling|acoplamento/],
+  ['p','Painéis e elétrica',/painel|placa|controlador|chave|contator|rele|modulo|disjuntor|bateria|terminal|cabo|isolador/],
+  ['p','Motor diesel e consumíveis',/oleo|aditivo|filtro|radiador|trocador|mangueira|resistencia|pre aquec|correia|solenoide|motor de partida|arranque|racor|r90|alternador|escapamento|silencioso|kit revisao|turbo|vaso de expans|bomba da agua/],
+  ['p','Válvulas e conexões',/valvula|ventosa|conex|acopl|flange|niple|registro|tubo|cotovelo/],
+  ['p','Equipamentos completos',/^cmb|motobomba|^bomba|^motor|skid/]];
+const SPV_SERV_CAT=/servi|itm|loca|document/i, SPV_SERV_TXT=/^servi|manuten|inspe|treinamento|start.?up|comission|levantamento|laudo|loca[cç]|contrato|consultoria|^montagem|mao de obra|deslocamento|visita tecnica/;
+function spvTipo(prod,cat){ const t=norm(prod||'').replace(/^[\d.-]+\s*-\s*/,''), serv=SPV_SERV_CAT.test(cat||'')||SPV_SERV_TXT.test(t);
+  const r=SPV_TIPOS.find(([g,,re])=>(g==='s')===serv&&re.test(t));
+  return r?{g:r[0],k:r[1]}:{g:serv?'s':'p',k:serv?'Outros serviços':'Outras peças'}; }
+const spvSeg=x=>{ const s=(x&&x.neg&&x.neg.segmento)||(x&&x.segmento)||(empPorNome(x&&x.nCli)||{}).segmento; return s&&String(s).trim()&&!/^n\/?d$/i.test(String(s).trim())?String(s).trim():'(sem segmento)'; };
+const spvTxt=t=>String(t||'').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'");
+const spvUF=x=>uf2((x&&(x.ufDaObra||x.ufCliente||x.uf))||'')||null;
+const spvReg=x=>regiaoDeUF(spvUF(x))||'(sem estado)';
+function spvVolume(){ const sp=x=>x.div==='SPV', val=v=>v.valorDet!==undefined?v.valorDet:v.valor;
+  const props=propostasRecorte().filter(sp).filter(x=>!spvForaDe(x));
+  const itens=props.flatMap(p=>p.itens.map(i=>Object.assign({p},spvTipo(i.prod,i.cat),{v:i.total||0,prod:i.prod})));
+  const tipos=[...agrupar(itens,i=>i.k).entries()].map(([k,a])=>{ const ps=[...new Set(a.map(i=>i.p))];
+    return {k,g:a[0].g,nProp:ps.length,v:somar(a,i=>i.v),nIt:a.length,ps,itens:a}; }).sort((a,b)=>b.nProp-a.nProp||b.v-a.v);
+  const vS=somar(itens.filter(i=>i.g==='s'),i=>i.v), vP=somar(itens.filter(i=>i.g==='p'),i=>i.v);
+  /* peças e acessórios mais pedidos (descrição do item, sem a revisão) */
+  const pecas=[...agrupar(itens.filter(i=>i.g==='p'),i=>norm(i.prod).slice(0,60)).values()].map(a=>({prod:a[0].prod,k:a[0].k,nProp:new Set(a.map(i=>i.p)).size,v:somar(a,i=>i.v)})).sort((a,b)=>b.nProp-a.nProp||b.v-a.v);
+  const neg=F.neg.filter(n=>sp(n)&&n.dtCri&&noAno({dt:n.dtCri})&&!spvForaDe(n));
+  const ped=F.vendas.filter(v=>sp(v)&&!spvForaDe(v));
+  /* itens do Omie das ordens de venda que são pedidos da SPV no recorte */
+  const kov=x=>String(x||'').replace(/\D/g,'').replace(/^0+/,''), ovs=new Set(ped.map(v=>kov((v.reg&&v.reg.ov)||v.ov)).filter(Boolean));
+  const om=(M.omie||[]).filter(x=>ovs.has(kov(x.ov))).map(x=>Object.assign({x},spvTipo(x.produtoFull||x.produto,x.familiaNome||x.famNome),{v:x.vNum||0}));
+  const omTipos=[...agrupar(om,i=>i.k).entries()].map(([k,a])=>({k,g:a[0].g,n:new Set(a.map(i=>i.x.ov)).size,v:somar(a,i=>i.v)})).sort((a,b)=>b.n-a.n||b.v-a.v);
+  /* segmento: negócios criados no período, propostas e pedidos */
+  const segs=new Map(), S=k=>{ if(!segs.has(k))segs.set(k,{k,nNeg:0,vNeg:0,gan:0,per:0,nProp:0,vProp:0,vS:0,vP:0,nPed:0,vPed:0,tipos:new Map(),reg:new Map(),negs:[]}); return segs.get(k); };
+  neg.forEach(n=>{ const s=S(spvSeg(n)); s.nNeg++; s.vNeg+=n.vNum||0; s.negs.push(n); if(n.ganho)s.gan++; if(n.perdido)s.per++; });
+  props.forEach(p=>{ const s=S(spvSeg(p)); s.nProp++; s.vProp+=p.val||0; const r=spvReg(p); s.reg.set(r,(s.reg.get(r)||0)+1); });
+  itens.forEach(i=>{ const s=S(spvSeg(i.p)); i.g==='s'?s.vS+=i.v:s.vP+=i.v; s.tipos.set(i.k,(s.tipos.get(i.k)||new Set()).add(i.p)); });
+  ped.forEach(v=>{ const s=S(spvSeg(v)); s.nPed++; s.vPed+=val(v)||0; });
+  const segL=[...segs.values()].map(s=>Object.assign(s,{tipo:[...s.tipos.entries()].sort((a,b)=>b[1].size-a[1].size)[0]||null,regP:[...s.reg.entries()].sort((a,b)=>b[1]-a[1])[0]||null,
+    win:s.gan+s.per?s.gan/(s.gan+s.per):null})).sort((a,b)=>(b.nNeg+b.nProp)-(a.nNeg+a.nProp)||b.vPed-a.vPed);
+  /* região e estado */
+  const REGS=['Sul','Sudeste','Centro-Oeste','Nordeste','Norte','(sem estado)'];
+  const regs=REGS.map(r=>{ const pp=props.filter(p=>spvReg(p)===r), nn=neg.filter(n=>spvReg(n)===r), vv=ped.filter(v=>spvReg(v)===r);
+    return {k:r,nProp:pp.length,vProp:somar(pp,p=>p.val||0),nNeg:nn.length,nPed:vv.length,vPed:somar(vv,val),ps:pp,
+      ufs:[...agrupar(pp,p=>spvUF(p)||'—').entries()].map(([u,a])=>u+' '+a.length).sort((a,b)=>+b.split(' ')[1]-+a.split(' ')[1])}; }).filter(r=>r.nProp||r.nNeg||r.nPed);
+  const ufs=[...new Set([...props,...neg,...ped].map(spvUF).filter(Boolean))].map(u=>{ const pp=props.filter(p=>spvUF(p)===u), vv=ped.filter(v=>spvUF(v)===u);
+    return {k:u,reg:regiaoDeUF(u),nProp:pp.length,vProp:somar(pp,p=>p.val||0),nNeg:neg.filter(n=>spvUF(n)===u).length,nPed:vv.length,vPed:somar(vv,val)}; }).sort((a,b)=>b.nProp-a.nProp||b.nPed-a.nPed);
+  const natPed=[...agrupar(ped,v=>v.natureza&&!/^\(/.test(v.natureza)?v.natureza:'(sem família)').entries()].map(([k,a])=>({k,n:a.length,v:somar(a,val)})).sort((a,b)=>b.n-a.n);
+  return {nComServ:new Set(itens.filter(i=>i.g==='s').map(i=>i.p)).size,props,itens,tipos,vS,vP,pecas,neg,ped,om,omTipos,segL,regs,ufs,natPed,val,vProp:somar(props,p=>p.val||0)}; }
+
+/* seção da SPV no painel (Resultados e metas): o que, para quem e onde */
+function secSpvVolume(){ if(EST.div==='SEQ')return ''; const Q=spvVolume(); if(!Q.props.length&&!Q.ped.length&&!Q.neg.length)return '';
+  const W=560, per=(typeof PER!=='undefined'&&PER&&PER.rot)||'', pc=x=>x==null?'—':fmtPct(x,0), seg1=Q.segL.find(s=>!/^\(/.test(s.k)), reg1=Q.regs.filter(r=>!/^\(/.test(r.k)).sort((a,b)=>b.nProp-a.nProp)[0];
+  const tot=Q.vS+Q.vP, t1=Q.tipos[0];
+  let h=sec('Serviços (SPV): o que, para quem e onde',`Estudo de volume da SPV no período${per?' ('+esc(per)+')':''}: que tipo de serviço e de peça ou acessório mais propomos e vendemos, para quais segmentos e em quais regiões. Propostas do Ploomes (desde jul/2026), cada item classificado pela descrição; negócios criados no período; pedidos do Controle e itens das ordens de venda do Omie. Uma proposta conta uma vez em cada tipo que contém.`,'res-spv-vol');
+  h+=`<div class="g g4 kpis-2">${cardG({rot:'Propostas da SPV',val:fmtN(Q.props.length),per:per,sub:`${fmtCompacto(Q.vProp)} · ticket médio ${fmtCompacto(Q.props.length?Q.vProp/Q.props.length:0)}`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Serviço × peça nas propostas',val:tot?pc(Q.vS/tot)+' serviço':'—',per:'em valor',sub:`serviços ${fmtCompacto(Q.vS)} · peças ${fmtCompacto(Q.vP)} · em quantidade, ${pc(Q.props.length?Q.nComServ/Q.props.length:null)} das propostas têm serviço`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Segmento que mais demanda',val:seg1?esc(seg1.k):'—',per:per,sub:seg1?`${fmtN(seg1.nNeg)} negócios · ${fmtN(seg1.nProp)} propostas · ${fmtN(seg1.nPed)} pedidos`:'sem segmento informado',tipo:'mov',fonte:'Ploomes e Pedidos'})}
+    ${cardG({rot:'Região com mais propostas',val:reg1?esc(reg1.k):'—',per:per,sub:reg1?`${fmtN(reg1.nProp)} propostas (${pc(Q.props.length?reg1.nProp/Q.props.length:null)}) · ${reg1.ufs.slice(0,3).join(', ')}`:'—',tipo:'mov',fonte:'Ploomes'})}</div>`;
+  /* o que: tipos nas propostas e nos pedidos */
+  Q.tipos.forEach((t,i)=>regLista('spvt-'+i,`Propostas da SPV com ${t.k}`,t.ps.slice().sort((a,b)=>(b.dt||0)-(a.dt||0)).map(p=>[fmtData(p.dt),esc(p.cod),esc(String(p.cli).slice(0,40)),esc(spvSeg(p)),esc(spvUF(p)||'—'),
+    esc(spvTxt(t.itens.filter(x=>x.p===p).map(x=>x.prod).join('; ')).slice(0,120)),fmtBRL(somar(t.itens.filter(x=>x.p===p),x=>x.v))]),[{t:'Data'},{t:'Proposta'},{t:'Cliente',f:1},{t:'Segmento'},{t:'UF'},{t:'Itens deste tipo',f:1},{t:'Valor',n:1}]));
+  const corG=g=>g==='s'?cssVar('--spv'):cssVar('--g4');
+  h+=`<div class="dupla">${blocoGraf({id:'spv-tipo',tit:'O que mais propomos',perg:'Que serviço e que peça a SPV mais orça?',per,unid:'propostas',fonte:'Ploomes (itens das propostas)',
+      leg:[[cssVar('--spv'),'Serviços'],[cssVar('--g4'),'Peças e acessórios']],
+      corpo:svgBarrasH(Q.tipos.map((t,i)=>({rot:t.k,val:t.nProp,extra:fmtCompacto(t.v),k:'spvt-'+i,cor:corG(t.g)})),{W,lw:250,rw:120,fmt:fmtN,aria:'propostas por tipo'}),
+      tabela:{cols:['Tipo','Grupo','Propostas','Itens','Valor'],linhas:Q.tipos.map(t=>[t.k,t.g==='s'?'Serviço':'Peça/acessório',t.nProp,t.nIt,fmtBRL(t.v)])},nota:'clique numa barra para ver as propostas'})}
+    ${Q.omTipos.length?blocoGraf({id:'spv-tipo-ov',tit:'O que mais vendemos',perg:'E o que virou ordem de venda?',per,unid:'ordens de venda',fonte:'Omie (itens das ordens de venda)',
+      leg:[[cssVar('--spv'),'Serviços'],[cssVar('--g4'),'Peças e acessórios']],
+      corpo:svgBarrasH(Q.omTipos.map(t=>({rot:t.k,val:t.n,extra:fmtCompacto(t.v),cor:corG(t.g)})),{W,lw:250,rw:120,fmt:fmtN,aria:'ordens de venda por tipo'}),
+      tabela:{cols:['Tipo','Ordens de venda','Valor'],linhas:Q.omTipos.map(t=>[t.k,t.n,fmtBRL(t.v)])},
+      nota:`itens de ${fmtN(new Set(Q.om.map(i=>i.x.ov)).size)} dos ${fmtN(Q.ped.length)} pedidos da SPV (os que têm ordem de venda no Omie) · no Controle: ${Q.natPed.map(x=>`${esc(x.k)} ${fmtN(x.n)}`).join(' · ')}`})
+    :blocoGraf({id:'spv-nat',tit:'O que mais vendemos',perg:'Os pedidos da SPV são mais serviço ou peça?',per,unid:'pedidos',fonte:'Controle de Pedidos',
+      corpo:svgBarrasH(Q.natPed.map(x=>({rot:x.k,val:x.n,extra:fmtCompacto(x.v)})),{W,lw:160,rw:120,fmt:fmtN}),tabela:{cols:['Natureza','Pedidos','Valor'],linhas:Q.natPed.map(x=>[x.k,x.n,fmtBRL(x.v)])}})}</div>`;
+  /* para quem: segmentos */
+  const segG=Q.segL.slice(0,10);
+  segG.forEach((s,i)=>regLista('spvs-'+i,`Negócios da SPV — ${s.k}`,s.negs.slice().sort((a,b)=>(b.vNum||0)-(a.vNum||0)).map(n=>[fmtData(n.dtCri),esc(String(n.cli).slice(0,40)),esc(nomeCurto(n.resp)||n.resp||''),esc(n.sit||''),esc(spvUF(n)||'—'),fmtBRL(n.vNum||0)]),
+    [{t:'Criado'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Situação'},{t:'UF'},{t:'Valor',n:1}]));
+  /* onde: regiões */
+  Q.regs.forEach((r,i)=>regLista('spvr-'+i,`Propostas da SPV — ${r.k}`,r.ps.slice().sort((a,b)=>(b.dt||0)-(a.dt||0)).map(p=>[fmtData(p.dt),esc(p.cod),esc(String(p.cli).slice(0,40)),esc(spvUF(p)||'—'),esc(spvSeg(p)),fmtBRL(p.val||0)]),
+    [{t:'Data'},{t:'Proposta'},{t:'Cliente',f:1},{t:'UF'},{t:'Segmento'},{t:'Valor',n:1}]));
+  h+=`<div class="dupla">${blocoGraf({id:'spv-seg',tit:'Para quem: segmentos',perg:'Que segmento mais procura a SPV?',per,unid:'negócios criados',fonte:'Ploomes',
+      corpo:svgBarrasH(segG.map((s,i)=>({rot:s.k,val:s.nNeg,extra:`${fmtN(s.nProp)} prop. · ${fmtN(s.nPed)} ped.`,k:s.negs.length?'spvs-'+i:null})),{W,lw:190,rw:150,fmt:fmtN,cor:cssVar('--spv'),aria:'negócios por segmento'}),
+      tabela:{cols:['Segmento','Negócios','Valor dos negócios','Ganhos','Perdidos','Conversão','Propostas','Pedidos','Valor dos pedidos'],linhas:Q.segL.map(s=>[s.k,s.nNeg,fmtBRL(s.vNeg),s.gan,s.per,pc(s.win),s.nProp,s.nPed,fmtBRL(s.vPed)])},
+      nota:'segmento do cadastro do cliente; clique para ver os negócios'})}
+    ${blocoGraf({id:'spv-reg',tit:'Onde: regiões',perg:'Em que região fazemos mais propostas da SPV?',per,unid:'propostas',fonte:'Ploomes e Controle de Pedidos',
+      corpo:svgBarrasH(Q.regs.map((r,i)=>({rot:r.k,val:r.nProp,extra:`${fmtCompacto(r.vProp)} · ${fmtN(r.nPed)} ped.`,k:r.ps.length?'spvr-'+i:null})),{W,lw:120,rw:170,fmt:fmtN,cor:cssVar('--spv'),aria:'propostas por região'}),
+      tabela:{cols:['Estado','Região','Propostas','Valor proposto','Negócios','Pedidos','Valor dos pedidos'],linhas:Q.ufs.map(u=>[u.k,u.reg||'—',u.nProp,fmtBRL(u.vProp),u.nNeg,u.nPed,fmtBRL(u.vPed)])},
+      nota:'estado da obra (ou do cliente); a tabela abre por estado'})}</div>`;
+  /* cruzamento: segmento × o que pede × onde, e as peças mais pedidas */
+  h+=`<div class="card"><h4>Segmento × o que pede × onde</h4>${tab([{t:'Segmento'},{t:'Propostas',n:1},{t:'% serviço',n:1},{t:'Tipo mais pedido'},{t:'Região'},{t:'Conversão',n:1}],
+      Q.segL.filter(s=>s.nProp||s.nNeg).slice(0,12).map(s=>[esc(s.k),fmtN(s.nProp),s.vS+s.vP?pc(s.vS/(s.vS+s.vP)):'—',s.tipo?esc(s.tipo[0]):'—',s.regP?esc(s.regP[0]):'—',pc(s.win)]),360)}
+      <div class="nota">Conversão = ganhos ÷ (ganhos + perdidos) dos negócios criados no período.</div></div>
+    <div class="card"><h4>Peças e acessórios mais pedidos</h4>${Q.pecas.length?tab([{t:'Item'},{t:'Tipo'},{t:'Propostas',n:1},{t:'Valor',n:1}],
+      Q.pecas.slice(0,15).map(x=>[esc(spvTxt(x.prod).slice(0,60)),esc(x.k),fmtN(x.nProp),fmtBRL(x.v)]),360):'<p class="pl-vazio">Sem peças nas propostas do período.</p>'}</div>`;
+  return h; }
 /* ---------- valor do negócio aberto pela proposta atual ----------
    O Ploomes usa como valor do negócio a ÚLTIMA proposta vinculada a ele — se um
    adicional de serviço (teste em fábrica, start-up…) é criado depois da proposta
@@ -10454,7 +10562,7 @@ function secDesfechos(){ const L=CFG.desfechos||[];
 /* ---------- composição com as telas existentes ---------- */
 { const _pipe=VISTA.pipeline, _res=VISTA.resultados, _des=VISTA.desempenho, _cons=construir;
   VISTA.pipeline=function(){ return secPipelineAnalitico()+secCompromissos()+secInspecao()+sec('Posição do pipeline','Retrato na data de referência: valor, horizonte, política de probabilidade e qualidade das informações.','pipe-pos')+_pipe(); };
-  VISTA.resultados=function(){ return secBulletMeta()+secIndicadoresPeriodo()+_res()+secSpv()+secSeq(); };
+  VISTA.resultados=function(){ return secBulletMeta()+secIndicadoresPeriodo()+_res()+secSpv()+secSpvVolume()+secSeq(); };
   { const _eng=VISTA.engenharia; VISTA.engenharia=function(){ const f=F.neg.filter(naFilaOrc); return sec('Fila de cotação','Tempo de espera por analista. Detalhe por analista na ficha (Vendedores → Engenharia de aplicação).','eng-fila')+(f.length?blocoGrafFila(f,refNegocios(),num(CFG.slaCot)||7):card('','','<p class="pl-vazio">Fila vazia.</p>'))+_eng(); }; }
   VISTA.desempenho=function(){ const v=EST.vend||EST.ficha||'', vs=vendedoresAtivos(), an=analistasAtivos();
     let h=`<div class="exec-cab so-tela"><span>Ficha individual: <select class="campo" onchange="EST.fichaTipo=this.value.startsWith('eng:')?'eng':'';EST.ficha=this.value.replace(/^eng:/,'');render()"><option value="">— escolha a pessoa —</option><optgroup label="Vendedores">${vs.map(x=>`<option value="${esc(x)}"${x===v&&EST.fichaTipo!=='eng'?' selected':''}>${esc(x)}</option>`).join('')}</optgroup><optgroup label="Engenharia de aplicação">${an.map(x=>`<option value="eng:${esc(x)}"${x===v&&EST.fichaTipo==='eng'?' selected':''}>${esc(x)}</option>`).join('')}</optgroup></select></span>
