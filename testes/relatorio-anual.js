@@ -3,7 +3,7 @@
 const { chromium } = require('playwright'), path = require('path'), fs = require('fs');
 (async () => {
   const [arq, saida] = process.argv.slice(2);
-  const b = await chromium.launch(), p = await b.newPage({ viewport: { width: 1400, height: 1000 } }), erros = [];
+  const b = await chromium.launch(), p = await b.newPage({ viewport: { width: +(process.env.LARGURA || 1400), height: 1000 } }), erros = [];
   p.on('pageerror', e => erros.push(e.message));
   await p.goto('file://' + path.resolve(arq)); await p.waitForFunction(() => typeof F !== 'undefined' && F.todas, null, { timeout: 60000 });
   await p.evaluate(async () => { irTela('relatorios'); RELC.modelo = 'rG'; render(); await relcGerar(); });

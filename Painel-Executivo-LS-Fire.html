@@ -899,6 +899,11 @@ html:not([data-t="claro"]) span.tag[style*="22;color"],html:not([data-t="claro"]
 /* papel: tabela cabe na LARGURA da folha — quebra de linha nas células e, se
    ainda for larga, versão compacta (fonte e espaçamento menores). Nunca escala. */
 .rel-render .tw,.rel-pag .tw{overflow:visible!important}
+/* relatório gerado (ou impresso) no celular: as páginas têm largura fixa de A4, então as regras de tela
+   estreita não valem aqui — sem sombra de rolagem nos gráficos e sem largura mínima nas tabelas */
+.rel-render .gb-c,.rel-pag .gb-c{overflow:hidden!important;background:none!important}
+.rel-render .gb-c svg,.rel-pag .gb-c svg{min-width:0!important}
+.rel-render .tw>table,.rel-pag .tw>table{min-width:100%!important}
 .rel-render table,.rel-pag table{width:100%!important;table-layout:auto}
 .rel-render th,.rel-pag th{white-space:normal!important;position:static!important;padding:6px 6px;font-size:8.5px;letter-spacing:.04em}
 .rel-render td,.rel-pag td{padding:5px 6px;font-size:10.5px;overflow-wrap:anywhere}
