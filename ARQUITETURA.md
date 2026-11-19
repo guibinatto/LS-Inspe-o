@@ -303,3 +303,20 @@ Em Resultados e metas, depois de "Serviços (SPV): antes e depois da Amanda", a 
 - **onde**: região e estado da obra (ou do cliente) das propostas, negócios e pedidos;
 - cruzamento segmento × tipo mais pedido × região e as peças mais pedidas.
 Clientes fora do estudo da SPV (`spvForaDe`) ficam fora. Teste: `testes/spv-volume.js`.
+
+## Condições de pagamento
+
+`secCondPag()` (dados em `condPagDados()`), em Resultados e metas, estuda como os pedidos foram fechados:
+
+- **condição negociada** (Ploomes, campo condição de pagamento do negócio), lida por `condPagInfo(texto)`:
+  sinal = % na emissão/envio do pedido (entrada, no ato); antecipação = % antes do faturamento por marcos
+  (DTC/DTE, APE, embarque, seguro garantia, "N dias depois do pedido"); o resto é pago no faturamento ou
+  depois (DDL, prazo médio ponderado). Tipos em `CP_TIPOS`. O `n.sinalPct` do negócio usa a mesma leitura
+  (antes pegava o primeiro % do texto, e "100% 30 DDL" virava sinal de 100%);
+- **condição registrada no Omie**: `ferramentas/omie_para_planilha.py` grava `API-Omie_Parcelas.xlsx`
+  (uma linha por OV não cancelada: código da condição, nº de parcelas e "percentual|dias|vencimento; ...").
+  O painel reconhece como a base `omieParcelas`; `cpOmie()` calcula o prazo médio ponderado e a parte que
+  vence antes da previsão de faturamento. O botão ↻ importa a planilha junto com as outras do Omie.
+Teste: `testes/condicoes-pagamento.js`.
+
+Política de probabilidade: "Em negociação" passou de 60% para 20% (pedido da diretoria, 19/11/2026).

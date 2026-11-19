@@ -1461,6 +1461,7 @@ const CAMPOS={
   categoria:['categoria do item'],tipoItem:['tipo do item'],vendedor:['vendedor'],agente:['agente de negocio'],cliente:['cliente nome fantasia'],
   ufCliente:['uf do cliente'],dtInc:['data de inclusao'],situacao:['situacao'],incluidoPor:['incluido por ov'],valor:['valor do item']},
  /* anexos (nomes dos arquivos) das vendas, contratos e OS do Omie */
+ omieParcelas:{ov:['ov parcelas'],cliente:['cliente nome fantasia'],vendedor:['vendedor'],dtInc:['data de inclusao'],prev:['previsao de faturamento'],sit:['situacao'],valor:['valor do pedido'],codCond:['condicao de pagamento codigo'],nParc:['numero de parcelas'],parcelas:['parcelas do pedido']},
  omieAnexos:{tabela:['tabela do anexo'],numero:['numero do documento'],cliente:['cliente nome fantasia'],arquivo:['arquivo anexado'],tipo:['tipo do arquivo'],data:['data do anexo']},
  negocios:{id:['id'],codProposta:['codigo da proposta','cod proposta','codigo proposta','proposta'],
   cliente:['cliente','cliente do negocio','nome do cliente'],titulo:['titulo','titulo do negocio','nome do negocio'],
@@ -1600,7 +1601,7 @@ const ESSENCIAIS={negocios:['id','cliente','responsavel','valor','estagio','data
   vendasOmie:['cliente','valor','data'],omie:['ov','cliente','totalMerc'],notas:['nf','dtEmissao','valor'],
   carteira:['pv','cliente','saldo'],pedidos:['ov','cliente','valor','dtPedido'],interacoes:['cliente','data','tipo'],
   empresas:['nome'],historico:['cliente','fase','valor'],motoresCat:['modelo','marca','hp','rpm'],
-  omieProdutos:['codigo','descricao','ncm'],omieFiscal:['ov','codProduto','ncmItem','cfop'],omieAnexos:['tabela','numero','arquivo']};
+  omieProdutos:['codigo','descricao','ncm'],omieFiscal:['ov','codProduto','ncmItem','cfop'],omieAnexos:['tabela','numero','arquivo'],omieParcelas:['ov','parcelas']};
 const logFalha=(onde,e)=>{ try{ console.warn('[painel] '+onde+':',e&&e.message||e); }catch(_){} };
 function faltando(cols,base){ const m=mapear(cols,base); return (ESSENCIAIS[base]||[]).filter(k=>m[k]===undefined); }
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
@@ -1616,6 +1617,7 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
   if(tem('modelo comercial')&&tem('pot comercial'))return 'motoresCat';
   if(tem('ncm do cadastro')&&tem('cfop'))return 'omieFiscal';
   if(tem('tabela do anexo')&&tem('arquivo anexado'))return 'omieAnexos';
+  if(tem('ov parcelas')&&tem('parcelas do pedido'))return 'omieParcelas';
   if(tem('vendido ovs')&&tem('ncm'))return 'omieProdutos';
   if(tem('saldo a faturar')&&tem('valor faturado'))return 'carteira';
   if(tem('valor total da nf')&&(tem('data emissao')||tem('serie')))return 'notas';
@@ -1770,7 +1772,7 @@ const corrValDe=ref=>{const k=norm(ref); if(!k)return null;
   const c=(CFG.corrVal||[]).find(x=>norm(x.ref)===k); return c?num(c.valor):null;};
 const foraManualOmie=chave=>(CFG.dupOmieFora||[]).some(x=>('n:'+norm(x))===chave);
 
-let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[]};
+let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[],omieParcelas:[]};
 let ETAPAS={}, ORDEM_EST=[], IDX_EMP=new Map();
 let TEM_SEG_CRM=false;                          /* o export do CRM traz a coluna Segmento? */
 const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao cadastral','geracao da cotacao','envio pec engenharia','elaborando proposta','apresentacao da cotacao follow up','negociacao','fechamento','pos vendas'];
@@ -1789,7 +1791,7 @@ function limparCaches(){
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
   limparCaches(); DADOS_VER++; PROPCAB=new Map();
-  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[]};
+  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[],omieParcelas:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
   M.negocios.forEach(n=>{
@@ -1820,7 +1822,8 @@ function construir(){
        por último, para a criação do negócio (que joga a venda para o mês errado) */
     n.dtVenda=n.ganho?(n.dtConv||n.dtPrev||n.dtCri):null;
     n.origemDtVenda=!n.ganho?null:n.dtConv?'conversão':n.dtPrev?'previsão':'criação';
-    const sp=String(n.condPagamento||'').match(/(\d{1,3})\s*%/); n.sinalPct=sp?Math.min(100,+sp[1])/100:null;
+    /* sinal = só a parte paga na emissão do pedido (condPagInfo), não o primeiro % do texto */
+    { const ci=condPagInfo(n.condPagamento); n.sinalPct=ci.sinal>0?ci.sinal:null; }
     n.sinal=n.sinalPct!=null?n.vNum*n.sinalPct:null;
     n.comissaoRS=n.comiss!=null?n.vNum*n.comiss/100:null;
     n.est=(n.estagio&&String(n.estagio).trim())||'(sem estágio)';
@@ -4264,7 +4267,7 @@ function avisoERP(){ const L=divergenciasERP().filter(x=>!EST.ano||String(x.a)==
    1) Vendas previstas: negócios abertos do Ploomes pela previsão de fechamento, em
       três camadas pelo status do negócio (n.certeza: marcador + status da obra):
         Garantido = aprovado, aguardando PO → valor cheio
-        Provável  = em negociação (60%) e obra em compra (50%) → ponderado
+        Provável  = em negociação (20%) e obra em compra (50%) → ponderado
         Possível  = em disputa, estudo/projeto, não classificado → fora da previsão
       Previsão = garantido + provável ponderado.
    2) Carteira a faturar: pedidos do Controle ainda não faturados, pelo mês de entrega. */
@@ -4281,7 +4284,7 @@ function avisoERP(){ const L=divergenciasERP().filter(x=>!EST.ano||String(x.a)==
    aparecem como potencial, mas não somam na previsão de pedidos. */
 const POLITICA_PADRAO=[
   {k:'Aprovado / aguardando PO',p:1,  camada:'Alta confiança',entra:true, cor:'#18794A'},
-  {k:'Em negociação',          p:.6, camada:'Provável',      entra:true, cor:'#4CAF7A'},
+  {k:'Em negociação',          p:.2, camada:'Provável',      entra:true, cor:'#4CAF7A'},
   {k:'Obra em compra',         p:.5, camada:'Provável',      entra:true, cor:'#FF6600'},
   {k:'Em disputa',             p:.25,camada:'Possível',      entra:false,cor:'#FF9A52'},
   {k:'Estudo / projeto',       p:.1, camada:'Possível',      entra:false,cor:'#8C8C8C'},
@@ -7813,6 +7816,107 @@ function secSpvVolume(){ if(EST.div==='SEQ')return ''; const Q=spvVolume(); if(!
     <div class="card"><h4>Peças e acessórios mais pedidos</h4>${Q.pecas.length?tab([{t:'Item'},{t:'Tipo'},{t:'Propostas',n:1},{t:'Valor',n:1}],
       Q.pecas.slice(0,15).map(x=>[esc(spvTxt(x.prod).slice(0,60)),esc(x.k),fmtN(x.nProp),fmtBRL(x.v)]),360):'<p class="pl-vazio">Sem peças nas propostas do período.</p>'}</div>`;
   return h; }
+/* ---------- condições de pagamento: como fechamos os pedidos ----------
+   Duas leituras do mesmo assunto:
+   1) a condição NEGOCIADA (Ploomes, campo "condição de pagamento" do negócio), lida pelo texto:
+        · sinal = % pago na emissão/envio do pedido (entrada, no ato);
+        · antecipação = % pago antes do faturamento por marcos (DTC, APE, embarque, N dias do pedido);
+        · o restante é pago no faturamento ou depois (DDL);
+      tipo: com sinal · antecipação sem sinal · à vista · prazo único (N DDL) · parcelado no faturamento
+            · recorrente (mensal, por visita) · outras / não aplicável · sem condição;
+   2) a condição REGISTRADA nas ordens de venda do Omie (parcelas: % , dias, vencimento):
+        parcela antecipada = vence mais de 3 dias antes da previsão de faturamento;
+        prazo médio = média dos dias das parcelas, ponderada pelo %. */
+const CP_TIPOS=['Com sinal no pedido','Antecipação sem sinal','À vista ou antecipado','Prazo único (DDL)','Parcelado no faturamento','Recorrente (mensal/visita)','Outras / não aplicável','Sem condição'];
+const CP_COR={'Com sinal no pedido':'--g1','Antecipação sem sinal':'--g2','À vista ou antecipado':'--g3','Prazo único (DDL)':'--g4','Parcelado no faturamento':'--g5','Recorrente (mensal/visita)':'--g6','Outras / não aplicável':'--txt3','Sem condição':'--linha'};
+function condPagInfo(txt){ const o=String(txt||'').trim(), t=norm(o.replace(/^cp\s*-?\s*\d+\s*-\s*/i,''));
+  const r={txt:o,tipo:'Sem condição',sinal:0,antec:0,prazo:null,nParc:null};
+  if(!t)return r;
+  if(/mensal|trimestr|cada visita|por visita|semestr/.test(t)){ r.tipo='Recorrente (mensal/visita)'; return r; }
+  if(/nao aplicavel|outras condic|vide obs/.test(t)){ r.tipo='Outras / não aplicável'; return r; }
+  if(/a vista|antecipad/.test(t)&&!/%/.test(t)){ r.tipo='À vista ou antecipado'; r.prazo=0; r.nParc=1; return r; }
+  if(/%/.test(t)){ /* trechos com % : cada um com o seu marco */
+    const partes=t.split(/(?=\b\d{1,3}(?:[.,]\d+)?\s*%)/).filter(x=>/%/.test(x)); let soma=0, dias=[], pesoD=0;
+    partes.forEach(x0=>{ const p=Math.min(100,parseFloat(x0.replace(',','.')))/100; if(!(p>0))return; soma+=p;
+      const x=x0.split(/\bsaldo\b/)[0], ddl=x.match(/(\d{1,3})(?:\s+(\d{1,3}))?\s*ddl/);
+      if(/entrada|no ato|ato do pedido|emissao do pedido|envio do pedido|com o pedido|^\d+(?:[.,]\d+)?\s*%\s*(?:no |com |na )?pedido|pedido\b(?!.*ddl)/.test(x)&&!/(\d+)\s*dias? (?:depois|apos) (?:do|o) pedido|p\/?\s*\d+ dias/.test(x))r.sinal+=p;
+      else if(/dtc|desenho|ape\b|embarque|seguro garantia|dias? (?:depois|apos) (?:do|o) pedido|p\/?\s*\d+ dias/.test(x)&&!/faturad|entrega|nf\b|aceite/.test(x))r.antec+=p;
+      else if(ddl){ dias.push([+ddl[1]+(ddl[2]?(+ddl[2]-+ddl[1])/2:0),p]); } });
+    /* saldo sem % ("saldo faturado 28/56 ddl") */
+    const sal=t.match(/saldo[^%]*?(\d{1,3})(?:\s+(\d{1,3}))?\s*ddl/); if(sal&&soma<1)dias.push([+sal[1]+(sal[2]?(+sal[2]-+sal[1])/2:0),1-soma]);
+    pesoD=somar(dias,d=>d[1]); r.prazo=pesoD?Math.round(somar(dias,d=>d[0]*d[1])/pesoD):null; r.nParc=partes.length+(sal&&soma<1?1:0);
+    r.sinal=Math.min(1,r.sinal); r.antec=Math.min(1-r.sinal,r.antec);
+    r.tipo=r.sinal>0?'Com sinal no pedido':r.antec>0?'Antecipação sem sinal':r.nParc>1?'Parcelado no faturamento':'Prazo único (DDL)';
+    return r; }
+  const ds=[...t.matchAll(/\d{1,3}/g)].map(m=>+m[0]);
+  if(/ddl|dias/.test(t)&&ds.length){ r.nParc=ds.length; r.prazo=Math.round(somar(ds,x=>x)/ds.length); r.tipo=ds.length>1?'Parcelado no faturamento':'Prazo único (DDL)'; return r; }
+  r.tipo='Outras / não aplicável'; return r; }
+/* OV do Omie: parcelas "pct|dias|vencimento; ..." */
+function cpOmie(o){ const prev=data(o.prev), inc=data(o.dtInc), ps=String(o.parcelas||'').split(';').map(x=>x.trim()).filter(Boolean).map(x=>{ const [p,d,v]=x.split('|'); return {p:(num(p)||0)/100,d:num(d)||0,v:data(v)}; });
+  const ant=ps.filter(x=>x.v&&prev&&(prev-x.v)/864e5>3), tp=somar(ps,x=>x.p)||1;
+  return {ov:o.ov,cli:o.cliente,vend:o.vendedor,inc,prev,sit:o.sit,valor:num(o.valor)||0,cod:o.codCond,n:ps.length,ps,
+    antec:somar(ant,x=>x.p)/tp,prazo:ps.length?Math.round(somar(ps,x=>x.d*x.p)/tp):null,umaVez:ps.length===1}; }
+const cpFaixaSinal=s=>!(s>0)?'Sem sinal':s<=.2?'Até 20%':s<=.35?'21% a 35%':s<=.5?'36% a 50%':'Acima de 50%';
+const cpFaixaPrazo=d=>d==null?'Sem prazo':d<=0?'No faturamento (0 dia)':d<=15?'1 a 15 dias':d<=30?'16 a 30 dias':d<=60?'31 a 60 dias':d<=90?'61 a 90 dias':'Mais de 90 dias';
+function condPagDados(){ const vd=x=>!EST.vend||x.resp===EST.vend, dv=x=>!EST.div||x.div===EST.div;
+  const neg=(M.negocios||[]).filter(n=>dv(n)&&vd(n)&&dimOK(n,'neg')).map(n=>Object.assign({n},condPagInfo(n.condPagamento),{v:n.vNum||0,div:n.div}));
+  const gan=neg.filter(x=>x.n.ganho&&x.n.dtVenda&&noPer(x.n.dtVenda)), per=neg.filter(x=>x.n.perdido&&noPer(dataPerda(x.n).dt||x.n.dtAtu)), ab=neg.filter(x=>x.n.aberto);
+  const porTipo=CP_TIPOS.map(k=>{ const g=gan.filter(x=>x.tipo===k), p=per.filter(x=>x.tipo===k), a=ab.filter(x=>x.tipo===k);
+    return {k,n:g.length,v:somar(g,x=>x.v),g,nPer:p.length,nAb:a.length,vAb:somar(a,x=>x.v),win:g.length+p.length?g.length/(g.length+p.length):null}; });
+  const cs=gan.filter(x=>x.sinal>0), vG=somar(gan,x=>x.v);
+  const sinalMed=somar(cs,x=>x.v)?somar(cs,x=>x.sinal*x.v)/somar(cs,x=>x.v):null;
+  const antes=x=>x.sinal+x.antec, antesMed=vG?somar(gan,x=>antes(x)*x.v)/vG:null;
+  const faixas=['Sem sinal','Até 20%','21% a 35%','36% a 50%','Acima de 50%'].map(k=>{ const a=gan.filter(x=>cpFaixaSinal(x.sinal)===k); return {k,n:a.length,v:somar(a,x=>x.v),seq:a.filter(x=>x.div==='SEQ').length,spv:a.filter(x=>x.div==='SPV').length}; });
+  const conds=[...agrupar(gan,x=>x.txt||'(sem condição)').entries()].map(([k,a])=>({k,n:a.length,v:somar(a,x=>x.v),tipo:a[0].tipo,sinal:a[0].sinal,antec:a[0].antec,prazo:a[0].prazo,seq:a.filter(x=>x.div==='SEQ').length,spv:a.filter(x=>x.div==='SPV').length})).sort((a,b)=>b.n-a.n||b.v-a.v);
+  const vend=[...agrupar(gan,x=>x.n.resp||'(sem vendedor)').entries()].map(([k,a])=>{ const s=a.filter(x=>x.sinal>0), vv=somar(a,x=>x.v);
+    return {k,n:a.length,v:vv,nS:s.length,sMed:somar(s,x=>x.v)?somar(s,x=>x.sinal*x.v)/somar(s,x=>x.v):null,antes:vv?somar(a,x=>antes(x)*x.v)/vv:null,
+      prazo:(()=>{ const z=a.filter(x=>x.prazo!=null); return z.length?Math.round(somar(z,x=>x.prazo)/z.length):null; })()}; }).sort((a,b)=>b.v-a.v);
+  const divs=['SEQ','SPV'].map(d=>{ const a=gan.filter(x=>x.div===d), s=a.filter(x=>x.sinal>0), vv=somar(a,x=>x.v);
+    return {k:d,n:a.length,v:vv,nS:s.length,vS:somar(s,x=>x.v),sMed:somar(s,x=>x.v)?somar(s,x=>x.sinal*x.v)/somar(s,x=>x.v):null,antes:vv?somar(a,x=>antes(x)*x.v)/vv:null}; });
+  /* Omie: OVs incluídas no período (a divisão vem do Controle de Pedidos pela OV, ou da família dos itens) */
+  const kov=x=>String(x||'').replace(/\D/g,'').replace(/^0+/,''), divOV=new Map();
+  (M.omie||[]).forEach(i=>{ const k=kov(i.ov); if(k&&(i.div==='SEQ'||i.div==='SPV')&&!divOV.has(k))divOV.set(k,i.div); });
+  (M.pedidos||[]).forEach(p=>{ const k=kov(p.ov); if(k&&(p.div==='SEQ'||p.div==='SPV'))divOV.set(k,p.div); });
+  const ov=(M.omieParcelas||[]).map(cpOmie).map(o=>Object.assign(o,{div:divOV.get(kov(o.ov))||'(n/d)',resp:vendedor(o.vend)}))
+    .filter(o=>o.inc&&noPer(o.inc)&&(!EST.div||o.div===EST.div)&&(!EST.vend||o.resp===EST.vend));
+  const vOV=somar(ov,o=>o.valor), ovAnt=ov.filter(o=>o.antec>0);
+  const nParc=[['1 parcela',o=>o.n===1],['2 parcelas',o=>o.n===2],['3 parcelas',o=>o.n===3],['4 a 6',o=>o.n>=4&&o.n<=6],['7 ou mais',o=>o.n>=7],['sem parcelas',o=>!o.n]].map(([k,f])=>{ const a=ov.filter(f); return {k,n:a.length,v:somar(a,o=>o.valor)}; }).filter(x=>x.n);
+  const prazos=['No faturamento (0 dia)','1 a 15 dias','16 a 30 dias','31 a 60 dias','61 a 90 dias','Mais de 90 dias','Sem prazo'].map(k=>{ const a=ov.filter(o=>cpFaixaPrazo(o.prazo)===k); return {k,n:a.length,v:somar(a,o=>o.valor)}; }).filter(x=>x.n);
+  return {neg,gan,per,ab,porTipo,cs,vG,sinalMed,antesMed,faixas,conds,vend,divs,ov,vOV,ovAnt,nParc,prazos,
+    prazoOV:vOV?Math.round(somar(ov.filter(o=>o.prazo!=null),o=>o.prazo*o.valor)/(somar(ov.filter(o=>o.prazo!=null),o=>o.valor)||1)):null,
+    semCond:gan.filter(x=>x.tipo==='Sem condição').length}; }
+function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)return '';
+  const per=(typeof PER!=='undefined'&&PER&&PER.rot)||'', pc=x=>x==null?'—':fmtPct(x,0), W=560, cor=k=>cssVar(CP_COR[k]||'--g4');
+  let h=sec('Condições de pagamento: como fechamos os pedidos',`Pedidos ganhos no período${per?' ('+esc(per)+')':''} pela condição negociada no Ploomes (base desde jul/2026), lida pelo texto: <b>sinal</b> = parte paga na emissão ou envio do pedido; <b>antecipação</b> = parte paga antes do faturamento por marcos (desenho técnico, APE, embarque, N dias do pedido); o resto é pago no faturamento ou depois. Ao lado, como as ordens de venda foram registradas no Omie (parcelas, prazo e parcelas que vencem antes do faturamento).`,'res-condpag');
+  const t0=Q.porTipo.find(x=>x.k==='Com sinal no pedido');
+  h+=`<div class="g g4 kpis-2">${cardG({rot:'Pedidos fechados com sinal',val:Q.gan.length?pc(Q.cs.length/Q.gan.length):'—',per,sub:`${fmtN(Q.cs.length)} de ${fmtN(Q.gan.length)} ganhos · ${fmtCompacto(somar(Q.cs,x=>x.v))} de ${fmtCompacto(Q.vG)}${Q.vG?` (${pc(somar(Q.cs,x=>x.v)/Q.vG)} do valor)`:''}`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Sinal médio',val:pc(Q.sinalMed),per:'nos pedidos com sinal',sub:`ponderado pelo valor · antes do faturamento (sinal + marcos): ${pc(Q.antesMed)} do valor ganho`,tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'Condição mais usada',val:Q.conds[0]?esc(Q.conds[0].tipo==='Prazo único (DDL)'&&Q.conds[0].prazo!=null?Q.conds[0].prazo+' DDL':Q.conds[0].tipo):'—',per,sub:Q.conds[0]?`${fmtN(Q.conds[0].n)} pedidos · ${esc(Q.conds[0].k.slice(0,60))}`:'—',tipo:'mov',fonte:'Ploomes'})}
+    ${cardG({rot:'OVs com parcela antes do faturamento',val:Q.ov.length?pc(Q.ovAnt.length/Q.ov.length):'—',per,sub:Q.ov.length?`${fmtN(Q.ovAnt.length)} de ${fmtN(Q.ov.length)} ordens de venda · prazo médio ${Q.prazoOV==null?'—':fmtN(Q.prazoOV)+' dias'} (ponderado)`:'sem a base de parcelas do Omie',tipo:'mov',fonte:'Omie'})}</div>`;
+  Q.porTipo.forEach((x,i)=>regLista('cp-t'+i,`Pedidos ganhos — ${x.k}`,x.g.slice().sort((a,b)=>b.v-a.v).map(z=>[fmtData(z.n.dtVenda),esc(String(z.n.cli).slice(0,40)),esc(z.div||''),esc(nomeCurto(z.n.resp)||''),esc(z.txt.slice(0,110)),z.sinal?pc(z.sinal):'—',fmtBRL(z.v)]),
+    [{t:'Data'},{t:'Cliente',f:1},{t:'Div.'},{t:'Vendedor'},{t:'Condição',f:1},{t:'Sinal',n:1},{t:'Valor',n:1}]));
+  const tipos=Q.porTipo.filter(x=>x.n||x.nAb);
+  h+=`<div class="dupla">${blocoGraf({id:'cp-tipo',tit:'Com que condição fechamos',perg:'Quantos pedidos saem com sinal, à vista, a prazo ou parcelados?',per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
+      corpo:svgBarrasH(tipos.map(x=>({rot:x.k,val:x.n,extra:fmtCompacto(x.v),cor:cor(x.k),k:x.n?'cp-t'+Q.porTipo.indexOf(x):null})),{W,lw:230,rw:120,fmt:fmtN,aria:'pedidos por tipo de condição'}),
+      tabela:{cols:['Condição','Ganhos','Valor ganho','Perdidos','Conversão','Abertos','Valor aberto'],linhas:tipos.map(x=>[x.k,x.n,fmtBRL(x.v),x.nPer,pc(x.win),x.nAb,fmtBRL(x.vAb)])},
+      nota:'clique numa barra para ver os pedidos; a tabela traz perdidos, conversão e o pipeline aberto por condição'})}
+    ${blocoGraf({id:'cp-sinal',tit:'Tamanho do sinal',perg:'Quando há sinal, de quanto é?',per,unid:'pedidos ganhos',fonte:'Ploomes',
+      corpo:svgBarrasH(Q.faixas.map(x=>({rot:x.k,val:x.n,extra:`${fmtCompacto(x.v)} · SEQ ${x.seq} · SPV ${x.spv}`,cor:x.k==='Sem sinal'?cssVar('--txt3'):cssVar('--g1')})),{W,lw:120,rw:200,fmt:fmtN}),
+      tabela:{cols:['Sinal','Pedidos','Valor','SEQ','SPV'],linhas:Q.faixas.map(x=>[x.k,x.n,fmtBRL(x.v),x.seq,x.spv])},
+      nota:Q.divs.map(d=>`${d.k}: ${fmtN(d.nS)} de ${fmtN(d.n)} com sinal, sinal médio ${pc(d.sMed)}, ${pc(d.antes)} do valor antes do faturamento`).join(' · ')})}</div>`;
+  if(Q.ov.length){ regLista('cp-ov','Ordens de venda com parcela antes do faturamento',Q.ovAnt.slice().sort((a,b)=>b.valor-a.valor).map(o=>[esc(o.ov),fmtData(o.inc),esc(String(o.cli).slice(0,40)),esc(o.div),esc(nomeCurto(o.resp)||o.vend||''),pc(o.antec),esc(o.ps.map(p=>`${fmtPct(p.p,0)} ${p.v?fmtData(p.v):p.d+'d'}`).join(' · ').slice(0,120)),fmtBRL(o.valor)]),
+      [{t:'OV'},{t:'Incluída'},{t:'Cliente',f:1},{t:'Div.'},{t:'Vendedor'},{t:'Antes do fat.',n:1},{t:'Parcelas',f:1},{t:'Valor',n:1}]);
+    h+=`<div class="dupla">${blocoGraf({id:'cp-ovparc',tit:'Como as OVs foram registradas',perg:'Em quantas parcelas o Omie cobra?',per,unid:'ordens de venda',fonte:'Omie (parcelas das OVs)',
+        corpo:svgBarrasH(Q.nParc.map(x=>({rot:x.k,val:x.n,extra:fmtPct(x.n/Q.ov.length,0)})),{W,lw:120,rw:120,fmt:fmtN,cor:cssVar('--g4')}),tabela:{cols:['Parcelas','OVs','Valor no Omie'],linhas:Q.nParc.map(x=>[x.k,x.n,fmtBRL(x.v)])},
+        nota:`<a class="td-link" onclick="abrirLista('cp-ov')">${fmtN(Q.ovAnt.length)} OVs com parcela antes do faturamento</a>`})}
+      ${blocoGraf({id:'cp-ovprazo',tit:'Prazo médio das OVs',perg:'Em quantos dias recebemos?',per,unid:'ordens de venda',fonte:'Omie (dias das parcelas, ponderados pelo %)',
+        corpo:svgBarrasH(Q.prazos.map(x=>({rot:x.k,val:x.n,extra:fmtPct(x.n/Q.ov.length,0)})),{W,lw:170,rw:120,fmt:fmtN,cor:cssVar('--g4')}),tabela:{cols:['Prazo médio','OVs','Valor no Omie'],linhas:Q.prazos.map(x=>[x.k,x.n,fmtBRL(x.v)])},nota:'contagem de OVs: o valor no Omie pode repetir a mesma venda em mais de uma OV'})}</div>`; }
+  h+=`<div class="card"><h4>Condições mais usadas nos pedidos ganhos</h4>${tab([{t:'Condição'},{t:'Tipo'},{t:'Pedidos',n:1},{t:'Valor',n:1},{t:'Sinal',n:1}],
+      Q.conds.slice(0,15).map(x=>[esc(x.k.slice(0,90)),esc(x.tipo),fmtN(x.n),fmtBRL(x.v),x.sinal?pc(x.sinal):'—']),360)}</div>
+    <div class="card"><h4>Por vendedor</h4>${tab([{t:'Vendedor'},{t:'Ganhos',n:1},{t:'Com sinal',n:1},{t:'Sinal médio',n:1},{t:'Antes do fat.',n:1},{t:'Prazo médio',n:1}],
+      Q.vend.map(x=>[esc(nomeCurto(x.k)||x.k),`${fmtN(x.n)} · ${fmtCompacto(x.v)}`,`${fmtN(x.nS)} (${pc(x.n?x.nS/x.n:null)})`,pc(x.sMed),pc(x.antes),x.prazo==null?'—':fmtN(x.prazo)+' d']),360)}
+      <div class="nota">Antes do faturamento = sinal + marcos, ponderado pelo valor. Prazo médio = dias depois do faturamento, média simples das condições a prazo.${Q.semCond?` ${fmtN(Q.semCond)} ganhos sem condição preenchida no Ploomes.`:''}</div></div>`;
+  return h; }
 /* ---------- valor do negócio aberto pela proposta atual ----------
    O Ploomes usa como valor do negócio a ÚLTIMA proposta vinculada a ele — se um
    adicional de serviço (teste em fábrica, start-up…) é criado depois da proposta
@@ -10562,7 +10666,7 @@ function secDesfechos(){ const L=CFG.desfechos||[];
 /* ---------- composição com as telas existentes ---------- */
 { const _pipe=VISTA.pipeline, _res=VISTA.resultados, _des=VISTA.desempenho, _cons=construir;
   VISTA.pipeline=function(){ return secPipelineAnalitico()+secCompromissos()+secInspecao()+sec('Posição do pipeline','Retrato na data de referência: valor, horizonte, política de probabilidade e qualidade das informações.','pipe-pos')+_pipe(); };
-  VISTA.resultados=function(){ return secBulletMeta()+secIndicadoresPeriodo()+_res()+secSpv()+secSpvVolume()+secSeq(); };
+  VISTA.resultados=function(){ return secBulletMeta()+secIndicadoresPeriodo()+_res()+secSpv()+secSpvVolume()+secSeq()+secCondPag(); };
   { const _eng=VISTA.engenharia; VISTA.engenharia=function(){ const f=F.neg.filter(naFilaOrc); return sec('Fila de cotação','Tempo de espera por analista. Detalhe por analista na ficha (Vendedores → Engenharia de aplicação).','eng-fila')+(f.length?blocoGrafFila(f,refNegocios(),num(CFG.slaCot)||7):card('','','<p class="pl-vazio">Fila vazia.</p>'))+_eng(); }; }
   VISTA.desempenho=function(){ const v=EST.vend||EST.ficha||'', vs=vendedoresAtivos(), an=analistasAtivos();
     let h=`<div class="exec-cab so-tela"><span>Ficha individual: <select class="campo" onchange="EST.fichaTipo=this.value.startsWith('eng:')?'eng':'';EST.ficha=this.value.replace(/^eng:/,'');render()"><option value="">— escolha a pessoa —</option><optgroup label="Vendedores">${vs.map(x=>`<option value="${esc(x)}"${x===v&&EST.fichaTipo!=='eng'?' selected':''}>${esc(x)}</option>`).join('')}</optgroup><optgroup label="Engenharia de aplicação">${an.map(x=>`<option value="eng:${esc(x)}"${x===v&&EST.fichaTipo==='eng'?' selected':''}>${esc(x)}</option>`).join('')}</optgroup></select></span>
@@ -11077,7 +11181,7 @@ const HTML_ORIG=document.documentElement.outerHTML;
 const NOMES_BASE={negocios:'Negócios (CRM)',propostas:'Propostas — itens',propCab:'Propostas — cabeçalho',interacoes:'Interações',
   empresas:'Empresas',historico:'Histórico OMIE',pedidos:'Controle de Pedidos',
   omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)',motoresCat:'Motores padronizados (catálogo técnico)',
-  omieProdutos:'Omie — cadastro de produtos',omieFiscal:'Omie — impostos dos itens',omieAnexos:'Omie — documentos anexados'};
+  omieProdutos:'Omie — cadastro de produtos',omieFiscal:'Omie — impostos dos itens',omieAnexos:'Omie — documentos anexados',omieParcelas:'Omie — condições de pagamento das OVs'};
 
 function abrirModal(id){ document.getElementById(id).classList.add('aberto');
   if(id==='m-dados')listarBases(); if(id==='m-cfg')montarCfg(); if(id==='m-glos')montarGlossario(); }
@@ -11425,7 +11529,7 @@ const GLOS=[
  ['Diferença de conciliação','Planilha oficial − soma dos pedidos identificados, nos meses fechados. Aparece em linha própria; não é distribuída entre vendedores, clientes ou produtos.'],
  ['Propostas emitidas','Documento enviado ao cliente: uma linha por código de proposta (última revisão), só no Ploomes (desde jul/2026). Não é pedido nem oportunidade.'],
  ['Oportunidade em aberto (pipeline)','Negócio aberto no Ploomes: posição de carteira no último export — não é recortado pelo período. Pipeline bruto = soma do valor integral.'],
- ['Valor ponderado','Valor integral × probabilidade da política única (classificação do negócio: aprovado 100%, em negociação 60%, obra em compra 50%, em disputa 25%, estudo/projeto 10%, não classificado 20%). Probabilidades convencionais, não estatística histórica.'],
+ ['Valor ponderado','Valor integral × probabilidade da política única (classificação do negócio: aprovado 100%, em negociação 20%, obra em compra 50%, em disputa 25%, estudo/projeto 10%, não classificado 20%). Probabilidades convencionais, não estatística histórica.'],
  ['Previsão de pedidos','Negócios com previsão de fechamento dentro do horizonte escolhido (a partir da data de referência), ponderados; só entram as classes "Alta confiança — aguardando pedido" e "Provável". Sem data ou com data vencida fica fora.'],
  ['Alta confiança — aguardando pedido','Negócio aprovado, aguardando a PO do cliente. Entra pelo valor cheio (100%). Era chamado "Garantido".'],
  ['Saldo a faturar','Com a Carteira de faturamento carregada: valor do pedido − já faturado (oficial). Sem ela: valor INTEGRAL dos pedidos do Controle não faturados — não é saldo financeiro confirmado.'],

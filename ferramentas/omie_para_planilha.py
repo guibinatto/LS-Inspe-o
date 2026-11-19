@@ -9,6 +9,7 @@ a planilha como a base "Omie — itens de venda" sem nenhuma mudança no painel.
 Na mesma pasta grava também, para as verificações de cadastro do painel:
   API-Omie_Produtos.xlsx  uma linha por produto do cadastro (inclusive inativos)
   API-Omie_Fiscal.xlsx    uma linha por item de OV não cancelada, com NCM, CFOP e CSTs
+  API-Omie_Parcelas.xlsx  uma linha por OV não cancelada, com a condição e as parcelas (% , dias, vencimento)
 
 Pedidos cancelados ficam de fora. Não chama a API: só lê os arquivos da coleta.
 A planilha tem dados de clientes: grave-a só em pasta fora do git (omie-coleta/ está no .gitignore).
@@ -37,6 +38,9 @@ CAB_PRODUTOS = [
     'Alterado por', 'Vendido (OVs)',
 ]
 # anexos das vendas, contratos e OS (só os nomes dos arquivos): planilha "API-Omie_Anexos.xlsx"
+# condição de pagamento de cada OV: planilha "API-Omie_Parcelas.xlsx" (estudo de condições de pagamento)
+CAB_PARCELAS = ['OV (parcelas)', 'Cliente (Nome Fantasia)', 'Vendedor', 'Data de Inclusão', 'Previsão de Faturamento', 'Situação',
+                'Valor do Pedido', 'Condição de Pagamento (código)', 'Número de Parcelas', 'Parcelas do Pedido']
 CAB_ANEXOS = ['Tabela do Anexo', 'Número do Documento', 'Cliente (Nome Fantasia)', 'Arquivo Anexado', 'Tipo do Arquivo', 'Data do Anexo']
 TABELA_ANEXO = {'pedido-venda': 'Pedido de venda', 'contrato-servico': 'Contrato de serviço', 'ordem-servico': 'Ordem de serviço'}
 CAB_FISCAL = [
@@ -122,7 +126,7 @@ def montar(pasta, hoje=None):
             continue
         nf_do_pedido[ped] = txt(ide.get('nNF'))
 
-    linhas, fiscal, cancelados = [], [], 0
+    linhas, fiscal, parcelas, cancelados = [], [], [], 0
     ovs_do_produto = {}
     for p in pedidos:
         cab, info = p.get('cabecalho') or {}, p.get('infoCadastro') or {}
@@ -150,6 +154,11 @@ def montar(pasta, hoje=None):
         vendedor = vendedores.get(adic.get('codVend'), '')
         cliente = txt(cli.get('nome_fantasia')) or txt(cli.get('razao_social'))
         agente = caracteristica(cli, 'Agente de Negocio')
+        # parcelas: "percentual|dias|vencimento" separadas por "; "
+        lp = (p.get('lista_parcelas') or {}).get('parcela') or []
+        parcelas.append([txt(cab.get('numero_pedido')), cliente, vendedor, txt(info.get('dInc')), txt(cab.get('data_previsao')), situacao,
+                         (p.get('total_pedido') or {}).get('valor_total_pedido'), txt(cab.get('codigo_parcela')), cab.get('qtde_parcelas'),
+                         '; '.join(f"{x.get('percentual')}|{x.get('quantidade_dias')}|{txt(x.get('data_vencimento'))}" for x in lp)])
         for i, det in enumerate(p.get('det') or [], 1):
             prod, ia = det.get('produto') or {}, det.get('inf_adic') or {}
             cad = produtos.get(prod.get('codigo_produto')) or {}
@@ -250,7 +259,7 @@ def montar(pasta, hoje=None):
     anexos = [[TABELA_ANEXO.get(a.get('tabela'), a.get('tabela')), txt(a.get('numero')),
                txt((clientes.get(a.get('codigo_cliente')) or {}).get('nome_fantasia')) or txt((clientes.get(a.get('codigo_cliente')) or {}).get('razao_social')),
                txt(a.get('arquivo')), txt(a.get('tipo')), txt(a.get('data'))] for a in ler(pasta, 'anexos', False)]
-    return {'itens': linhas, 'produtos': prods, 'fiscal': fiscal, 'anexos': anexos}, len(pedidos), cancelados
+    return {'itens': linhas, 'produtos': prods, 'fiscal': fiscal, 'anexos': anexos, 'parcelas': parcelas}, len(pedidos), cancelados
 
 
 def gravar(linhas, saida, cabecalhos=CABECALHOS, aba='Itens de venda'):
@@ -273,8 +282,8 @@ def main():
     base = re.sub(r'Itens(\.xlsx)?$', '', saida[:-5] if saida.lower().endswith('.xlsx') else saida)
     if base == (saida[:-5] if saida.lower().endswith('.xlsx') else saida):
         base += '_'
-    for nome, cab, aba in (('Produtos', CAB_PRODUTOS, 'Produtos'), ('Fiscal', CAB_FISCAL, 'Itens fiscais'), ('Anexos', CAB_ANEXOS, 'Anexos')):
-        if nome == 'Anexos' and not t['anexos']:
+    for nome, cab, aba in (('Produtos', CAB_PRODUTOS, 'Produtos'), ('Fiscal', CAB_FISCAL, 'Itens fiscais'), ('Anexos', CAB_ANEXOS, 'Anexos'), ('Parcelas', CAB_PARCELAS, 'Parcelas')):
+        if nome in ('Anexos', 'Parcelas') and not t[nome.lower()]:
             continue
         arq = f'{base}{nome}.xlsx'
         gravar(t[nome.lower()], arq, cab, aba)
