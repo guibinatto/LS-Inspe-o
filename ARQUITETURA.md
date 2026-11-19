@@ -356,3 +356,15 @@ Tempo medido em 19/11/2026: coleta de 16 min → 4,2 min; script inteiro em 4,6 
 - **Clientes no cadastro**: cadastros (ativos + inativos) na tabela e no gráfico.
 - **Sem próximo passo** (`agendaDisp`, `semProximoPasso`): indisponível sem atividades agendadas no export.
 Teste: `testes/inconsistencias-v3.js`; relatório para revisão: `testes/relatorio-anual.js`.
+
+## Planilhas do Financeiro (e-mail semanal da Catia)
+
+O e-mail "Relatórios de pedidos e faturamentos" traz Carteira de Faturamento, Faturamento Mensal e
+Comparativo de Pedidos e Faturamento. A tarefa agendada "Planilhas do Financeiro no painel" (sextas à
+tarde, com o conector do Microsoft 365) lê o e-mail mais recente da Catia, grava o TEXTO de cada anexo
+(o conector não baixa o .xlsx) e roda:
+- `ferramentas/financeiro_planilhas.py <pasta>`: remonta as três planilhas no layout original e confere a
+  transcrição (soma das notas = TOTAL, meses = TOTAL, faturado da carteira = TOTAIS); para com FALHA se não bater;
+- `ferramentas/importar_arquivos.js <painel> <saída> --financeiro AAAA-MM-DD arquivos`: importa pelo
+  importador do painel; se o painel já tem planilhas dessa data, "SEM NOVIDADE" (código 3).
+As notas fiscais se juntam mês a mês (colunas vazias no fim do arquivo não impedem mais a junção).

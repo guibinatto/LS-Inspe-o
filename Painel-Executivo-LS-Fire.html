@@ -11554,9 +11554,12 @@ function receber(files){
       const antes=(BRUTO[base]&&BRUTO[base].rows)?BRUTO[base].rows.length:0;
       /* notas fiscais vêm um mês por arquivo: junta com as anteriores, sem repetir
          a mesma nota (nº + série) — a mais recente prevalece */
-      if(base==='notas'&&BRUTO.notas&&BRUTO.notas.cols&&BRUTO.notas.cols.join('|')===cols.join('|')){
+      /* colunas vazias no fim (o Excel às vezes guarda 2 a mais) não impedem juntar os meses */
+      const semVazias=c=>{ const a=c.slice(); while(a.length&&!String(a[a.length-1]??'').trim())a.pop(); return a; };
+      if(base==='notas'&&BRUTO.notas&&BRUTO.notas.cols&&semVazias(BRUTO.notas.cols).join('|')===semVazias(cols).join('|')){
+        const nc=semVazias(cols).length; cols=cols.slice(0,nc); rows=rows.map(r=>r.slice(0,nc));
         const ki=mapear(cols,'notas'), k=r=>String(r[ki.nf])+'|'+String(r[ki.serie]);
-        const novos=new Set(rows.map(k)); rows=BRUTO.notas.rows.filter(r=>!novos.has(k(r))).concat(rows); }
+        const novos=new Set(rows.map(k)); rows=BRUTO.notas.rows.map(r=>r.slice(0,nc)).filter(r=>!novos.has(k(r))).concat(rows); }
       BRUTO[base]={cols,rows};
       /* guarda quando e de qual arquivo veio — vai junto no Salvar */
       BRUTO._meta=Object.assign({},BRUTO._meta); BRUTO._meta.imp=Object.assign({},BRUTO._meta.imp,{[base]:{em:new Date().toISOString(),arq:f.name,linhas:rows.length}});
