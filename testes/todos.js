@@ -15,7 +15,7 @@ if (fs.existsSync(path.join(D, 'painel-dados.json')))
 const sep = path.join(D, 'versao-separada');
 const PLANO = [
   ['regras-criticas', BASE], ['totais', BASE], ['central', BASE], ['contratos', BASE], ['graficos-interface', BASE],
-  ['apresentacao', COMPLETO], ['produtos', COMPLETO], ['verificacoes', COMPLETO], ['gestao-contratos', COMPLETO], ['capa', COMPLETO], ['periodos', COMPLETO], ['clica-tudo', COMPLETO],
+  ['apresentacao', COMPLETO], ['produtos', COMPLETO], ['verificacoes', COMPLETO], ['gestao-contratos', COMPLETO], ['futuro', COMPLETO], ['capa', COMPLETO], ['periodos', COMPLETO], ['clica-tudo', COMPLETO],
   ['versao-separada', COMPLETO, sep]];
 /* falha = código de saída ≠ 0, ou linhas "FALHA", "✗", "N/M verificações" com N<M,
    "ERROS (n>0)" ou "ERROS JS:" diferente de "nenhum" */

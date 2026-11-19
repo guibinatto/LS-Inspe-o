@@ -89,7 +89,7 @@ const ok = [], falhas = []; const t = (c, m) => (c ? ok : falhas).push(m);
         const off = [...document.querySelectorAll('.relc-sec')].filter(c => !c.checked).map(c => c.value); await relcGerar();
         const v = document.querySelector('#rel-view'), pg = [...v.querySelectorAll('.rel-pag')], txt = v.innerText;
         R.push({ k: m.k, ok: txt.includes('Relatório — ' + m.nome) && txt.includes('1. ' + m.nome), fora: pg.filter(x => x.scrollWidth > x.clientWidth + 2 || x.scrollHeight > x.clientHeight + 2).length, n: pg.length, off }); fecharRelatorio(); } return R; });
-    t(tm.length === 9 && tm.every(r => r.ok && !r.fora), `9 relatórios por tema com título e capítulo do tema, sem nada fora da margem (${tm.map(r => r.k + ' ' + r.n + 'p' + (r.ok ? '' : ' SEM TÍTULO') + (r.fora ? ' ' + r.fora + ' FORA' : '')).join(', ')})`);
+    t(tm.length === 10 && tm.every(r => r.ok && !r.fora), `10 relatórios por tema com título e capítulo do tema, sem nada fora da margem (${tm.map(r => r.k + ' ' + r.n + 'p' + (r.ok ? '' : ' SEM TÍTULO') + (r.fora ? ' ' + r.fora + ' FORA' : '')).join(', ')})`);
     t(JSON.stringify(tm.find(r => r.k === 'tPIP').off) === '["pipe-insp"]', 'Pipeline: inspeção das oportunidades (33 páginas) vem desmarcada por padrão');
   } else { const tx = await p.evaluate(() => document.getElementById('tela').innerText); t(/nenhuma base de contratos/i.test(tx) || (tela.kpis === 8 && /base incompleta/i.test(tx)), 'sem OS: a tela explica o que falta importar'); }
   /* celular */

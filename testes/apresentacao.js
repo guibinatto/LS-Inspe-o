@@ -12,7 +12,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
   const fr = p.frameLocator('#apres-fr');
   const r = await p.evaluate(() => { const X = indicadoresPeriodo(PER); return { ped: fmtCompacto(X.ped), n: fmtN(X.nPed), renders: 0, srcdoc: document.getElementById('apres-fr').srcdoc.length }; });
   const nSec = await fr.locator('section[id]').count(), h1 = await fr.locator('#resultado .dest').innerText();
-  t(r.srcdoc > 1000 && nSec === 16, `prévia na aba (modelo Anual): 16 capítulos, com follow-up, previsão de vendas e o olhar da SEQ (${nSec})`);
+  t(r.srcdoc > 1000 && nSec === 18, `prévia na aba (modelo Anual): 18 capítulos, com follow-up, previsão de vendas, o olhar da SEQ, anos anteriores e contratos em execução (${nSec})`);
   t(h1.includes(r.ped) && h1.includes(r.n + ' pedidos'), `capítulo Resultado com os números do motor (${r.ped}, ${r.n} pedidos)`);
   /* não entra em ciclo de redesenho: o HTML fica estável */
   const estavel = await p.evaluate(async () => { let n = 0; const orig = apresentacaoHTML; window.apresentacaoHTML = function () { n++; return orig.apply(this, arguments); }; await new Promise(r => setTimeout(r, 1500)); window.apresentacaoHTML = orig; return n; });
@@ -29,7 +29,7 @@ const src = path.resolve(process.argv[2]); const ok = [], falhas = []; const t =
       const secs = [...d.querySelectorAll('section[id]')].map(s => s.id).filter(x => x !== 'capa' && x !== 'metodo');
       R.push({ k: m.k, ok: JSON.stringify(secs) === JSON.stringify(APRES_CAPS.map(c => c[0]).filter(c => m.caps.includes(c))), intacto: antes === JSON.stringify([EST.ano, EST.per, PER.rot]), sub: d.querySelector('.capa-sub').textContent, prev: (d.querySelector('#previsao .big') || {}).textContent === prevPainel }); }
     APRES.modelo = 'anual'; return R; });
-  t(mods.length === 6 && mods.every(m => m.ok), 'seis tipos (anual, trimestral, mensal, semanal, previsões, personalizada) com os capítulos de cada um');
+  t(mods.length === 7 && mods.every(m => m.ok), 'sete tipos (anual, trimestral, mensal, semanal, previsões, personalizada, para onde vamos) com os capítulos de cada um');
   t(mods.every(m => m.intacto), 'gerar qualquer tipo não muda o período do painel');
   t(new Set(mods.map(m => m.sub.split(' · ')[0])).size >= 5, 'cada tipo usa o próprio período: ' + mods.map(m => m.k + '=' + m.sub.split(' · ')[0]).join('; '));
   t(mods.every(m => m.prev), 'previsão de vendas igual à do painel em todos os tipos');

@@ -260,3 +260,18 @@ Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`),
   Gestão e os negócios SPV abertos no Ploomes. KPIs: base, com contrato (cobertura), oportunidades,
   potencial anual estimado (oportunidades × mediana anual dos contratos ativos), completam 1 ano em
   90 dias. Andamento de cada oportunidade em `baseOport/<cliente>`. Alerta na Central de supervisão.
+
+## Duas visões: Como estamos × Para onde vamos (19/11/2026)
+- Aba Apresentação abre com dois cartões: **Como estamos** (Anual, Trimestral, Mensal, Semanal,
+  Personalizada — com os capítulos novos *Anos anteriores* e *Contratos em execução*) e **Para onde
+  vamos** (modelo `futuro` e Previsões curta): cenários do ano, pipeline, previsão, contratos, base
+  instalada, o que os estudos apontam e rotas.
+- `futuroDados()`: cenários (ritmo = mesma conta da tela Resultados; realizado + previsão ponderada
+  até dezembro; se tudo que está elegível fechar), anos anteriores, estudos (famílias, estados,
+  segmentos, curva A), base instalada e **rotas** — regras sobre os indicadores do painel, cada uma
+  com número, porquê, ação, quem e valor em jogo (sem fator de conversão inventado); a meta vem
+  primeiro quando falta. `rotaPlano(i)` leva a rota para o plano de ação.
+- Tela Gestão → Base instalada e oportunidades traz também cenários e rotas; relatório por tema
+  "Base instalada e oportunidades" (tOPO).
+- `ferramentas/publicaveis.js` gera também `apresentacao-futuro-ls-fire.html`.
+- Teste: `testes/futuro.js`.
