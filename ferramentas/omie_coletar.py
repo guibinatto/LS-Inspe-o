@@ -37,6 +37,9 @@ PERMITIDOS = {
     'categorias':    ('geral/categorias/',    'ListarCategorias',        'categoria_cadastro', 500, {}),
     'etapas':        ('produtos/etapafat/',   'ListarEtapasFaturamento', 'cadastros',          100, {}),
     'familias':      ('geral/familias/',      'PesquisarFamilias',       'famCadastro',        500, {}),
+    # anexos (só os nomes dos arquivos) das vendas, contratos e OS: uma consulta por documento,
+    # depois de coletados pedidos, contratos e os — ver coletar_anexos()
+    'anexos':        ('geral/anexo/',         'ListarAnexo',             'listaAnexos',        50,  {}),
 }
 METODOS_OK = {m for _, m, _, _, _ in PERMITIDOS.values()}
 PREFIXOS_CONSULTA = ('Listar', 'Consultar', 'Pesquisar')
@@ -100,6 +103,47 @@ def coletar_base(nome):
     return regs
 
 
+def coletar_anexos(pasta, meses=36):
+    """Lista os anexos (nome, tipo, data) de cada venda, contrato e OS já coletados na pasta.
+    Só consulta (ListarAnexo); vendas canceladas e mais antigas que `meses` ficam de fora."""
+    import datetime as _dt
+    lim = _dt.date.today() - _dt.timedelta(days=30 * meses)
+    def ler(nome):
+        arq = os.path.join(pasta, f'omie-{nome}.json')
+        return json.load(open(arq, encoding='utf-8')) if os.path.exists(arq) else []
+    def data(s):
+        try:
+            return _dt.datetime.strptime((s or '').strip(), '%d/%m/%Y').date()
+        except ValueError:
+            return None
+    alvos = []
+    for p in ler('pedidos'):
+        cab, inf = p.get('cabecalho') or {}, p.get('infoCadastro') or {}
+        d = data(inf.get('dInc'))
+        if (inf.get('cancelado') or '') == 'S' or (d and d < lim):
+            continue
+        alvos.append(('pedido-venda', cab.get('codigo_pedido'), cab.get('numero_pedido'), cab.get('codigo_cliente')))
+    for c in ler('contratos'):
+        cab = c.get('cabecalho') or {}
+        alvos.append(('contrato-servico', cab.get('nCodCtr'), cab.get('cNumCtr'), cab.get('nCodCli')))
+    for o in ler('os'):
+        cab = o.get('Cabecalho') or {}
+        alvos.append(('ordem-servico', cab.get('nCodOS'), cab.get('cNumOS'), cab.get('nCodCli')))
+    regs = []
+    for i, (tab, nid, num, cli) in enumerate(alvos, 1):
+        if not nid:
+            continue
+        r = chamar('geral/anexo/', 'ListarAnexo', {'cTabela': tab, 'nId': nid, 'nPagina': 1, 'nRegPorPagina': 50})
+        for a in r.get('listaAnexos') or []:
+            regs.append({'tabela': tab, 'nId': nid, 'numero': num, 'codigo_cliente': cli, 'arquivo': a.get('cNomeArquivo'),
+                         'tipo': a.get('cTipoArquivo'), 'data': a.get('dInclusao') or a.get('dInc') or ''})
+        if i % 50 == 0:
+            print(f'  anexos: {i}/{len(alvos)} documentos consultados · {len(regs)} anexos', flush=True)
+        time.sleep(0.3)
+    print(f'  anexos: {len(alvos)} documentos consultados · {len(regs)} anexos', flush=True)
+    return regs
+
+
 def main():
     cmd = sys.argv[1] if len(sys.argv) > 1 else ''
     if cmd == 'testar':
@@ -113,7 +157,7 @@ def main():
         for nome in quais:
             if nome not in PERMITIDOS:
                 sys.exit(f'base desconhecida: {nome} (use: {", ".join(PERMITIDOS)})')
-            regs = coletar_base(nome)
+            regs = coletar_anexos(pasta) if nome == 'anexos' else coletar_base(nome)
             with open(os.path.join(pasta, f'omie-{nome}.json'), 'w', encoding='utf-8') as f:
                 json.dump(regs, f, ensure_ascii=False)
             resumo[nome] = len(regs)

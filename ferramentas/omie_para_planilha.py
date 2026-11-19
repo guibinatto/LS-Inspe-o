@@ -36,6 +36,9 @@ CAB_PRODUTOS = [
     'Origem da Mercadoria', 'CEST', 'Inativo', 'Data de Inclusão', 'Data de Alteração', 'Incluído por',
     'Alterado por', 'Vendido (OVs)',
 ]
+# anexos das vendas, contratos e OS (só os nomes dos arquivos): planilha "API-Omie_Anexos.xlsx"
+CAB_ANEXOS = ['Tabela do Anexo', 'Número do Documento', 'Cliente (Nome Fantasia)', 'Arquivo Anexado', 'Tipo do Arquivo', 'Data do Anexo']
+TABELA_ANEXO = {'pedido-venda': 'Pedido de venda', 'contrato-servico': 'Contrato de serviço', 'ordem-servico': 'Ordem de serviço'}
 CAB_FISCAL = [
     'OV (fiscal)', 'Item', 'Código do Produto (cadastro)', 'Descrição do Produto', 'NCM do Item', 'NCM do Cadastro',
     'CFOP', 'CST/CSOSN ICMS', 'Alíquota ICMS', 'CST IPI', 'Alíquota IPI', 'CST PIS', 'CST COFINS',
@@ -244,7 +247,10 @@ def montar(pasta, hoje=None):
             'Alterado por': txt(info.get('uAlt')),
             'Vendido (OVs)': len(ovs_do_produto.get(cad.get('codigo_produto'), ())),
         }.get(c) for c in CAB_PRODUTOS])
-    return {'itens': linhas, 'produtos': prods, 'fiscal': fiscal}, len(pedidos), cancelados
+    anexos = [[TABELA_ANEXO.get(a.get('tabela'), a.get('tabela')), txt(a.get('numero')),
+               txt((clientes.get(a.get('codigo_cliente')) or {}).get('nome_fantasia')) or txt((clientes.get(a.get('codigo_cliente')) or {}).get('razao_social')),
+               txt(a.get('arquivo')), txt(a.get('tipo')), txt(a.get('data'))] for a in ler(pasta, 'anexos', False)]
+    return {'itens': linhas, 'produtos': prods, 'fiscal': fiscal, 'anexos': anexos}, len(pedidos), cancelados
 
 
 def gravar(linhas, saida, cabecalhos=CABECALHOS, aba='Itens de venda'):
@@ -267,7 +273,9 @@ def main():
     base = re.sub(r'Itens(\.xlsx)?$', '', saida[:-5] if saida.lower().endswith('.xlsx') else saida)
     if base == (saida[:-5] if saida.lower().endswith('.xlsx') else saida):
         base += '_'
-    for nome, cab, aba in (('Produtos', CAB_PRODUTOS, 'Produtos'), ('Fiscal', CAB_FISCAL, 'Itens fiscais')):
+    for nome, cab, aba in (('Produtos', CAB_PRODUTOS, 'Produtos'), ('Fiscal', CAB_FISCAL, 'Itens fiscais'), ('Anexos', CAB_ANEXOS, 'Anexos')):
+        if nome == 'Anexos' and not t['anexos']:
+            continue
         arq = f'{base}{nome}.xlsx'
         gravar(t[nome.lower()], arq, cab, aba)
         print(f'ok: {len(t[nome.lower()])} linhas -> {arq}')

@@ -450,6 +450,13 @@ mark{background:rgba(242,92,5,.22);color:inherit;border-radius:3px;padding:0 1px
 .gc-t td{padding:5px 0;border-bottom:1px solid var(--linha);overflow-wrap:anywhere}
 .gc-src{font-size:10px;color:var(--txt3);border:1px solid var(--linha);border-radius:99px;padding:0 6px;white-space:nowrap}
 .gc-abas small{margin-left:6px;font-size:10px;opacity:.8;font-weight:400}
+.rot{display:grid;gap:14px;font-size:13.5px;line-height:1.55}.rot h4{margin:0 0 6px;font-size:14px;color:var(--lar-txt,#B34700)}
+.rot-cli{border:1px solid var(--linha,#ddd);border-left:5px solid var(--lar,#FF6600);border-radius:8px;padding:10px 12px;background:var(--card2,#fafafa)}
+.rot-l{margin:0;padding-left:20px;display:grid;gap:6px}.rot-l small{color:var(--txt3,#666)}
+.rot-fala{border-left:4px solid var(--lar,#FF6600);padding:6px 12px;margin:0;font-size:14.5px;background:var(--card2,#fff6ef)}
+.rot-dica{color:var(--txt3,#666);font-size:12.5px;margin:6px 0 0}.rot-caso{border:1px solid var(--linha,#ddd);border-radius:8px;padding:10px 12px;margin-bottom:8px}.rot-caso p{margin:4px 0}
+.rot-obj details{border:1px solid var(--linha,#ddd);border-radius:8px;padding:8px 12px;margin-bottom:6px}.rot-obj summary{cursor:pointer;font-weight:700}.rot-obj p{margin:6px 0}
+.rot-mail{border:1px dashed var(--linha,#ccc);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:13px}
 .apres-visoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:0 0 14px}
 .apres-v{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:4px;padding:16px 18px;border:2px solid var(--linha);border-radius:12px;background:var(--card)}
 .apres-v b{font-size:17px}.apres-v span{font-size:12px;color:var(--txt3);line-height:1.4}.apres-v:hover{border-color:var(--lar)}
@@ -1453,6 +1460,8 @@ const CAMPOS={
   cfop:['cfop'],cstIcms:['cst csosn icms'],aliqIcms:['aliquota icms'],cstIpi:['cst ipi'],aliqIpi:['aliquota ipi'],cstPis:['cst pis'],cstCofins:['cst cofins'],
   categoria:['categoria do item'],tipoItem:['tipo do item'],vendedor:['vendedor'],agente:['agente de negocio'],cliente:['cliente nome fantasia'],
   ufCliente:['uf do cliente'],dtInc:['data de inclusao'],situacao:['situacao'],incluidoPor:['incluido por ov'],valor:['valor do item']},
+ /* anexos (nomes dos arquivos) das vendas, contratos e OS do Omie */
+ omieAnexos:{tabela:['tabela do anexo'],numero:['numero do documento'],cliente:['cliente nome fantasia'],arquivo:['arquivo anexado'],tipo:['tipo do arquivo'],data:['data do anexo']},
  negocios:{id:['id'],codProposta:['codigo da proposta','cod proposta','codigo proposta','proposta'],
   cliente:['cliente','cliente do negocio','nome do cliente'],titulo:['titulo','titulo do negocio','nome do negocio'],
   statusObra:['status da obra','status obra','tipo de obra'],marcadores:['marcadores','marcador','tags','etiquetas'],
@@ -1476,7 +1485,7 @@ const CAMPOS={
   comissao:['comissao vendedor %','comissao vendedor','comissao','% comissao'],
   vendaGanha:['venda ganha','ganho','negocio ganho'],motivoPerda:['motivo de perda','motivo da perda','motivo perda'],
   segmento:['segmento','vertical','ramo','setor'],
-  origem:['origem','origem do negocio','canal de origem','fonte do lead']},
+  origem:['origem','origem do negocio','canal de origem','fonte do lead'],anexos:['anexos do negocio']},
  propostas:{codProposta:['codigo da proposta','cod proposta','codigo proposta','proposta','numero da proposta'],
   revisao:['numero da revisao da proposta','revisao da proposta','revisao','rev'],
   cliente:['cliente da proposta','cliente','nome do cliente'],produto:['nome do produto','produto','descricao do produto','item'],
@@ -1591,7 +1600,7 @@ const ESSENCIAIS={negocios:['id','cliente','responsavel','valor','estagio','data
   vendasOmie:['cliente','valor','data'],omie:['ov','cliente','totalMerc'],notas:['nf','dtEmissao','valor'],
   carteira:['pv','cliente','saldo'],pedidos:['ov','cliente','valor','dtPedido'],interacoes:['cliente','data','tipo'],
   empresas:['nome'],historico:['cliente','fase','valor'],motoresCat:['modelo','marca','hp','rpm'],
-  omieProdutos:['codigo','descricao','ncm'],omieFiscal:['ov','codProduto','ncmItem','cfop']};
+  omieProdutos:['codigo','descricao','ncm'],omieFiscal:['ov','codProduto','ncmItem','cfop'],omieAnexos:['tabela','numero','arquivo']};
 const logFalha=(onde,e)=>{ try{ console.warn('[painel] '+onde+':',e&&e.message||e); }catch(_){} };
 function faltando(cols,base){ const m=mapear(cols,base); return (ESSENCIAIS[base]||[]).filter(k=>m[k]===undefined); }
 function mapear(cols,base){ const dic=CAMPOS[base], mapa={}, nc=cols.map(norm);
@@ -1606,6 +1615,7 @@ function detectar(cols){ const nc=cols.map(norm); let melhor=null,pt=-1;
   if(tem('codigo da proposta')&&(tem('nome do produto')||tem('valor unitario')))return 'propostas';
   if(tem('modelo comercial')&&tem('pot comercial'))return 'motoresCat';
   if(tem('ncm do cadastro')&&tem('cfop'))return 'omieFiscal';
+  if(tem('tabela do anexo')&&tem('arquivo anexado'))return 'omieAnexos';
   if(tem('vendido ovs')&&tem('ncm'))return 'omieProdutos';
   if(tem('saldo a faturar')&&tem('valor faturado'))return 'carteira';
   if(tem('valor total da nf')&&(tem('data emissao')||tem('serie')))return 'notas';
@@ -1760,7 +1770,7 @@ const corrValDe=ref=>{const k=norm(ref); if(!k)return null;
   const c=(CFG.corrVal||[]).find(x=>norm(x.ref)===k); return c?num(c.valor):null;};
 const foraManualOmie=chave=>(CFG.dupOmieFora||[]).some(x=>('n:'+norm(x))===chave);
 
-let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[]};
+let M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[]};
 let ETAPAS={}, ORDEM_EST=[], IDX_EMP=new Map();
 let TEM_SEG_CRM=false;                          /* o export do CRM traz a coluna Segmento? */
 const ORDEM_PADRAO=['primeiro contato','prospeccao','qualificacao','aprovacao cadastral','geracao da cotacao','envio pec engenharia','elaborando proposta','apresentacao da cotacao follow up','negociacao','fechamento','pos vendas'];
@@ -1779,7 +1789,7 @@ function limparCaches(){
 function construir(){
   VALIDACAO.datas=[]; VALIDACAO.numeros=[];
   limparCaches(); DADOS_VER++; PROPCAB=new Map();
-  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[]};
+  M={negocios:[],propostas:[],propCab:[],interacoes:[],empresas:[],historico:[],pedidos:[],omie:[],vendasOmie:[],contratos:[],os:[],carteira:[],notas:[],motoresCat:[],omieProdutos:[],omieFiscal:[],omieAnexos:[]};
   for(const base in M){ const b=BRUTO[base]; if(b&&b.cols&&b.rows) M[base]=objetos(b.cols,b.rows,base); }
   ETAPAS={};
   M.negocios.forEach(n=>{
@@ -6760,6 +6770,19 @@ function gcLocacoes(C,R){ const kov=x=>String(x==null?'':x).replace(/\D/g,'').re
   (M.pedidos||[]).filter(p=>p.cat==='REN'&&p.dt&&p.dt<=R).forEach(p=>{ const k=kov(p.ov), it=k?(M.omie||[]).filter(o=>kov(o.ov)===k):[]; if(k)vistos.add(k); doLoc(p.ov,p,it); });
   for(const [k,it] of agrupa((M.omie||[]).filter(o=>/loca/i.test(o.cat||'')&&kov(o.ov)),o=>kov(o.ov)))if(!vistos.has(k))doLoc(k,null,it);
   out.forEach(c=>{ c.dono=c.pl.dono; }); return out; }
+/* documentos que JÁ estão anexados nos sistemas: no Omie (venda, contrato, OS) e no Ploomes (negócio).
+   Só os nomes dos arquivos: servem para não pedir de novo o que já existe e para conferir o cadastro. */
+const _kn=v=>String(v==null?'':v).replace(/\D/g,'').replace(/^0+/,'');
+function gcDocsSistemas(c,ptc){ const out=[], A=M.omieAnexos||[], add=(fonte,doc,arq)=>{ if(arq&&!out.some(o=>o.arq===arq&&o.doc===doc))out.push({fonte,doc,arq}); };
+  const ovs=new Set([c.ped&&c.ped.ov,...(c.itens||[]).map(o=>o.ov)].map(_kn).filter(Boolean)), oss=new Set((c.os||[]).map(o=>_kn(o.nOS)).filter(Boolean)), ctr=_kn(String(c.num||'').replace(/^(PV|OS|LOC)\s*/,''));
+  A.forEach(a=>{ const n=_kn(a.numero), t=String(a.tabela||'');
+    if(/pedido/i.test(t)&&ovs.has(n))add('Omie',`Venda (OV ${a.numero})`,a.arquivo);
+    else if(/contrato/i.test(t)&&ctr&&n===ctr)add('Omie',`Contrato ${a.numero}`,a.arquivo);
+    else if(/ordem/i.test(t)&&oss.has(n))add('Omie',`OS ${a.numero}`,a.arquivo); });
+  const cods=new Set((String(ptc||'').replace(/\b20\d\d\//g,'').match(/\d{4,6}/g)||[]).map(_kn));
+  (M.negocios||[]).filter(n=>n.anexos&&(cods.has(_kn(n.codProposta))||(c.pl&&c.pl.negs||[]).includes(n)&&n.ganho)).forEach(n=>
+    String(n.anexos).split('|').map(x=>x.trim()).filter(Boolean).forEach(a=>add('Ploomes',`Negócio ${n.id}${n.codProposta?' · PTC '+n.codProposta:''}`,a)));
+  return out; }
 function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c.cli};
   const fonte=(v,src)=>v!=null&&v!==''?{v,src}:null, pick=(...op)=>op.find(Boolean)||{v:null,src:'—'};
   /* vigência */
@@ -6815,10 +6838,11 @@ function gcMontar(c,f,R){ const id=gcId(c.num), x={c,f,id,num:c.num,cli:f.cli||c
   /* equipamentos */
   x.eq=GC.equip.filter(e=>e.ctr===id).sort((a,b)=>GC_ETIPOS.indexOf(a.tipo)-GC_ETIPOS.indexOf(b.tipo)||String(a.tag||'').localeCompare(String(b.tag||'')));
   x.eqSemSerie=x.eq.filter(e=>!String(e.serie||'').trim()&&!['Tanque','Válvula','Outro'].includes(e.tipo));
-  /* anexos e cadastro */
+  /* anexos e cadastro: o que já está no Omie/Ploomes conta, sem pedir de novo */
   x.anx=GC.anexos.filter(a=>a.ctr===id).sort((a,b)=>String(b.em).localeCompare(String(a.em)));
-  const tem=t=>x.anx.some(a=>a.tipo===t);
-  x.check=[['Contrato assinado anexado',tem('Contrato')],['Proposta / PTC anexada ou informada',tem('Proposta / PTC')||!!x.ptc],['Valor contratado',x.valor!=null],
+  x.docs=gcDocsSistemas(c,x.ptc);
+  const tem=t=>x.anx.some(a=>a.tipo===t), nosSis=re=>x.docs.some(d=>re.test(d.arq));
+  x.check=[['Contrato assinado anexado',tem('Contrato')||nosSis(/contrato/i)],['Proposta / PTC anexada ou informada',tem('Proposta / PTC')||!!x.ptc||nosSis(/ptc|proposta|or[cç]amento/i)],['Valor contratado',x.valor!=null],
     [x.loc?'Entrega e devolução prevista':'Início e fim da vigência',!!(x.ini&&x.fim)],['Equipamentos cadastrados',x.eq.length>0],['Nº de série de todos os equipamentos',x.eq.length>0&&!x.eqSemSerie.length],
     x.loc?['Local de instalação',!!x.local]:['Periodicidade de visita',!!x.period],['Responsável interno',!!x.respInt],['Reajuste definido',!!x.reajuste]];
   x.completo=x.check.filter(k=>k[1]).length/x.check.length;
@@ -6921,6 +6945,8 @@ function gcFicha(id,refresh){ const x=gcContratos().find(k=>k.id===id); if(!x){ 
       ${ed&&GC.assets?`<div class="pl-bar"><label class="btn sec" style="cursor:pointer">↑ Anexar arquivo<input type="file" accept="${GC_ACEITA}" hidden onchange="gcAnexar('${esc(id)}',this)"></label><small class="nd-m">PDF ou imagem, até 20 MB. Contrato, aditivo, proposta/PTC, pedido de compra, ART.</small></div>`
         :ed?'<p class="nd-m">Anexar arquivos é só para quem pode editar o painel (Editor ou dono).</p>':''}
       ${anx.length?tab([{t:'Tipo'},{t:'Arquivo',f:1},{t:'Tamanho',n:1},{t:'Em',n:1},{t:'Por'},{t:''}],anx,260):'<p class="pl-vazio">Nenhum anexo.</p>'}
+      <h4>Documentos já anexados no Omie e no Ploomes (${fmtN(x.docs.length)})</h4>
+      ${x.docs.length?tab([{t:'Sistema'},{t:'Onde'},{t:'Arquivo',f:1}],x.docs.map(d=>[esc(d.fonte),esc(d.doc),esc(d.arq)]),220):`<p class="pl-vazio">${(M.omieAnexos||[]).length||(M.negocios||[]).some(n=>n.anexos)?'Nenhum documento anexado à venda, ao contrato, às OS ou ao negócio deste contrato.':'Os anexos do Omie e do Ploomes entram na próxima atualização pelo botão ↻.'}</p>`}
       ${c.os&&c.os.length?`<h4>OS do Omie (${fmtN(c.os.length)})</h4>`+tab(OS_COLS,c.os.slice().sort((a,b)=>(b.dt||0)-(a.dt||0)).map(osLinha),260):''}
       ${c.nfs&&c.nfs.length?`<h4>Notas fiscais da OV (${fmtN(c.nfs.length)})</h4>`+tab([{t:'NF'},{t:'Emissão',n:1},{t:'Valor',n:1}],c.nfs.map(n=>[esc(n.nf),fmtData(n.dt),fmtBRL(n.vNum)]),200):''}
       ${c.itens&&c.itens.length?`<h4>Itens da OV no Omie</h4>`+tab([{t:'OV'},{t:'Produto',f:1},{t:'Qtd',n:1},{t:'Valor',n:1}],c.itens.map(o=>[esc(o.ov),esc(String(o.produto).slice(0,90)),fmtN(o.qNum),fmtBRL(o.vNum)]),200):''}
@@ -7279,10 +7305,10 @@ VISTA.baseinst=function(){ biIniciar(); const B=biModelo(), R=hoje(), anos=[...n
   h+=sec('Clientes da base instalada','Do maior valor fornecido para o menor. Marque o andamento de cada oportunidade; o que tem negócio SPV aberto no Ploomes já aparece como "Em negociação".','bi-lista');
   h+=`<div class="pl-bar so-tela" style="margin:0 0 10px"><div class="seg">${[['sem','Sem contrato'],['gar','Completando 1 ano'],['com','Com contrato'],['todos','Todos']].map(([k,t])=>`<button class="${BI.filtro===k?'on':''}" onclick="BI.filtro='${k}';render()">${t}</button>`).join('')}</div>
     <input class="campo" id="bi-q" style="min-width:220px" placeholder="Filtrar cliente, UF, vendedor" aria-label="Filtrar base instalada" value="${esc(BI.q)}" oninput="BI.q=this.value;clearTimeout(BI._f);BI._f=setTimeout(()=>{render();const i=document.getElementById('bi-q');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)">
-    <button class="btn sec" onclick="biExcel()">↓ Excel</button></div>`;
+    <button class="btn sec" onclick="biExcel()">↓ Excel</button><button class="btn" onclick="rotAbrir()">📞 Roteiro de ligação</button></div>`;
   const ed=gcEdita();
-  h+=card('',`${fmtN(L.length)} cliente(s)`,tab([{t:'Cliente',f:1},{t:'UF'},{t:'Equipamentos fornecidos',f:1},{t:'Valor',n:1},{t:'Último fornecimento',n:1},{t:'1 ano em',n:1},{t:'Contrato'},{t:'Ploomes (SPV)',f:1},{t:'Andamento'},{t:'Vendedor'}],
-    L.map(c=>[`<a class="td-link" onclick="ctrConsulta('${esc(String(c.cli).replace(/'/g,''))}')" title="Abrir na Consulta detalhada">${esc(String(c.cli).slice(0,40))}</a>`,esc(c.uf||'—'),
+  h+=card('',`${fmtN(L.length)} cliente(s) · 📞 abre o roteiro de ligação já com os dados do cliente`,tab([{t:''},{t:'Cliente',f:1},{t:'UF'},{t:'Equipamentos fornecidos',f:1},{t:'Valor',n:1},{t:'Último fornecimento',n:1},{t:'1 ano em',n:1},{t:'Contrato'},{t:'Ploomes (SPV)',f:1},{t:'Andamento'},{t:'Vendedor'}],
+    L.map(c=>[`<button class="mini" onclick="rotAbrir(${jsq(c.k)})" title="Roteiro de ligação para este cliente" aria-label="Roteiro de ligação: ${esc(c.cli)}">📞</button>`,`<a class="td-link" onclick="ctrConsulta('${esc(String(c.cli).replace(/'/g,''))}')" title="Abrir na Consulta detalhada">${esc(String(c.cli).slice(0,40))}</a>`,esc(c.uf||'—'),
       esc(c.fam)+(c.un?` <small>· ${fmtN(c.un)} motobomba(s)</small>`:''),fmtBRL(c.valor),`${fmtData(c.ult)}<br><small>${fmtN(c.mesesUlt)} meses</small>`,
       c.dGar==null?'—':c.dGar<0?`<small>${fmtData(c.fimGar)}</small>`:`<b style="color:${c.dGar<=90?'var(--ale)':'inherit'}">${fmtN(c.dGar)} d</b>`,
       c.temCtr?c.ctr.map(x=>`<a class="td-link" onclick="irTela('gestao');setTimeout(()=>gcFicha('${esc(x.id)}'),60)"><span class="tag t-ok">${esc(x.num)}</span></a>`).join(' '):'<span class="tag t-ale">sem contrato</span>',
@@ -7311,6 +7337,112 @@ function biExcel(){ const B=biModelo(), wb=XLSX.utils.book_new(), add=(n,c,l)=>X
     ['Com contrato','Cliente com contrato ativo de ITM/manutenção na Gestão de contratos (pelo nome).'],['1 ano em','Data da última venda + 12 meses (garantia típica e 1ª inspeção anual).'],
     ['Potencial','Clientes sem contrato × receita anual mediana dos contratos ativos. Estimativa.']]);
   XLSX.writeFile(wb,`LS-Fire-Base-Instalada-${isoD(hoje())}.xlsx`); }
+/* ======================= ROTEIRO DE LIGAÇÃO — CONTRATOS DE ITM =======================
+   Para quem liga para a base instalada (clientes que compraram equipamento da LS Fire) e
+   oferece contrato de inspeção, teste e manutenção (ITM) conforme a NFPA 25. Regra de ouro:
+   PERGUNTAR mais do que falar — as respostas do cliente dão os parâmetros da proposta.
+   Os casos reais vêm sem o nome do cliente: nunca citar outro cliente pelo nome na ligação. */
+const ROT_ITM_LINK='https://claude.ai/artifact/AxmAbd5ukwSxqUnudcK4Pe';
+const ROT_PERGUNTAS=[
+  ['Quem cuida hoje da casa de bombas?','equipe própria, empresa terceirizada ou ninguém — é a pergunta que abre todas as outras'],
+  ['Essa empresa é especializada em sistema de incêndio, ou é a mesma que cuida do gerador e de motores em geral?','a maioria é de gerador/motor diesel comum e não conhece a motobomba de incêndio nem a casa de bombas inteira'],
+  ['Com que frequência a bomba é colocada para partir (teste semanal sem fluxo)? Quem registra?','NFPA 25 pede teste semanal do motor diesel; sem registro, não há como provar'],
+  ['Quando foi feito o último teste anual de vazão, com a curva da bomba?','a maioria nunca fez desde a entrega técnica'],
+  ['Os relatórios saem no padrão NFPA 25, com o que a seguradora, o Corpo de Bombeiros e a auditoria pedem?','abre o assunto de seguro e AVCB'],
+  ['Já tiveram alguma falha: partida que não aconteceu, alarme, vazamento, bateria, combustível?','qualquer “sim” vira o motivo da proposta'],
+  ['O óleo, os filtros e o combustível são trocados por quem? Seguem o manual LS Fire?','troca por terceiro não autorizado tira a garantia (certificado, itens C.b e C.j)'],
+  ['Existe contrato vigente? Quando vence? Quem aprova a contratação (manutenção, facilities, compras)?','define o prazo e com quem falar'],
+  ['A seguradora ou a matriz exige inspeção periódica? Tem auditoria prevista?','urgência e quem paga'],
+  ['O que seria um bom resultado para você nesse tema?','deixa o cliente dizer o que quer comprar']];
+const ROT_OBJ=[
+  ['“Já temos uma empresa que faz a manutenção.”',
+   'Ótimo que exista cuidado. Posso fazer três perguntas rápidas? A empresa é especializada em incêndio ou cuida também de gerador? Ela faz o teste anual de vazão com a curva da bomba? O relatório sai no padrão NFPA 25?',
+   'A maioria dos prestadores é de motor diesel e gerador: não conhece o controlador de incêndio, a partida automática por queda de pressão, a jockey nem o teste de vazão. E o que define a garantia é o manual LS Fire: troca de óleo e filtros por terceiro não autorizado e manutenção deficiente estão fora da cobertura (certificado de garantia, itens C.b, C.e e C.j). Proposta: uma visita de diagnóstico para comparar o que está sendo feito com o que a NFPA 25 pede — sem trocar ninguém antes de ver.'],
+  ['“Nossa equipe interna faz.”',
+   'Perfeito. Quem da equipe foi treinado na motobomba de incêndio? Vocês fazem o teste anual de vazão?',
+   'A NFPA 25 deixa o proprietário responsável pela manutenção e pela qualificação de quem executa. Oferecer: treinamento da equipe + contrato só das atividades especializadas (teste anual de vazão, revisão do motor e do painel, relatório técnico).'],
+  ['“O equipamento é novo, não precisa.”',
+   'Quando ele completa um ano de operação?',
+   'É exatamente no primeiro ano que começa a inspeção anual da NFPA 25, e a garantia depende da manutenção conforme o manual (item D do certificado). Novo e sem manutenção é como a garantia se perde.'],
+  ['“Está caro / não tenho orçamento.”',
+   'Entendo. Para comparar: quanto custa uma parada da bomba ou uma não conformidade na vistoria do seguro ou dos Bombeiros?',
+   'Um caso real: motor superaqueceu por filtro obstruído (falta de manutenção) e danificou painel e solenoide de parada — garantia negada, reparo por conta do cliente. O contrato é mensal, cabe no orçamento de manutenção, e o escopo pode começar trimestral.'],
+  ['“Manda por e-mail.”',
+   'Mando, sim. Para a proposta não sair genérica: quantas bombas são, diesel ou elétrica, e quem cuida hoje?',
+   'Enviar no mesmo dia a apresentação do contrato de ITM e marcar o retorno com data e hora (“posso te ligar quinta às 10h para tirar dúvidas?”).'],
+  ['“Não sou eu quem decide.”',
+   'Quem decide? Você me ajuda a chegar nele? Posso preparar um resumo para você levar.',
+   'Pedir nome, cargo e melhor canal. Oferecer apresentação curta (online) para o decisor.'],
+  ['“A empresa do gerador também cuida da bomba.”',
+   'O gerador e a motobomba de incêndio têm lógicas diferentes. Essa empresa faz o teste semanal de partida e o teste anual de vazão da bomba?',
+   'Caso real: a empresa terceirizada trocou filtros e óleo; depois foram achados resíduo plástico na tela da bomba de combustível, vazamento com entrada de ar e óleo abaixo do mínimo. Sem defeito de fabricação — e a intervenção de terceiro não autorizado tirou a garantia. A LS Fire faz conforme a NFPA 25 e com peças originais.'],
+  ['“Só chamamos quando dá problema.”',
+   'Se ela precisar partir num incêndio amanhã, quem garante que vai?',
+   'Bomba de incêndio não pode “dar problema na hora”. Manutenção corretiva custa mais, demora mais e não tem prioridade. Contrato tem atendimento prioritário e relatório para o seguro.'],
+  ['“Vamos ver no ano que vem.”',
+   'Quando vocês fecham o orçamento de 2027?',
+   'Enviar proposta agora para entrar no orçamento; propor começar pela inspeção anual. Registrar a data de retomada no Ploomes.']];
+const ROT_CASOS=[
+  ['Sem manutenção nenhuma','Indústria do agronegócio (SP). O equipamento não passava por manutenção. O motor diesel entrou em operação automática, ficou cerca de 40 minutos ligado e superaqueceu porque os filtros Y do trocador de calor estavam obstruídos. O líquido de arrefecimento foi expulso, molhou a solenoide de parada e o painel remoto, que queimaram — o motor só parou cortando o combustível. Não foi enquadrado em garantia (falta de manutenção) e o reparo foi pago pelo cliente.','Inspeção e limpeza dos filtros e telas estão na rotina da NFPA 25. Com contrato, isso teria sido visto antes.'],
+  ['Manutenção por empresa não autorizada','Condomínio logístico (SP), com a manutenção feita por uma empresa contratada que não é autorizada da LS Fire. Depois da troca de filtros e óleo feita por ela, o motor apresentou falhas: resíduo plástico obstruindo a tela da bomba alimentadora de combustível, vazamento na saída do tanque com entrada de ar e óleo abaixo do mínimo. Não havia defeito de fabricação; a garantia não cobriu porque houve intervenção de terceiro não autorizado e manutenção deficiente (certificado, itens C.b, C.e e C.j).','O manual LS Fire (MQ 03, tabela 7.4) recomenda troca de óleo e filtros pela LS Fire ou rede autorizada. A NFPA 25 deixa com o proprietário a responsabilidade pela qualificação de quem faz.']];
+function rotHTML(c,o){ o=o||{}; const e=esc, R=hoje();
+  /* "somos o fabricante do skid de bombas…": nome e artigo pelo que o cliente comprou */
+  const NOMES={CMB:['do','conjunto motobomba'],SKD:['do','skid de bombas'],CON:['da','casa de bombas em container'],BMB:['da','bomba monobloco'],KUB:['da','motobomba Kube'],PAN:['do','painel de comando'],ESP:['do','equipamento especial'],TAQ:['do','tanque de combustível']};
+  const fams=c?[...new Set(c.forn.map(f=>f.fam))]:[], eqFrase=fams.length===1&&NOMES[fams[0]]?NOMES[fams[0]].join(' ')+(c.forn.length>1?'s':''):'dos equipamentos';
+  const eq=c?c.fam:'[equipamentos]', ult=c?fmtData(c.ult).slice(3):'[mês/ano]', gar=c&&c.fimGar?(c.dGar>=0?`completa 1 ano em ${fmtData(c.fimGar)}`:`completou 1 ano em ${fmtData(c.fimGar)}`):'';
+  const sec=(t,b)=>`<section class="rot-s"><h4>${t}</h4>${b}</section>`;
+  return `<div class="rot">
+    ${c?`<div class="rot-cli"><b>${e(c.cli)}</b> · ${e(c.uf||'')}<br>Comprou: ${e(c.fam)} · último fornecimento ${fmtData(c.ult)} (${fmtN(c.mesesUlt)} meses)${gar?' · '+e(gar):''}<br>
+      ${c.temCtr?'<span class="tag t-ok">já tem contrato</span>':'<span class="tag t-ale">sem contrato</span>'} ${c.neg.length?`· negócio SPV aberto: ${e(c.neg.map(n=>String(n.titulo||'').slice(0,40)).join('; '))}`:'· nenhum negócio de serviço aberto no Ploomes'} · vendedor da conta: ${e(nomeCurto(c.resp)||c.resp||'—')}</div>`:''}
+    ${sec('1. Antes de ligar (2 minutos)',`<ul class="rot-l">
+      <li>Veja o que o cliente comprou, quando, e se já completou 1 ano (fim da garantia típica e hora da 1ª inspeção anual).</li>
+      <li>Confira no Ploomes se já existe negócio de serviço aberto e quem é o contato técnico (manutenção / facilities).</li>
+      <li>Tenha aberta a apresentação do <a href="${ROT_ITM_LINK}" target="_blank" rel="noopener">Contrato de ITM LS Fire</a>.</li>
+      <li><b>Objetivo da ligação:</b> entender como a casa de bombas é cuidada hoje e sair com um próximo passo marcado (visita técnica, reunião ou envio de proposta com retorno agendado).</li></ul>`)}
+    ${sec('2. Abertura (20 segundos)',`<p class="rot-fala">“Bom dia, <i>[nome]</i>. Aqui é a Amanda, da LS Fire — somos o fabricante ${e(c?eqFrase:'do equipamento')} de combate a incêndio que vocês receberam em ${e(ult)}. Estou ligando para saber como o equipamento está e como está sendo feita a manutenção dele. Você tem três minutos?”</p>
+      <p class="rot-dica">Se não puder: “Qual o melhor horário para eu te ligar?” — e marque.</p>`)}
+    ${sec('3. Perguntas — pergunte e anote (o cliente dá os parâmetros da venda)',`<ol class="rot-l">${ROT_PERGUNTAS.map(([p,d])=>`<li><b>${e(p)}</b><br><small>${e(d)}</small></li>`).join('')}</ol>
+      <p class="rot-dica">Fale pouco nesta parte. Quanto mais o cliente explica, mais fácil montar a proposta certa — e ele mesmo percebe o que falta.</p>`)}
+    ${sec('4. O que a LS Fire oferece (ligue cada item a uma resposta do cliente)',`<ul class="rot-l">
+      <li><b>Especialista em incêndio, não em gerador:</b> técnico que conhece a motobomba, o motor diesel de incêndio, o controlador, a jockey e a casa de bombas inteira.</li>
+      <li><b>Feito conforme a NFPA 25:</b> rotina de inspeção, testes de partida, teste anual de vazão com curva e relatório técnico — o que seguradora, Bombeiros e auditoria pedem.</li>
+      <li><b>Garantia preservada:</b> manutenção pelo fabricante, conforme o manual (o certificado de garantia exclui intervenções de terceiros não autorizados e falta de manutenção).</li>
+      <li><b>Peças originais e atendimento prioritário</b> em caso de chamado.</li>
+      <li><b>Contrato mensal</b> (custo previsível), com escopo ajustável: mensal, trimestral ou só a inspeção anual.</li></ul>`)}
+    ${sec('5. Casos reais para usar como argumento (sem citar o nome do cliente)',ROT_CASOS.map(([t,d,l])=>`<div class="rot-caso"><b>${e(t)}</b><p>${e(d)}</p><p class="rot-dica">${e(l)}</p></div>`).join(''))}
+    ${sec('6. Objeções e como responder (primeiro pergunte, depois argumente)',`<div class="rot-obj">${ROT_OBJ.map(([q,p,a])=>`<details><summary>${e(q)}</summary><p><b>Pergunte:</b> ${e(p)}</p><p><b>Argumente:</b> ${e(a)}</p></details>`).join('')}</div>`)}
+    ${sec('7. Fechamento: sempre um próximo passo com data',`<ul class="rot-l">
+      <li>“Posso agendar uma visita técnica para avaliarmos a casa de bombas e eu te mando a proposta com o escopo certo?”</li>
+      <li>Se pedir proposta: confirme número de bombas, tipo (diesel/elétrica/jockey), cidade e quem aprova — e marque o retorno (“te ligo na quinta às 10h”).</li>
+      <li>Se não for o momento: pergunte quando volta a falar (orçamento, vencimento do contrato atual) e registre a data.</li></ul>`)}
+    ${sec('8. Depois da ligação',`<ul class="rot-l">
+      <li>Marque o andamento no painel (Base instalada → andamento): oferecido, em negociação, sem interesse.</li>
+      <li>Crie ou atualize o negócio de serviço no Ploomes, com as respostas das perguntas na descrição.</li>
+      <li>Envie no mesmo dia o e-mail abaixo com a apresentação do contrato de ITM.</li></ul>
+      <div class="rot-mail"><b>Assunto:</b> Manutenção da sua motobomba de incêndio LS Fire — NFPA 25<br><br>
+      Olá, <i>[nome]</i>. Obrigada pela conversa de hoje.<br>Como combinamos, envio a apresentação do nosso contrato de inspeção, teste e manutenção (ITM), feito pelo fabricante do equipamento e conforme a NFPA 25: rotina de inspeção, testes de partida, teste anual de vazão com curva, relatório técnico e atendimento prioritário — mantendo a garantia do conjunto.<br>
+      Pelo que você me contou (<i>[resumo das respostas]</i>), sugiro <i>[escopo]</i>. Te ligo <i>[dia e hora]</i> para alinharmos a visita técnica.<br><br>Amanda Rohte · LS Fire · A força da água é a nossa força</div>
+      <div class="rot-mail"><b>WhatsApp (se o cliente preferir):</b><br>Olá, <i>[nome]</i>! Aqui é a Amanda, da LS Fire. Conforme falamos, segue a apresentação do contrato de manutenção da motobomba de incêndio (NFPA 25). Posso te ligar <i>[dia/hora]</i> para combinarmos a visita técnica?</div>`)}
+    ${sec('Boas práticas',`<ul class="rot-l"><li>Pergunte mais do que fala; anote as respostas com as palavras do cliente.</li><li>Não fale mal do concorrente: fale do que a NFPA 25 e o manual pedem e deixe o cliente comparar.</li><li>Nunca cite outro cliente pelo nome.</li><li>Toda ligação termina com um próximo passo e uma data.</li></ul>`)}
+  </div>`; }
+const ROT_CSS=`.rot{display:grid;gap:14px;font-size:13.5px;line-height:1.55}.rot h4{margin:0 0 6px;font-size:14px;color:var(--lar-txt,#B34700)}
+  .rot-cli{border:1px solid var(--linha,#ddd);border-left:5px solid var(--lar,#FF6600);border-radius:8px;padding:10px 12px;background:var(--card2,#fafafa)}
+  .rot-l{margin:0;padding-left:20px;display:grid;gap:6px}.rot-l small{color:var(--txt3,#666)}
+  .rot-fala{border-left:4px solid var(--lar,#FF6600);padding:6px 12px;margin:0;font-size:14.5px;background:var(--card2,#fff6ef)}
+  .rot-dica{color:var(--txt3,#666);font-size:12.5px;margin:6px 0 0}.rot-caso{border:1px solid var(--linha,#ddd);border-radius:8px;padding:10px 12px;margin-bottom:8px}.rot-caso p{margin:4px 0}
+  .rot-obj details{border:1px solid var(--linha,#ddd);border-radius:8px;padding:8px 12px;margin-bottom:6px}.rot-obj summary{cursor:pointer;font-weight:700}.rot-obj p{margin:6px 0}
+  .rot-mail{border:1px dashed var(--linha,#ccc);border-radius:8px;padding:10px 12px;margin-top:8px;font-size:13px}`;
+function rotAbrir(k){ const c=k?biModelo().C.find(x=>x.k===k):null; let m=document.getElementById('m-rot');
+  if(!m){ m=document.createElement('div'); m.className='modal'; m.id='m-rot'; m.addEventListener('click',ev=>{ if(ev.target===m)fecharModal('m-rot'); }); document.body.appendChild(m); }
+  m.innerHTML=`<div class="cx-modal" style="max-width:860px;width:calc(100vw - 32px)" role="dialog" aria-label="Roteiro de ligação"><header><h3>📞 Roteiro de ligação — contrato de ITM${c?' · '+esc(String(c.cli).slice(0,40)):''}</h3>
+    <button onclick="rotBaixar(${c?jsq(k):'null'})" title="Baixar para usar fora do painel" style="font-size:12px">↓ HTML</button><button onclick="fecharModal('m-rot')" aria-label="Fechar">✕</button></header>
+    <div class="conteudo">${rotHTML(c)}${c&&gcEdita()&&!c.temCtr?`<div class="pl-bar"><button class="btn" onclick="fecharModal('m-rot');biAndamento(${jsq(k)})">Registrar o resultado da ligação</button></div>`:''}</div></div>`;
+  abrirModal('m-rot'); }
+function rotBaixar(k){ const c=k?biModelo().C.find(x=>x.k===k):null;
+  const h=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Roteiro de ligação — Contrato de ITM LS Fire</title>
+    <style>body{font-family:Arial,Helvetica,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;color:#111}h1{font-size:22px}h1 span{color:#FF6600}.tag{font-size:11px;font-weight:700;padding:1px 6px;border-radius:99px;border:1px solid #ccc}${ROT_CSS}footer{margin-top:24px;border-top:3px solid #FF6600;padding-top:8px;font-weight:700;font-size:12px}</style></head>
+    <body><h1>Roteiro de ligação — <span>contrato de ITM</span></h1><p>LS Fire · base instalada · ${fmtData(hoje())}</p>${rotHTML(c)}<footer>A FORÇA DA ÁGUA É A NOSSA FORÇA · lsfire.com.br · documento interno</footer></body></html>`;
+  baixar(h,`Roteiro-ligacao-ITM${c?'-'+String(c.cli).split(' ')[0]:''}-${isoD(hoje())}.html`,'text/html;charset=utf-8'); }
 
 VISTA.gestao=function(){ return gcAbas()+(GC.aba==='ind'?gcTelaInd():gcTelaGestao()); };
 function ctrAcompanhamento(){
@@ -9145,6 +9277,8 @@ const VER_REGRAS=[
   {k:'n-condpag',cad:'Negócios',area:'Processo',t:'Condição de pagamento da proposta em branco',p:'A condição vai para o pedido e para o faturamento.',f:r=>!verVazio(r.x.codProposta)&&verVazio(r.x.condPagamento),c:'Preencher a condição de pagamento na proposta'},
   {k:'n-codprop',cad:'Negócios',area:'Processo',t:'Negócio com proposta, sem código da proposta',p:'Sem o código, o negócio não se liga à proposta nem ao pedido.',f:r=>/propost|negocia|fecha|ganh/i.test(String(r.x.est||'')+(r.x.ganho?' ganh':''))&&verVazio(r.x.codProposta),c:'Informar o código da proposta (PTC) no negócio'},
   {k:'n-pedido',cad:'Negócios',area:'Processo',t:'Venda ganha sem número do pedido',p:'O pedido do cliente é exigido na NF e liga o CRM ao ERP.',f:r=>r.x.ganho&&verVazio(r.x.pedido),c:'Preencher "Número do pedido" no negócio ganho'},
+  {k:'n-anexo',cad:'Negócios',area:'Processo',t:'Venda ganha sem documento anexado no Ploomes',p:'Pedido de compra ou proposta assinada anexados ao negócio fecham o ciclo comercial e evitam retrabalho no faturamento.',
+    f:r=>r.x.ganho&&(BRUTO.negocios&&(BRUTO.negocios.cols||[]).some(c=>norm(c)==='anexos do negocio'))&&verVazio(r.x.anexos),c:'Anexar ao negócio no Ploomes o pedido de compra ou a proposta assinada'},
   {k:'n-comissao',cad:'Negócios',area:'Comercial',t:'Venda ganha sem comissão do vendedor',p:'A comissão é calculada a partir deste campo.',f:r=>r.x.ganho&&verVazio(r.x.comissao),c:'Preencher "Comissão Vendedor %"'},
   {k:'n-valor',cad:'Negócios',area:'Comercial',t:'Negócio aberto com valor zero',p:'Distorce pipeline e previsão.',f:r=>r.aberto&&!(r.x.vNum>0),c:'Atualizar o valor do negócio (proposta atual)'},
   /* ---------- Ploomes · Clientes ---------- */
@@ -9169,6 +9303,8 @@ const VER_REGRAS=[
     f:r=>(r.itens||[r.x]).some(o=>/04\s*-\s*Produto Acabado/i.test(o.tipoProduto||'')&&/revenda/i.test(o.categoria||'')||/00\s*-\s*Mercadoria para Revenda/i.test(o.tipoProduto||'')&&/fabricad/i.test(o.categoria||'')),
     c:r=>(r.itens||[r.x]).filter(o=>/04\s*-\s*Produto Acabado/i.test(o.tipoProduto||'')&&/revenda/i.test(o.categoria||'')||/00\s*-\s*Mercadoria para Revenda/i.test(o.tipoProduto||'')&&/fabricad/i.test(o.categoria||'')).slice(0,2).map(o=>`${String(o.produto).slice(0,40)}: tipo no cadastro "${String(o.tipoProduto).replace(/^\d+\s*-\s*/,'')}", categoria na OV "${o.categoria}" — corrigir o tipo do item ou a categoria`).join('; ')},
   {k:'o-fam',cad:'Pedidos de venda',area:'Processo',t:'Item vendido sem família no cadastro',p:'Sem família o produto não entra nas análises de mix e a engenharia não classifica.',f:r=>(r.itens||[r.x]).some(o=>verVazio(o.familia)),c:r=>'Cadastrar a família de: '+(r.itens||[r.x]).filter(o=>verVazio(o.familia)).slice(0,3).map(o=>String(o.produto).slice(0,40)).join('; ')},
+  {k:'o-anexo',cad:'Pedidos de venda',area:'Processo',t:'OV sem nenhum documento anexado',p:'O pedido de compra do cliente (ou a proposta assinada) anexado à OV é a prova do que foi vendido — falta nele vira discussão de faturamento e de garantia.',
+    f:r=>(M.omieAnexos||[]).length>0&&!(M.omieAnexos||[]).some(a=>/pedido/i.test(a.tabela||'')&&_kn(a.numero)===_kn(r.x.ov)),c:'Anexar à OV no Omie o pedido de compra do cliente (ou a proposta/PTC assinada)'},
   {k:'o-valctl',cad:'Pedidos de venda',area:'Processo',t:'Valor da OV diferente do Controle de Pedidos',p:'Um dos dois está errado: o pedido do cliente é a referência.',
     f:(r,C)=>{ const c=C.ctlPorOV.get(C.kov(r.x.ov)), o=C.omiePorOV.get(C.kov(r.x.ov)); if(!c||!o)return false; const vc=somar(c,p=>p.vNum); return vc>0&&Math.abs(o.v-vc)>Math.max(500,.02*vc); },
     c:(r,C)=>{ const vc=somar(C.ctlPorOV.get(C.kov(r.x.ov)),p=>p.vNum), vo=C.omiePorOV.get(C.kov(r.x.ov)).v; return `Conferir com o pedido do cliente: Omie ${fmtBRL(vo)} × Controle ${fmtBRL(vc)}`; }},
@@ -10833,7 +10969,7 @@ const HTML_ORIG=document.documentElement.outerHTML;
 const NOMES_BASE={negocios:'Negócios (CRM)',propostas:'Propostas — itens',propCab:'Propostas — cabeçalho',interacoes:'Interações',
   empresas:'Empresas',historico:'Histórico OMIE',pedidos:'Controle de Pedidos',
   omie:'Omie — itens de venda',vendasOmie:'Vendas (Ploomes × Omie)',contratos:'Contratos de serviço',os:'OS de serviço (Omie)',carteira:'Carteira de faturamento',notas:'Notas fiscais emitidas (faturamento mensal)',motoresCat:'Motores padronizados (catálogo técnico)',
-  omieProdutos:'Omie — cadastro de produtos',omieFiscal:'Omie — impostos dos itens'};
+  omieProdutos:'Omie — cadastro de produtos',omieFiscal:'Omie — impostos dos itens',omieAnexos:'Omie — documentos anexados'};
 
 function abrirModal(id){ document.getElementById(id).classList.add('aberto');
   if(id==='m-dados')listarBases(); if(id==='m-cfg')montarCfg(); if(id==='m-glos')montarGlossario(); }

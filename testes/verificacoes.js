@@ -17,6 +17,7 @@ const { chromium } = require('playwright'), path = require('path');
       'colunas de produtos: ' + JSON.stringify(mp));
     t(['ov', 'item', 'codProduto', 'descricao', 'ncmItem', 'ncmCad', 'cfop', 'cstIcms', 'cstIpi', 'tipoItem', 'vendedor', 'agente', 'cliente', 'ufCliente', 'dtInc', 'incluidoPor', 'valor'].every(k => mf[k] !== undefined) && mf.incluidoPor === 21 && mf.descricao === 3,
       'colunas fiscais: ' + JSON.stringify(mf));
+    t(detectar(['Tabela do Anexo', 'Número do Documento', 'Cliente (Nome Fantasia)', 'Arquivo Anexado', 'Tipo do Arquivo', 'Data do Anexo']) === 'omieAnexos', 'planilha de anexos do Omie reconhecida');
     t(detectar(['ORDEM DE VENDA', 'Total da Nota Fiscal', 'Código da Família', 'Descrição do Produto (completa)', 'Previsão de Faturamento (completa)', 'Situação da OP']) === 'omie', 'itens de venda do Omie continuam como "omie"');
     /* regras do cadastro de produtos, com uma família sintética */
     const hj = hoje(), d = `${String(hj.getDate()).padStart(2, '0')}/${String(hj.getMonth() + 1).padStart(2, '0')}/${hj.getFullYear()}`;

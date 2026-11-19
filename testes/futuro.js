@@ -35,6 +35,12 @@ const { chromium } = require('playwright'), path = require('path');
     /* tela Base instalada traz cenários e rotas */
     irTela('baseinst'); const ids = [...document.querySelectorAll('#tela [data-sid]')].map(x => x.dataset.sid);
     t(ids.includes('fut-cen') && ids.includes('fut-rotas'), 'tela Base instalada com cenários e rotas');
+    /* roteiro de ligação: personalizado pelo cliente, com perguntas, objeções e casos sem nome de cliente */
+    const cli = biModelo().C.find(c => !c.temCtr); rotAbrir(cli.k); const RT = document.getElementById('m-rot').innerText;
+    t(RT.includes(cli.cli) && /Abertura/.test(RT) && /Perguntas/.test(RT) && /Objeções/.test(RT) && /Fechamento/.test(RT), 'roteiro abre com o cliente e as etapas (abertura, perguntas, objeções, fechamento)');
+    t(document.querySelectorAll('#m-rot .rot-obj details').length >= 8 && /Já temos uma empresa/.test(RT), 'objeções, incluindo "já temos uma empresa que faz a manutenção"');
+    const geral = rotHTML(null); t(!/LDC|BTG|CBRE|Pederneiras|Franco da Rocha/i.test(geral) && /NFPA 25/.test(geral), 'casos reais sem nome de cliente; argumento NFPA 25');
+    fecharModal('m-rot');
     return ok; });
   r.forEach(([c, m]) => console.log((c ? '✓ ' : '✗ ') + m));
   console.log(`${r.filter(x => x[0]).length}/${r.length} verificações`);

@@ -174,7 +174,8 @@ def main(pasta):
     # ---------- negócios ----------
     deals = todos('Deals', {'$expand': "OtherProperties,Tags($expand=Tag($select=Name)),Owner($select=Name),Stage($select=Name),"
                             "LossReason($select=Name),Origin($select=Name),CollaboratingUsers($expand=User($select=Name)),"
-                            "Contact($select=Name;$expand=City($select=Name),State($select=Short),LineOfBusiness($select=Name))"})
+                            "Contact($select=Name;$expand=City($select=Name),State($select=Short),LineOfBusiness($select=Name)),"
+                            "Attachments($select=FileName,ContentType,ContentLength)"})
     dPorId = {d['Id']: d for d in deals}
     neg = []
     for d in deals:
@@ -195,7 +196,9 @@ def main(pasta):
             'Dias no estágio': d.get('DaysInStage'), 'Duração': d.get('Length'), 'Agente de negócio': op(d, D['agente']),
             'Número do pedido': op(d, D['pedido']), 'Comissão Vendedor %': op(d, D['comissao']),
             'Motivo de perda': nome(d, 'LossReason', 'Name'), 'Segmento do Cliente': nome(d, 'Contact', 'LineOfBusiness', 'Name'),
-            'Origem': nome(d, 'Origin', 'Name')})
+            'Origem': nome(d, 'Origin', 'Name'),
+            # só os NOMES dos arquivos anexados ao negócio (proposta assinada, pedido de compra, contrato…)
+            'Anexos do Negócio': ' | '.join(a.get('FileName') or '' for a in d.get('Attachments') or [] if a.get('FileName')) or None})
     cabN = list(neg[0].keys()) if neg else []
 
     cab, itens = [], []

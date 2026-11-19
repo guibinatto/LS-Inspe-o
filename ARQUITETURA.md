@@ -275,3 +275,15 @@ Menu próprio **Gestão → Contratos e serviços recorrentes** (tela `gestao`),
   "Base instalada e oportunidades" (tOPO).
 - `ferramentas/publicaveis.js` gera também `apresentacao-futuro-ls-fire.html`.
 - Teste: `testes/futuro.js`.
+
+## Roteiro de ligação e anexos dos sistemas (19/11/2026)
+- **Gestão → Base instalada**: botão "📞 Roteiro de ligação" (geral) e 📞 por cliente (`rotAbrir`):
+  preparação, abertura, perguntas (o cliente dá os parâmetros), o que oferecer, casos reais sem nome
+  de cliente (sem manutenção; manutenção por terceiro não autorizado — certificado de garantia itens
+  C.b, C.e, C.j, D; manual MQ 03; NFPA 25), objeções com "pergunte / argumente", fechamento com
+  data, e-mail e WhatsApp de follow-up. "↓ HTML" baixa o roteiro para usar fora do painel.
+- **Anexos (só nomes dos arquivos)**: Omie `geral/anexo ListarAnexo` por venda, contrato e OS
+  (`omie_coletar.py coletar <pasta> anexos`, planilha API-Omie_Anexos.xlsx, base `omieAnexos`);
+  Ploomes `Deals $expand=Attachments` (coluna "Anexos do Negócio"). A ficha do contrato lista os
+  documentos já anexados nos sistemas e o cadastro os considera (sem pedir de novo). Verificações:
+  "OV sem nenhum documento anexado" e "Venda ganha sem documento anexado no Ploomes".
