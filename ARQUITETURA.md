@@ -320,3 +320,11 @@ Clientes fora do estudo da SPV (`spvForaDe`) ficam fora. Teste: `testes/spv-volu
 Teste: `testes/condicoes-pagamento.js`.
 
 Política de probabilidade: "Em negociação" passou de 60% para 20% (pedido da diretoria, 19/11/2026).
+
+## Resultados e metas em abas
+
+`VISTA.resultados` monta todas as seções como antes e `resOrganizar()` as reparte em abas
+(`RES_ABAS`: visão geral, indicadores, composição, SEQ, SPV, pagamento) pelo `data-sid` (`resGrupo`).
+Só a aba ativa vai para a tela; o relatório (`REL_GERANDO`) recebe todas, na ordem das abas.
+`irPara('resultados', sid)` abre a aba da seção. A aba escolhida fica no navegador (localStorage).
+As condições de pagamento aparecem separadas em SEQ e SPV (`cpResumo`, `cpResumoOV`).

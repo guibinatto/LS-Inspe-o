@@ -24,7 +24,7 @@ const { chromium } = require('playwright'), path = require('path');
     t(somar(Q.regs, x => x.nProp) === Q.props.length, 'regiões somam todas as propostas');
     t(somar(Q.segL, s => s.nProp) === Q.props.length && somar(Q.segL, s => s.nNeg) === Q.neg.length, 'segmentos somam propostas e negócios');
     /* tela */
-    irTela('resultados'); const el = document.querySelector('[data-sid="res-spv-vol"]');
+    RES.aba = 'spv'; irTela('resultados'); const el = document.querySelector('[data-sid="res-spv-vol"]');
     t(el && ['spv-tipo', 'spv-seg', 'spv-reg'].every(id => document.getElementById('gb-' + id)), 'seção e gráficos na tela Resultados');
     const bar = document.querySelector('#gb-spv-tipo .svg-cl'); bar && bar.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     t(bar && /Propostas da SPV com/.test(document.body.innerText), 'clique no tipo abre as propostas');
