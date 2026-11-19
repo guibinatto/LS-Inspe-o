@@ -893,6 +893,7 @@ html:not([data-t="claro"]) span.tag[style*="22;color"],html:not([data-t="claro"]
 .rel-cab .rel-cab-d{flex:0 0 auto;text-align:right;font-size:10.5px;color:#595959;display:block}
 .rel-conteudo{flex:1;overflow:visible;padding-top:10px;display:flex;flex-direction:column;gap:12px}
 .rel-pag.alta{height:auto;min-height:794px}
+.rel-cap .rel-cap-d{display:block;margin-top:3px;font-size:11.5px;font-weight:400;letter-spacing:0;text-transform:none;color:#404040}
 .rel-cap{font-size:15px;font-weight:800;color:var(--lar-txt);border-bottom:2px solid var(--lar);padding:0 0 4px;margin:0 0 8px;letter-spacing:.02em}
 .rel-cont{font-size:10px;color:#6B6B6B;margin:0 0 4px}
 /* papel: tabela cabe na LARGURA da folha — quebra de linha nas células e, se
@@ -10917,8 +10918,10 @@ const REL_PAG={W:1123,H:794,padX:34,padT:24,padB:18,cab:46,rod:26,gap:12};
 REL_PAG.uW=REL_PAG.W-2*REL_PAG.padX;
 REL_PAG.uH=REL_PAG.H-REL_PAG.padT-REL_PAG.padB-REL_PAG.cab-REL_PAG.rod-10;   /* 10 = respiro abaixo do cabeçalho */
 const REL_LIM_LINHAS=18, REL_ANEXO_MAX=80, REL_LIM_ROTINA=8;
-const REL_CAPS=[['sintese','Síntese executiva'],['supervisao','Supervisão e pendências'],['execucao','Execução e atividades'],['resultados','Resultados e metas'],['desvios','Desvios e causas'],['pipeline','Pipeline e previsão de pedidos'],
+const REL_CAPS=[['sintese','Síntese executiva'],['supervisao','Supervisão e pendências'],['execucao','Execução e atividades'],['resultados','Resultados e metas'],['desvios','O que explica o resultado'],['pipeline','Pipeline e previsão de pedidos'],
   ['carteira','Carteira a faturar'],['contratos','Contratos de serviço'],['equipes','Desempenho das equipes'],['clientes','Clientes e concentração'],['decisoes','Decisões e plano de ação'],['metodologia','Metodologia e anexos']];
+/* uma linha sob o título de cada capítulo, dizendo o que ele responde */
+const REL_CAP_DESC={desvios:'Por que o resultado ficou acima ou abaixo do esperado: comparação com o ano anterior mês a mês, por vendedor, por categoria e os motivos das perdas.'};
 /* em que capítulo cai cada seção (tela, sid) — o primeiro que casar */
 const REL_SEC_CAP=[['supervisao','*','supervisao'],['atividades','*','execucao'],['reunioes','*','decisoes'],['resultados','res-ind','resultados'],['resultados','res-spv','resultados'],['resultados','res-seq','resultados'],['resultados','res-evo','resultados'],['resultados','res-rec','decisoes'],
   ['pipeline','pipe-comp','pipeline'],['pipeline','pipe-conf2','pipeline'],['desempenho','des-ficha','sintese'],['executiva','plano-res','decisoes'],['executiva','kpi:executiva','sintese'],['executiva','exec-alertas','sintese'],['executiva','exec-meta','resultados'],['executiva','exec-div','resultados'],['executiva','exec-diag','desvios'],['executiva','plano','decisoes'],
@@ -11140,7 +11143,7 @@ async function gerarRelatorio(opt){
     porCap.find(c=>c.k==='decisoes').bs.unshift(o); }
   anexos.forEach(a=>{ const x=document.createElement('div'); x.className='rel-blk'; x.innerHTML=a.html; porCap.find(c=>c.k==='metodologia').bs.push(x); });
   const caps=porCap.filter(c=>c.bs.length); let nc=0;
-  caps.forEach(c=>{ nc++; const h=document.createElement('div'); h.className='rel-cap'; h.textContent=`${nc}. ${c.n}`; c.bs[0].prepend(h); c.num=nc; });
+  caps.forEach(c=>{ nc++; const h=document.createElement('div'); h.className='rel-cap'; h.textContent=`${nc}. ${c.n}`; if(REL_CAP_DESC[c.k]){ const d=document.createElement('small'); d.className='rel-cap-d'; d.textContent=REL_CAP_DESC[c.k]; h.appendChild(d); } c.bs[0].prepend(h); c.num=nc; });
   /* leitura contínua para celular: os mesmos blocos, sem folhas (antes de dividir) */
   const fluido=caps.map(c=>c.bs.map(b=>b.outerHTML).join('')).join('');
   /* mede, divide e pagina — sem escala e sem corte */

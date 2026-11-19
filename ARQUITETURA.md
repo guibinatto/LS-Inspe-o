@@ -328,3 +328,16 @@ Política de probabilidade: "Em negociação" passou de 60% para 20% (pedido da 
 Só a aba ativa vai para a tela; o relatório (`REL_GERANDO`) recebe todas, na ordem das abas.
 `irPara('resultados', sid)` abre a aba da seção. A aba escolhida fica no navegador (localStorage).
 As condições de pagamento aparecem separadas em SEQ e SPV (`cpResumo`, `cpResumoOV`).
+
+## Atualização pelo Ploomes e Omie (botão ↻ e horários)
+
+A tarefa agendada roda nos dias úteis às 5h52 (modo completo) e 11h52 (modo rápido) de Brasília, e
+quando alguém clica em ↻ (modo rápido, fora da madrugada). Ela chama `ferramentas/atualizar.sh`:
+- coleta Ploomes e Omie ao mesmo tempo;
+- `omie_coletar.py` busca as bases do Omie em paralelo (o Omie não aceita o mesmo método duas vezes ao
+  mesmo tempo, então as páginas de uma base seguem uma a uma); os anexos começam assim que pedidos,
+  OS e contratos terminam;
+- modo rápido: anexos incrementais (`--anexos-anteriores`, com a base omieAnexos do painel publicado)
+  e testes rápidos (`fumaca`, `futuro`, `condicoes-pagamento`, `produtos`, cerca de 20 s);
+- modo completo: todos os anexos e também `apresentacao` e `clica-tudo`.
+Tempo medido em 19/11/2026: coleta de 16 min → 4,2 min; script inteiro em 4,6 min (antes, ~30 min no total).

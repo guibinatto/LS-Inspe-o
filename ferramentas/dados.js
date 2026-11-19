@@ -10,7 +10,9 @@
    node ferramentas/dados.js limpar <painel.html> <saida.html>
        remove os dados (seed vazio), para versionar só o código
    node ferramentas/dados.js resumo <dados.json>
-       hash e tamanho de cada bloco (para comparar versões sem ler o conteúdo) */
+       hash e tamanho de cada bloco (para comparar versões sem ler o conteúdo)
+   node ferramentas/dados.js base <dados.json> <nome da base> <saida.json>
+       grava uma base importada ({cols, rows}), ex.: omieAnexos para a coleta incremental de anexos */
 const fs = require('fs'), crypto = require('crypto');
 const RX = id => new RegExp(`(<script id="${id}"[^>]*>)([\\s\\S]*?)(</script>)`);
 const ABRE_DADOS = '<script id="seed-dados" type="application/json" data-z="gz">';
@@ -37,4 +39,8 @@ if (cmd === 'extrair') {
 } else if (cmd === 'resumo') {
   const j = JSON.parse(fs.readFileSync(a, 'utf8'));
   console.log(JSON.stringify({ dados: { tam: (j.dados || '').length, hash: hash(j.dados) }, config: { tam: (j.config || '').length, hash: hash(j.config) } }));
-} else { console.error('uso: extrair | injetar | limpar | resumo (ver cabeçalho)'); process.exit(2); }
+} else if (cmd === 'base') {
+  const j = JSON.parse(fs.readFileSync(a, 'utf8'));
+  const bruto = j.dados ? JSON.parse(require('zlib').gunzipSync(Buffer.from(j.dados, 'base64')).toString('utf8')) : {};
+  const B = bruto[b] || { cols: [], rows: [] }; fs.writeFileSync(c, JSON.stringify(B)); console.log('base', b, (B.rows || []).length, 'linhas ->', c);
+} else { console.error('uso: extrair | injetar | limpar | resumo | base (ver cabeçalho)'); process.exit(2); }
