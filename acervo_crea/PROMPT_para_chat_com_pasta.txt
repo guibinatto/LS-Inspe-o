@@ -1,0 +1,186 @@
+Você tem acesso à pasta C:\Users\Guilherme\LS Fire\All Company - Documentos (cópia sincronizada do SharePoint "All Company" da LS Fire). Estou montando o ACERVO TÉCNICO para o CREA. São duas tarefas. Faça só cópias: NÃO mova, renomeie, edite nem apague nada nas pastas originais. Não invente dados; se algo estiver ilegível ou não existir, diga.
+
+=== TAREFA 1 – POTÊNCIA DOS MOTORES E DADOS DAS BOMBAS (a partir das FOTOS de plaqueta) ===
+Nos PDFs de relatório abaixo, as plaquetas aparecem só como FOTO (o texto traz legendas como "plaqueta da bomba", "placa do motor"). Abra cada PDF, olhe as fotos (principalmente as de plaqueta, placa, motor, bomba, painel) e leia: marca, modelo, número de série, POTÊNCIA (hp/cv/kW), rpm do motor; marca, modelo, vazão (gpm ou m³/h), pressão/altura (psi, bar ou mca), rpm da bomba. Se a pasta tiver vários relatórios do mesmo cliente, procure o que tem a foto da plaqueta.
+
+1. LEGRAND (Caxias do Sul/RS) – motor Mercedes-Benz da bomba de HIDRANTE (Grundfos DN100-40, ~500 gpm, 1800 rpm):
+   Pós-Vendas\2026\3 - Relatórios de serviço\LE GRAND - GL ELETRO\Inspeção mensal 29.09.2025.pdf
+   e a curva escaneada "CURVA - BOMBA DIESEL - HIDRANTE.pdf" (procure dentro de Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\LEGRAND - (12 meses) - PTC 8132\ ou na pasta de relatórios).
+   Confirme também se o motor do conjunto SPRINKLER ainda é Clarke JU6H-UF84 275 BHP ou se foi trocado por Kirloskar KFP6R-UF27R1 300 HP após o sinistro de out/2025 (relatórios de 2026 na mesma pasta).
+2. SEPAC (Mallet/PR) – motor Doosan V8 (DeMaas-Doosan) e bomba (provável Peerless 8AEF20A):
+   Pós-Vendas\2026\3 - Relatórios de serviço\SEPAC\Inspeção mensal SEPAC17.07.2025.pdf (fotos "medições do motor", "rpm do motor") e demais relatórios da pasta.
+3. BEPE GARUVA (Terminal BMP, Garuva/SC) – 2 motobombas diesel, motores Volvo Penta TAD1346GE; quantas bombas existem e dados de placa de cada:
+   Pós-Vendas\2026\3 - Relatórios de serviço\BEPE GARUVA\Inspeção e manutenção BEPE Garuva 08.10.2025.pdf (foto "plaqueta da bomba (bomba 1)") e demais.
+4. BEPE ITAPOÁ / CLIF (Itapoá/SC) – 2 conjuntos diesel (Volvo Penta TAD843GE) + jockey:
+   Pós-Vendas\2026\3 - Relatórios de serviço\CLIF ITAPOÁ\Inspeção er Manutenção - BEPE Itapoá 15.10.2025.pdf e demais.
+5. BRACELL (Santos/SP) – Casa de Bombas 2 (hidrantes): bomba e motor diesel (modelo/potência); e vazão/pressão/rpm da CB1 (Ebara GS 200-500 + MWM 6.12TCE 415 cv):
+   Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10475\REV00\DOCUMENTO\ (e-mail .eml com fotos da 1ª inspeção) e subpastas da BRACELL.
+6. KLABIN (Armazém Paranaguá/PR) – motor Scania (náutico eletrônico) e bomba Equipe EQP (EQP-250-55 ou EQP-200-55?, S/N B-44520):
+   Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\PR\KLABIN\ (subpastas RECEBIDOS / ARQUIVOS – e-mails e fotos do cliente).
+7. PETRÓLEO SABBÁ / RAÍZEN SANTARÉM (balsa, 3 motobombas diesel com redutor angular):
+   Pós-Vendas\2026\3 - Relatórios de serviço\RAIZEN SANTAREM\ (Relatorio_Consolidado_10880731.pdf, RELATÓRIO DE SERVIÇO.pdf e pasta GARANTIA).
+8. BASTON (Palmeira/PR) – 2 motobombas NMFIRE SCF200-150-400, motores NMFIRE (S/N D202012210253 / 0255):
+   Pós-Vendas\2026\3 - Relatórios de serviço\BASTON\
+9. HONEYWELL (Itajubá/MG) – motor JD-Clarke JU6H-UF54 (6068TF254) e bomba Waterfall WF-8X5X11 HS:
+   Pós-Vendas\2026\3 - Relatórios de serviço\HONEYWELL\
+10. RAÍZEN BARRA BONITA/SP – motor diesel com dupla ECU e bomba:
+   Pós-Vendas\2026\3 - Relatórios de serviço\RAIZEN BARRA\
+11. Se achar rápido: SANEPAR (motor 510 hp – marca/modelo) em Pós-Vendas\2026\3 - Relatórios de serviço\01 - RENTALS\SANEPAR\ e LOUIS DREYFUS rental (bomba/motor) em ...\01 - RENTALS\LDC\ e ...\LDC PEDERNEIRAS-SP\.
+
+Entregue o resultado como UMA TABELA, exatamente com estas colunas:
+Cliente | Conjunto | Motor – marca | Motor – modelo | Potência (como na placa + conversão hp/kW) | Motor rpm | Nº série motor | Bomba – marca | Bomba – modelo | Vazão | Pressão/altura | Bomba rpm | Nº série bomba | Arquivo e página/foto de origem | Observação (legível/ilegível/divergência)
+
+=== TAREFA 2 – COPIAR OS DOCUMENTOS PARA UMA PASTA ORGANIZADA ===
+Crie a pasta C:\Users\Guilherme\Downloads\ACERVO_CREA_LS_FIRE_DOCS e, dentro dela, as subpastas listadas abaixo (nome do cliente\categoria). COPIE para cada subpasta o arquivo indicado (caminhos relativos a C:\Users\Guilherme\LS Fire\All Company - Documentos). Quando a linha apontar para uma PASTA (sem extensão), copie os 2 PDFs mais relevantes dela (de preferência os que têm a foto de plaqueta). Linhas marcadas "outro site SharePoint" provavelmente não estão nesta pasta sincronizada: só tente se existir localmente.
+No final, compacte ACERVO_CREA_LS_FIRE_DOCS em ACERVO_CREA_LS_FIRE_DOCS.zip (na mesma pasta Downloads) e me diga: quantos arquivos copiados, quais NÃO foram encontrados (lista), e o tamanho do zip.
+
+Lista (pasta de destino | arquivo de origem):
+
+01 - LEGRAND - Caxias do Sul-RS
+  1_CONTRATOS | Comercial\LS FIRE\CONTRATOS\LEGRAND MANUTENÇÃO\Complete_com_o_Docusign_CPS_676825.pdf
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\RS\LEGRAND\PTC_10149\OV\CPS 6.188.22.01 - ASSINADO.pdf
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\2022\PTC_5213 - LEGRAND\rrsign_assinado_1552.pdf
+  2_PTC | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\LEGRAND - (12 meses) - PTC 8132\PTC 8132 - LEGRAND - rev02.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\RS\LEGRAND\PTC_10149\REV00\PTC_10149-Rev.0_LEGRAND BRASIL LTDA.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\RS\LEGRAND\PTC_10149\OV\Confirmação de Pedido_700500489-LEGRAND BRASIL LTDA.pdf
+  4_EQUIPAMENTOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\LEGRAND - (12 meses) - PTC 8132\ENSAIO DE CURVA DE BOMBA - Legrand - Maio_2025-SPK.pdf
+  4_EQUIPAMENTOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\LEGRAND - (12 meses) - PTC 8132\ENSAIO DE CURVA DE BOMBA - Legrand - Maio_2025-HID.pdf
+  4_EQUIPAMENTOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\LEGRAND - (12 meses) - PTC 8132\HST-WFS-220212.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\LE GRAND - GL ELETRO\Inspeção mensal 30.06.2025.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\LE GRAND - GL ELETRO
+
+02 - UNIPAR - FLOWSERVE
+  2_PTC | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\UNIPAR - FLOWSERVE - (24meses) - PTC 8112\PTC 8112 - FLOWSERVE - UNIPAR - rev01.pdf
+  3_PEDIDOS_E_OV | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\UNIPAR - FLOWSERVE - (24meses) - PTC 8112\PO000000000208404 rev1.pdf
+  4_EQUIPAMENTOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\UNIPAR - FLOWSERVE - (24meses) - PTC 8112\Service Protocol.pdf
+  4_EQUIPAMENTOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/PROJETO004-FLO-05961/Documentos Compartilhados/General/QUALIDADE/CHECKLIST/RQ 15 - Check List Montagem e Teste Equipamento LS FIRE - Rev 03 - FLO1.xlsx
+  4_EQUIPAMENTOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/PROJETO004-FLO-05961/Documentos Compartilhados/General/QUALIDADE/DATABOOK FLO.pdf
+  2_PTC | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/DOCUMENTOSGUILHERME/Documentos Compartilhados/General/OUTROS/DOWNLOADS/KOM - PTC_5961.R00.pdf
+  5_RELATORIOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\UNIPAR - FLOWSERVE - (24meses) - PTC 8112\ATENDIMENTOS 24 MESES UNIPAR\UNIPAR (18) - 20-08-2026\UNIPAR 200826 B1.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\UNIPAR\Inspeção UNIPAR (acompanhamento FLOWSERVE) - 24.11.2025.pdf
+
+03 - SEPAC - Mallet-PR
+  1_CONTRATOS | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\SEPAC - (36 meses) - PTC 8302\Contrato Sepac 06.2025 - 06.2028.pdf
+  2_PTC | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\SEPAC - (36 meses) - PTC 8302\PTC 8302 - assinado.pdf
+  2_PTC | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\SEPAC - (36 meses) - PTC 8302\PTC 8241 - SEPAC - CONTRATO ANUAL.pdf
+  3_PEDIDOS_E_OV | Pós-Vendas\2026\ROBSON 28-10\CONTRATOS DE INSPEÇÃO - 2025_2026\SEPAC - (36 meses) - PTC 8302\Pedido Sepac - contrato.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\2023\PTC_5856 - SEPAC\proposta_tecnico-comercial_5856.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\SEPAC\Inspeção mensal SEPAC17.07.2025.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\SEPAC\Inspeção SEPAC - 01.12.2025.pdf
+
+04 - FA MARINGA - Maringa-PR
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\PR\FA MARINGA\Contrato_PMI_09390_FA Mariga.pdf
+  2_PTC | Comercial\LS FIRE\CONTRATOS\PMI\FA MARINGÁ\Proposta Nº 2026_09390 - Rev.01.pdf
+  2_PTC | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\31 - FAMARINGA\INSPECAO TRIMESTRAL\FAMARINGA_PMI_PTC-8546.pdf
+  2_PTC | Pós-Vendas\2026\ROBSON 28-10\DOWNLOADS\KOM - PTC_5218 - F A MARINGA.pdf
+  4_EQUIPAMENTOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/PROJETO5218FAMaring/Documentos Compartilhados/General/QUALIDADE/Databook FAM 777 CV.pdf
+  4_EQUIPAMENTOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/PROJETO5218FAMaring/Documentos Compartilhados/General/QUALIDADE/Databook FAM Perkins.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\F A MARINGA\F.A. MARINGÁ - Atendimento 01.10.2025.pdf
+
+05 - SCHERER - Joacaba-SC
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\SCHERER SA\PTC-10389\INFORMACOES OMIE\Versão Final Scherer - Contrato e Orçamento - LS FIRE - Matriz - #327128 - Clicksign.pdf
+  2_PTC | Comercial\LS FIRE\CONTRATOS\SCHERER\PTC_9572.Rev02 - Proposta LS Fire.pdf
+  3_PEDIDOS_E_OV | Pós-Vendas\CONTRATOS\SCHERER 30-11-2026\PTC-10.389 CONTRATO TRIMESTRAL\Confirmação de Pedido_700500554-SCHERER SA COMERCIO DE AUTOPECAS (1).pdf
+  4_EQUIPAMENTOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/ENGENHARIA/Documentos Compartilhados/General/PROJETOS/008-SCH-06069/KOM - PTC_6069.R00.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\SCHERER S.A\Startup e Comissionamento SCHERER 12.08.2025.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\SCHERER S.A\Troca Bomba Jockey SCHERER 05.11.2025.pdf
+
+06 - MANN+HUMMEL - Indaiatuba-SP
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SP\MANN\PTC_9509\REV01\PTC_9509.Rev01 - Proposta LS Fire.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SP\MANN\PTC_9514\REV01\PTC_9514.Rev01 - Proposta LS Fire.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SP\MANN\PTC_9509\OV\4100774619 - LS FIRE SISTEMAS.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SP\MANN\PTC_9509\OV\RQ 40 - Passagem de Escopo Comercial REV02.xlsx
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\PTC_6279 - RILEVA CONTAINER\Proposta Comercial Nº 6279_PEDIDO FECHADO.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\PTC_6309 - MANN\REV01\proposta_tecnico-comercial_6309_TECNICA.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\MANN+HUMMEL
+
+07 - MULTILOG - Itajai-SC
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2025\SC\MULTILOG\PTC_9235\REV04\PTC_9235.Rev04 - Proposta LS Fire.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2025\SC\MULTILOG\PTC_9235\OV\RQ 40 - Passagem de Escopo Comercial.PDF
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\MULTILOG ITAJAI\PTC_10425\OV\Pedido - 4500542886.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\MULTILOG ITAJAI\PTC-10471\REV00\OV\Pedido - 4500547122.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2025\SC\MULTILOG\PTC_9235\OV\PTC_9235.Rev02 - Folha da dados do motor Diesel.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2025\SC\MULTILOG\PTC_9235\OV\PTC_9235.Rev02 - Folha da dados da bomba diesel.pdf
+  5_RELATORIOS | (outro site SharePoint, pode nao estar sincronizado) https://lsfirebr.sharepoint.com/sites/LSFIREGERAL/Documentos Compartilhados/004-MUL-09235/QUALIDADE/DATABOOK/Databook/Documentos LS Fire
+
+08 - CM HOSPITALAR - Santo Amaro da Imperatriz-SC
+  2_PTC | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\79 - FLEXCOTTOM CM HOSPITALAR\FLEX_PMI_PTC-8775 - Rev.01.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CM HOSPITALAR\PTC_9638\REV02\PTC_9638.Rev02 - Proposta LS Fire.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CM HOSPITALAR\PTC_9673\REV00\PTC_9673.Rev00 - Proposta LS Fire.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CM HOSPITALAR\PTC_9638\OV\pedidodecompra_013533 LS EQUIPAMENTOS.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CM HOSPITALAR\PTC_9673\OV\ORDEM DE VENDA Nº 500137.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\CM HOSPITALAR\PTC_10148\OV\RES_ Novo PEDIDO DE COMPRA_ 014992.eml
+  4_EQUIPAMENTOS | Comercial\LS FIRE\RELATÓRIO DE PARECER TÉCNICO DE EQUIPAMENTO\BRUM TEC FLEXICOTTON 15.11.2024\RELATÓRIO DE VISITA TÉCNICA LS FIRE - MOTOBOMBA INCÊNDIO CERTIFICADA - BRUM TEC - FLEXICOTTON.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\CM HOSPITALAR - FLEXCOTTON
+
+09 - BRACELL - Santos-SP
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10131\REV04\PTC_10131-Rev.4_Bracell SP Celulose LTDA.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10131\REV04\Ordem de Compra -4500321987.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10131\REV04\Confirmação de Pedido_700500557-Bracell SP Celulose LTDA.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10131\REV04\RQ40.Rev03 - 019-BRA-10131 - Rev4.pdf
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10131\REV04\RECEBIDOS\Escopo Técnico - Contrato de Inspeção de Casas de Bombas (6 meses).docx
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUDESTE\SP\BRACELL\PTC_10476\REV00\PTC_10476-Rev.0_BRACELL SP CELULOSE LTDA (3).pdf
+
+10 - BEPE-BMP - Garuva e Itapoa-SC
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\BEPE GARUVA\PTC_10401\REV00\DOCUMENTO\PTC 8370.pdf
+  2_PTC | Pós-Vendas\2026\Orçamentos\BEPE_PTC-08371_rev.03.pdf
+  2_PTC | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\14 - BEPE\BEPE_PTC-08392_rev.02.pdf
+  2_PTC | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\14 - BEPE\BEPE_PTC-08490.pdf
+  2_PTC | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\14 - BEPE\PLANO MAN ANUAL\BEPE_PTC-08661_rev.00.pdf
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\SC\BEPE GARUVA\PTC_10401\REV00\Contrato_ BEPE.docx
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\BEPE GARUVA\Inspeção e manutenção BEPE Garuva 08.10.2025.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\CLIF ITAPOÁ\Inspeção er Manutenção - BEPE Itapoá 15.10.2025.pdf
+
+11 - KLABIN - Paranagua-PR
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\PR\KLABIN\PTC_10332\REV00\OV\4504582212.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\PR\KLABIN\PTC_10282\OV\4504582212-2.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\PLOOMES\2026\SPV\SUL\PR\KLABIN\PTC_10332\REV00\ARQUIVOS\Orçamento P-51861.pdf
+
+12 - CONCORDIA SANEAMENTO - Concordia-SC (locacao)
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CONCORDIA SANEAMENTO\PTC_9466\REV00\PTC_9466.Rev00 - Proposta LS Fire.pdf
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CONCORDIA SANEAMENTO\PTC_9573\PTC_9573.Rev00 - Proposta LS Fire.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CONCORDIA SANEAMENTO\PTC_9466\REV00\ordem_de_venda_500065-1.pdf
+  3_PEDIDOS_E_OV | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CONCORDIA SANEAMENTO\PTC_9466\REV00\ordem_de_servico_2069.pdf
+  4_EQUIPAMENTOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\2026\SPV - SERVICOS E POS VENDAS\SC\CONCORDIA SANEAMENTO\PTC_9466\REV00\Folha de dados bomba diesel ksb.pdf
+  6_FATURAMENTO | Pós-Vendas\2026\6 - Rentals\Aguas de Concordia\42260240950413000151550010000013921010370354.pdf
+  6_FATURAMENTO | Pós-Vendas\2026\6 - Rentals\Aguas de Concordia\FATURA LOCAÇÃO Nº LS0678.pdf
+
+13 - ORIGEM ENERGIA - Pilar-AL (locacao)
+  1_CONTRATOS | Comercial\LS FIRE\CONTRATOS\LOCACAO\ORIGEM\01-06-2025_01-06-2026\DOCUSIGN_LocaE3o_de_BCI_-_LS_Fire_20250509122332.333_X1.pdf
+  1_CONTRATOS | Comercial\LS FIRE\CONTRATOS\LOCACAO\ORIGEM\01-06-2026_01-06-2027\RQ 19 - Segundo Termo Aditivo - LS Fire x Origem Energia Alagoas - Rev.03.docx
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\01 - RENTALS\ORIGEM ENERGIA\Comissionar_e_partir_motor_diesel_baudouin_6_m16g308_6_20268011.pdf
+
+14 - SANEPAR - Sao Jose dos Pinhais-PR (locacao)
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\TECNICON\PR\SANEPAR\PTC_8474_REV00 - SANEPAR\REV02\Contrato_65762_assinado.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\TECNICON\PR\SANEPAR\PTC_8474_REV00 - SANEPAR\REV02\PTC_8474_REV02 - Proposta Técnica Comercial - LSFIRE.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\01 - RENTALS\SANEPAR\29_08_2025_14_04_00_20727662.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\01 - RENTALS\SANEPAR\Inspeção SANEPAR - 01.12.2025.pdf
+
+15 - LOUIS DREYFUS - Pederneiras-SP (locacao)
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\01 - RENTALS\LDC\Relatorio_Consolidado_10838145.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\LDC PEDERNEIRAS-SP\Instalação de Manifold (Rentals) LDC Pederneiras - 25.11.2025.pdf
+
+16 - AGEO NORTE - Santos-SP
+  1_CONTRATOS | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\PTC_6206 - AGEO\CONFIRMAÇÃO DE PEDIDO\CONTRATO DE PRESTAÇÃO DE SERVIÇOS.pdf
+  2_PTC | Comercial\LS FIRE\ORÇAMENTOS\OMIE\ANTIGO\PTC_6206 - AGEO\REV08\os_871REV04.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\AGEO TERMINAIS\startup_e_comissionamento_de_03_motores_diesel_20500422.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\AGEO TERMINAIS\Segunda Etapa Repotencialização Motores 2 e 3 AGEO NORTE - 11.12.2025.pdf
+
+17 - PETROLEO SABBA RAIZEN - Santarem-PA
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\RAIZEN SANTAREM\Relatorio_Consolidado_10880731.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\RAIZEN SANTAREM\RELATÓRIO DE SERVIÇO.pdf
+
+18 - BASTON - Palmeira-PR
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\BASTON\RETIRADA DE BOMBA01 - BASTON.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\BASTON\Levantamento - Baston.pdf
+
+19 - HONEYWELL - Itajuba-MG
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\HONEYWELL\Realizar_manuten_o_teste_de_desempenho_e_inspe_o_me_motobomba_a_diesel_20985949.pdf
+  4_EQUIPAMENTOS | Pós-Vendas\2026\1 - Agenda Técnica\STATUS-SERVICE - 2025.xlsx
+
+20 - RAIZEN - Barra Bonita-SP
+  3_PEDIDOS_E_OV | Pós-Vendas\2026\0 - Clientes - Propostas\1 - Orçamentos\8 - RAIZEN\PC LS Fire.pdf
+  5_RELATORIOS | Pós-Vendas\2026\3 - Relatórios de serviço\RAIZEN BARRA\Relatorio_Consolidado_10879361.pdf
+
+=== RESPOSTA FINAL ===
+Me devolva: (1) a tabela da Tarefa 1; (2) o resumo da Tarefa 2 (copiados / não encontrados / tamanho do zip).
