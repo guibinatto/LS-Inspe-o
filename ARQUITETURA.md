@@ -328,6 +328,11 @@ Política de probabilidade: "Em negociação" passou de 60% para 20% (pedido da 
 Só a aba ativa vai para a tela; o relatório (`REL_GERANDO`) recebe todas, na ordem das abas.
 `irPara('resultados', sid)` abre a aba da seção. A aba escolhida fica no navegador (localStorage).
 As condições de pagamento aparecem separadas em SEQ e SPV (`cpResumo`, `cpResumoOV`).
+Três gráficos comparam SEQ e SPV no mesmo desenho, em vez de um gráfico por divisão com escalas diferentes:
+- `cp-sinal` (`svgPilha100`): barras 100% por divisão, em nº de pedidos e em valor, coloridas pela faixa do sinal;
+- `cp-ov` (`svgParH`): prazo médio das OVs do Omie por faixa, em % das OVs de cada divisão;
+- `cp-conds` (`svgPilhaH`): as 12 condições mais usadas, empilhadas SEQ + SPV. Uma condição longa vira
+  um resumo, por exemplo "Sinal 30% · 30% em marcos · 40% a 28 DDL"; o texto inteiro fica no balão e na tabela.
 
 ## Atualização pelo Ploomes e Omie (botão ↻ e horários)
 

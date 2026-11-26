@@ -8004,23 +8004,43 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
       corpo:tp.length?svgBarrasH(tp.map(x=>({rot:x.k,val:x.n,extra:fmtCompacto(x.v),cor:x.k==='Com sinal no pedido'?cssVar('--lar'):corD(d),k:x.n?`cp-${d}-${r.porTipo.indexOf(x)}`:null})),{W,lw:200,rw:110,fmt:fmtN,aria:d+' por condição'}):'<p class="pl-vazio">Sem pedidos ganhos no período.</p>',
       tabela:{cols:['Condição','Ganhos','Valor ganho','Perdidos','Conversão','Abertos','Valor aberto'],linhas:tp.map(x=>[x.k,x.n,fmtBRL(x.v),x.nPer,pc(x.win),x.nAb,fmtBRL(x.vAb)])},
       nota:'laranja = com sinal · clique para ver os pedidos; a tabela traz perdidos, conversão e pipeline aberto'}); });
-  h+=graf2('sinal',d=>{ const r=R[d];
-    return blocoGraf({id:'cp-sinal-'+d.toLowerCase(),tit:`${d}: tamanho do sinal`,perg:'Quando há sinal, de quanto é?',per,unid:'pedidos ganhos',fonte:'Ploomes',
-      corpo:svgBarrasH(r.faixas.map(x=>({rot:x.k,val:x.n,extra:fmtCompacto(x.v),cor:x.k==='Sem sinal'?cssVar('--g6'):cssVar('--lar')})),{W,lw:110,rw:110,fmt:fmtN}),
-      tabela:{cols:['Sinal','Pedidos','Valor'],linhas:r.faixas.map(x=>[x.k,x.n,fmtBRL(x.v)])}}); });
+  const FX=['Sem sinal','Até 20%','21% a 35%','36% a 50%','Acima de 50%'], FXC=[corV('--g6'),'#FFD3B3','#FF9A52','#FF6600','#A84300'], FXT=['#000','#000','#000','#fff','#fff'];
+  DV.forEach(d=>FX.forEach((k,j)=>regLista(`cp-sx-${d}-${j}`,`${d} · pedidos ganhos — ${k==='Sem sinal'?'sem sinal':'sinal '+k.toLowerCase()}`,R[d].gan.filter(x=>cpFaixaSinal(x.sinal)===k).sort((a,b)=>b.v-a.v).map(z=>[fmtData(z.n.dtVenda),esc(String(z.n.cli).slice(0,40)),esc(nomeCurto(z.n.resp)||''),esc(z.txt.slice(0,110)),z.sinal?pc(z.sinal):'—',fmtBRL(z.v)]),
+    [{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Condição',f:1},{t:'Sinal',n:1},{t:'Valor',n:1}])));
+  const linS=DV.flatMap((d,di)=>{ const r=R[d], fx=FX.map(k=>r.faixas.find(x=>x.k===k)), ks=FX.map((k,j)=>fx[j].n?`cp-sx-${d}-${j}`:null);
+    return [{rot:d,sub:'em nº de pedidos',vals:fx.map(x=>x.n),k:ks,dir:`${fmtN(r.n)} pedidos · ${fmtN(r.cs.length)} com sinal`,tit:j=>`${fmtN(fx[j].n)} pedidos`},
+            {rot:'',sub:'em valor',vals:fx.map(x=>x.v),k:ks,dir:`${fmtCompacto(r.vG)} · ${r.vG?pc(r.vS/r.vG):'—'} com sinal`,tit:j=>fmtBRL(fx[j].v)}]; });
+  const frS=DV.map(d=>{ const r=R[d]; return r.n?`${d}: ${fmtN(r.cs.length)} de ${fmtN(r.n)} pedidos tiveram sinal (${r.vG?pc(r.vS/r.vG):'—'} do valor)${r.sinalMed!=null?`, sinal médio de ${pc(r.sinalMed)}`:''}`:`${d}: sem pedidos ganhos`; }).join('; ');
+  h+=blocoGraf({id:'cp-sinal',tit:'Sinal: quanto o cliente paga já no pedido',perg:`Cada barra soma 100% dos pedidos ganhos da divisão; a cor diz o tamanho do sinal. ${frS}.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
+    leg:FX.map((k,j)=>[FXC[j],k]),
+    corpo:svgPilha100(linS.map(l=>Object.assign(l,{vals:l.vals.map(v=>v||0)})),FX.map((k,j)=>({rot:k,cor:FXC[j],txt:FXT[j]})),{W:760,lw:130,rw:200,aria:'tamanho do sinal por divisão'}),
+    tabela:{cols:['Sinal',...DV.flatMap(d=>[d+': pedidos',d+': valor'])],linhas:FX.map((k,j)=>[k,...DV.flatMap(d=>{ const x=R[d].faixas[j]; return [x.n,fmtBRL(x.v)]; })])},
+    nota:'clique numa faixa para ver os pedidos'});
   if(Q.ov.length){ DV.forEach(d=>regLista('cp-ov-'+d,`${d} · OVs com parcela antes do faturamento`,O[d].ant.slice().sort((a,b)=>b.valor-a.valor).map(o=>[esc(o.ov),fmtData(o.inc),esc(String(o.cli).slice(0,40)),esc(nomeCurto(o.resp)||o.vend||''),pc(o.antec),esc(o.ps.map(p=>`${fmtPct(p.p,0)} ${p.v?fmtData(p.v):p.d+'d'}`).join(' · ').slice(0,120)),fmtBRL(o.valor)]),
       [{t:'OV'},{t:'Incluída'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Antes do fat.',n:1},{t:'Parcelas',f:1},{t:'Valor',n:1}]));
-    h+=graf2('ov',d=>{ const o=O[d];
-      return blocoGraf({id:'cp-ov-'+d.toLowerCase(),tit:`${d}: prazo das ordens de venda`,perg:'Em quantos dias o Omie cobra?',per,unid:'ordens de venda',fonte:'Omie (dias das parcelas, ponderados pelo %)',
-        corpo:o.n?svgBarrasH(o.prazos.map(x=>({rot:x.k,val:x.n,extra:fmtPct(x.n/o.n,0),cor:corD(d)})),{W,lw:160,rw:80,fmt:fmtN}):'<p class="pl-vazio">Sem OVs no período.</p>',
-        tabela:{cols:['Prazo médio','OVs','Valor no Omie'],linhas:o.prazos.map(x=>[x.k,x.n,fmtBRL(x.v)])},
-        nota:o.n?`${fmtN(o.uma)} de ${fmtN(o.n)} em 1 parcela · <a class="td-link" onclick="abrirLista('cp-ov-${d}')">${fmtN(o.ant.length)} com parcela antes do faturamento</a>`:''}); });
+    const PZ=['No faturamento (0 dia)','1 a 15 dias','16 a 30 dias','31 a 60 dias','61 a 90 dias','Mais de 90 dias','Sem prazo'].filter(k=>DV.some(d=>O[d].prazos.some(x=>x.k===k)));
+    const nPz=(d,k)=>(O[d].prazos.find(x=>x.k===k)||{n:0,v:0});
+    const frO=DV.map(d=>{ const o=O[d]; return o.n?`${d} recebe em média em ${fmtN(o.prazo)} dias (${fmtN(o.n)} OVs)`:`${d}: sem OVs`; }).join('; ');
+    h+=blocoGraf({id:'cp-ov',tit:'Prazo de recebimento nas ordens de venda',perg:`Quantos dias depois do faturamento o cliente paga, em % das OVs de cada divisão. ${frO}.`,per,unid:'ordens de venda do Omie',fonte:'Omie (dias das parcelas de cada OV, média ponderada pelo % de cada parcela)',
+      leg:DV.map(d=>[corD(d),`${d} (${fmtN(O[d].n)} OVs)`]),
+      corpo:svgParH(PZ.map(k=>k.replace(' (0 dia)','')),DV.map(d=>({d,cor:corD(d),vals:PZ.map(k=>O[d].n?nPz(d,k).n/O[d].n:0)})),{W:760,lw:170,rw:90,fmt:(v,s,i)=>v?`${s.d} ${fmtPct(v,0)} (${fmtN(nPz(s.d,PZ[i]).n)})`:`${s.d} —`,aria:'prazo das OVs por divisão'}),
+      tabela:{cols:['Prazo médio da OV',...DV.flatMap(d=>[d+': OVs',d+': %',d+': valor'])],linhas:PZ.map(k=>[k,...DV.flatMap(d=>{ const x=nPz(d,k); return [x.n,O[d].n?fmtPct(x.n/O[d].n,0):'—',fmtBRL(x.v)]; })])},
+      nota:DV.map(d=>O[d].n?`${d}: ${fmtN(O[d].uma)} de ${fmtN(O[d].n)} em 1 parcela · <a class="td-link" onclick="abrirLista('cp-ov-${d}')">${fmtN(O[d].ant.length)} com parcela antes do faturamento</a>`:'').filter(Boolean).join(' · ')});
     if(ovND.length)h+=`<div class="nota">${fmtN(ovND.length)} OVs do Omie sem divisão identificada (sem pedido no Controle nem família de equipamento) ficam fora da divisão acima.</div>`; }
   /* condições mais usadas e vendedores, com a coluna da divisão */
   const nd=(a,d)=>a.filter(x=>x.div===d).length;
   const conds=[...agrupar(Q.gan,x=>x.txt||'(sem condição)').entries()].map(([k,a])=>({k,a,n:a.length,v:somar(a,x=>x.v),tipo:a[0].tipo,sinal:a[0].sinal})).sort((a,b)=>b.n-a.n||b.v-a.v);
-  h+=`<div class="card"><h4>Condições mais usadas nos pedidos ganhos</h4>${tab([{t:'Condição'},{t:'Tipo'},...DV.map(d=>({t:d,n:1})),{t:'Valor',n:1},{t:'Sinal',n:1}],
-      conds.slice(0,15).map(x=>[esc(x.k.slice(0,90)),esc(x.tipo),...DV.map(d=>fmtN(nd(x.a,d))||'—'),fmtBRL(x.v),x.sinal?pc(x.sinal):'—']),360)}</div>`;
+  const cTop=conds.slice(0,12), cRot=k=>{ const t=k.replace(/^cp\s*-?\s*\d+\s*-\s*/i,'').replace(/\s+/g,' ').trim(), i=condPagInfo(k);
+    if(t.length<=40||!/%/.test(t))return t.length>44?t.slice(0,42)+'…':t;
+    const resto=1-i.sinal-i.antec, p=[]; if(i.sinal>0)p.push('Sinal '+pc(i.sinal)); if(i.antec>0)p.push(pc(i.antec)+' em marcos'); if(resto>.005)p.push(pc(resto)+(i.prazo!=null?` a ${i.prazo} DDL`:' no faturamento'));
+    return p.join(' · ')||t.slice(0,42)+'…'; };
+  cTop.forEach((x,i)=>regLista('cp-c-'+i,`Pedidos ganhos — ${x.k}`,x.a.slice().sort((a,b)=>b.v-a.v).map(z=>[fmtData(z.n.dtVenda),z.div||'—',esc(String(z.n.cli).slice(0,40)),esc(nomeCurto(z.n.resp)||''),fmtBRL(z.v)]),
+    [{t:'Data'},{t:'Divisão'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Valor',n:1}]));
+  h+=blocoGraf({id:'cp-conds',tit:'Condições mais usadas nos pedidos ganhos',perg:`As ${fmtN(cTop.length)} condições mais frequentes, em nº de pedidos, separadas em SEQ e SPV.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
+    leg:DV.map(d=>[corD(d),d]),
+    corpo:cTop.length?svgPilhaH(cTop.map((x,i)=>({rot:cRot(x.k)||x.k,tit:x.k,vals:DV.map(d=>nd(x.a,d)),k:'cp-c-'+i,dir:`${fmtN(x.n)} · ${fmtCompacto(x.v)}${x.sinal?' · sinal '+pc(x.sinal):''}`})),DV.map(d=>({cor:corD(d)})),{W:900,lw:300,rw:190,max:46,aria:'condições mais usadas'}):'<p class="pl-vazio">Sem pedidos ganhos no período.</p>',
+    tabela:{cols:['Condição','Tipo',...DV,'Valor','Sinal'],linhas:conds.slice(0,30).map(x=>[x.k,x.tipo,...DV.map(d=>nd(x.a,d)),fmtBRL(x.v),x.sinal?pc(x.sinal):'—'])},
+    nota:'clique numa condição para ver os pedidos · a tabela traz as 30 mais usadas e o tipo'});
   const vend=[...agrupar(Q.gan,x=>x.n.resp||'(sem vendedor)').entries()].map(([k,a])=>({k,v:somar(a,x=>x.v),R:Object.fromEntries(DV.map(d=>[d,cpResumo(a.filter(x=>x.div===d))]))})).sort((a,b)=>b.v-a.v);
   h+=`<div class="card"><h4>Por vendedor</h4>${tab([{t:'Vendedor'},...DV.flatMap(d=>[{t:d+': ganhos',n:1},{t:d+': com sinal',n:1},{t:d+': antes do fat.',n:1}]),{t:'Prazo médio',n:1}],
       vend.map(x=>[esc(nomeCurto(x.k)||x.k),...DV.flatMap(d=>{ const r=x.R[d]; return r.n?[`${fmtN(r.n)} · ${fmtCompacto(r.vG)}`,`${fmtN(r.cs.length)} (${pc(r.cs.length/r.n)})`,pc(r.antesMed)]:['—','—','—']; }),
@@ -10522,6 +10542,22 @@ function svgBarrasH(items,o){ o=o||{}; const W=o.W||600, lw=o.lw||200, rw=o.rw||
   return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'barras')}">${items.map((it,i)=>{ const y=4+i*26;
     return `<g${clique(it.k)}>${it.k?`<rect x="0" y="${y}" width="${W}" height="24" fill="transparent"/>`:''}${txtSvg(lw-8,y+15,String(it.rot).slice(0,30),{a:'end',fs:12,c:corV('--txt')})}<rect x="${lw}" y="${y+4}" width="${sx(Math.max(it.val?1:0,X(it.val||0)))}" height="15" fill="${it.cor||o.cor||corV('--g-real')}"/>
       ${txtSvg(lw+X(it.val||0)+6,y+15,`${f(it.val||0)}${it.extra?' · '+it.extra:''}`,{fs:11.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
+/* barras 100% empilhadas: uma linha por grupo, cada parte com o seu % (rótulo dentro quando cabe) */
+function svgPilha100(linhas,partes,o){ o=o||{}; const W=o.W||760, lw=o.lw||150, rw=o.rw||150, bw=W-lw-rw, h=o.h||26, gap=o.gap||14, H=linhas.length*(h+gap)+4;
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'partes de um total')}">${linhas.map((l,i)=>{ const y=4+i*(h+gap), tot=somar(l.vals,v=>v||0); let x=lw;
+    const segs=tot?l.vals.map((v,j)=>{ if(!(v>0))return ''; const w=bw*v/tot, p=v/tot, c=partes[j].cor, g=`<g${clique(l.k&&l.k[j])}><rect x="${sx(x)}" y="${y}" width="${sx(Math.max(1,w-1.5))}" height="${h}" fill="${c}"><title>${esc(partes[j].rot)}: ${esc(fmtPct(p,0))}${l.tit?' · '+esc(l.tit(j)):''}</title></rect>${w>34?txtSvg(x+w/2,y+h/2+4.5,fmtPct(p,0),{a:'middle',fs:12,w:600,c:partes[j].txt||'#fff'}):''}</g>`; x+=w; return g; }).join(''):`<rect x="${lw}" y="${y}" width="${bw}" height="${h}" fill="${corV('--card2')}" stroke="${corV('--linha')}"/>${txtSvg(lw+8,y+h/2+4.5,'sem dados',{fs:11.5,c:corV('--txt3')})}`;
+    return `${l.rot?txtSvg(lw-10,y+h/2+(l.sub?-1:4.5),l.rot,{a:'end',fs:12.5,w:600,c:corV('--txt')}):''}${l.sub?txtSvg(lw-10,y+h/2+(l.rot?12:4.5),l.sub,{a:'end',fs:11,c:corV('--txt3')}):''}${segs}${txtSvg(W-rw+10,y+h/2+4.5,l.dir||'',{fs:12,c:corV('--txt2')})}`; }).join('')}</svg>`; }
+/* barras horizontais lado a lado: para cada categoria, uma barra por série (ex.: SEQ e SPV) */
+function svgParH(cats,series,o){ o=o||{}; const W=o.W||760, lw=o.lw||190, rw=o.rw||110, ns=series.length, bh=o.bh||13, gh=ns*(bh+3)+12, H=cats.length*gh+4, f=o.fmt||fmtN;
+  const mx=Math.max(1e-9,...series.flatMap(s=>s.vals.map(v=>v||0))), X=v=>(W-lw-rw)*(v/mx);
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'comparação')}">${cats.map((c,i)=>{ const y=4+i*gh;
+    return `${i?`<line x1="0" x2="${W}" y1="${y-6}" y2="${y-6}" stroke="${corV('--linha')}" stroke-width=".6"/>`:''}${txtSvg(lw-10,y+ns*(bh+3)/2+3,c,{a:'end',fs:12,c:corV('--txt')})}${series.map((s,j)=>{ const v=s.vals[i]||0, yy=y+j*(bh+3);
+      return `<g${clique(s.k&&s.k[i])}><rect x="${lw}" y="${yy}" width="${sx(Math.max(v?2:0,X(v)))}" height="${bh}" fill="${s.cor}"/>${txtSvg(lw+X(v)+6,yy+bh-2,(s.rot?s.rot+' ':'')+f(v,s,i),{fs:11,c:corV('--txt2')})}</g>`; }).join('')}`; }).join('')}</svg>`; }
+/* barras horizontais empilhadas (contagem): cada item com as suas partes (ex.: SEQ + SPV) */
+function svgPilhaH(items,series,o){ o=o||{}; const W=o.W||760, lw=o.lw||300, rw=o.rw||200, h=18, gh=26, H=items.length*gh+6, mx=Math.max(1,...items.map(it=>somar(it.vals,v=>v||0))), X=v=>(W-lw-rw)*(v/mx);
+  return `<svg width="${W}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria||'barras empilhadas')}">${items.map((it,i)=>{ const y=4+i*gh; let x=lw;
+    return `<g${clique(it.k)}>${it.k?`<rect x="0" y="${y}" width="${W}" height="${gh-2}" fill="transparent"/>`:''}<title>${esc(it.tit||it.rot)}</title>${txtSvg(lw-10,y+13,String(it.rot).slice(0,o.max||48),{a:'end',fs:12,c:corV('--txt')})}${it.vals.map((v,j)=>{ if(!(v>0))return ''; const w=X(v), g=`<rect x="${sx(x)}" y="${y+2}" width="${sx(Math.max(1,w-1))}" height="${h-4}" fill="${series[j].cor}"/>${w>18?txtSvg(x+w/2,y+13,fmtN(v),{a:'middle',fs:10.5,w:600,c:'#fff'}):''}`; x+=w; return g; }).join('')}
+      ${txtSvg(x+8,y+13,it.dir||'',{fs:11.5,c:corV('--txt2')})}</g>`; }).join('')}</svg>`; }
 /* faixa proporcional (infográfico): partes de um total — proporção correta, rótulos e números */
 function svgFaixa(partes,o){ o=o||{}; const W=o.W||640, tot=somar(partes,p=>p.val||0)||1; let x=0;
   return `<svg width="${W}" viewBox="0 0 ${W} 54" role="img" aria-label="${esc(o.aria||'distribuição')}">${partes.filter(p=>p.val>0).map(p=>{ const w=(W)*(p.val/tot), g=`<g${clique(p.k)}><rect x="${sx(x)}" y="4" width="${sx(Math.max(1,w-1))}" height="22" fill="${p.cor}"/>${w>46?txtSvg(x+5,19,fmtN(p.val),{fs:11.5,c:'#fff',w:600}):''}${w>70?txtSvg(x+5,44,String(p.rot).slice(0,Math.floor(w/6.5)),{fs:11,c:corV('--txt2')}):''}</g>`; x+=w; return g; }).join('')}</svg>`; }
