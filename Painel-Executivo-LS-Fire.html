@@ -1033,6 +1033,7 @@ body.rel-doc{background:#E6E6E6;margin:0}
 .res-intro{margin:4px 2px 4px;color:var(--txt2);font-size:12.5px}
 .res-corpo>.sec:first-child,.res-corpo>.g:first-child{margin-top:8px}
 /* condições de pagamento por divisão */
+.cp-cob{margin:-2px 0 8px;font-size:12px;color:var(--ale);font-weight:600}
 .cp-divs{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin:0 0 12px}
 .cp-div{background:var(--card);border:1px solid var(--linha);border-top:4px solid var(--spv);border-radius:var(--r);padding:14px 16px}
 .cp-div.cp-seq{border-top-color:var(--seq)}
@@ -7984,11 +7985,19 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
   const DV=['SEQ','SPV'].filter(d=>!EST.div||EST.div===d), NOME={SEQ:'SEQ — Soluções e Equipamentos',SPV:'SPV — Serviços e Pós-Venda'};
   const R=Object.fromEntries(DV.map(d=>[d,cpResumo(Q.gan.filter(x=>x.div===d),Q.per.filter(x=>x.div===d),Q.ab.filter(x=>x.div===d))]));
   const O=Object.fromEntries(DV.map(d=>[d,cpResumoOV(Q.ov.filter(o=>o.div===d))])), ovND=Q.ov.filter(o=>o.div!=='SEQ'&&o.div!=='SPV');
+  /* cobertura: a condição negociada vem só dos negócios ganhos no Ploomes (o Ploomes começou em jul/2026);
+     compara com os pedidos oficiais do período (Controle de Pedidos + vendas) na mesma divisão */
+  const ini0=(M.negocios||[]).filter(n=>n.ganho&&n.dtVenda).map(n=>+n.dtVenda), iniPl=ini0.length?new Date(Math.min(...ini0)):null;
+  const pedP=(F.vendas||[]).filter(v=>v.dt&&noPer(v.dt)&&(!EST.div||v.div===EST.div)&&(!EST.vend||v.resp===EST.vend));
+  const cob=d=>{ const g=d?Q.gan.filter(x=>x.div===d).length:Q.gan.length, p=d?pedP.filter(v=>v.div===d).length:pedP.length; return {g,p}; };
+  const desde=iniPl?`desde ${mesRot(isoD(iniPl).slice(0,7)).toLowerCase()}`:'';
+  const cobTxt=d=>{ const c=cob(d); return `Ploomes ${desde}: ${fmtN(c.g)} de ${fmtN(c.p)} pedidos${d?' '+d:''} do período`; };
+  const cobFl=d=>{ const c=cob(d); return c.p>c.g?[cobTxt(d)]:[]; };
   const corD=d=>cssVar(d==='SEQ'?'--seq':'--spv'), cond1=r=>r.conds[0]?(r.conds[0].tipo==='Prazo único (DDL)'&&r.conds[0].prazo!=null?r.conds[0].prazo+' DDL':r.conds[0].tipo):'—';
-  let h=sec('Condições de pagamento: como fechamos os pedidos',`Pedidos ganhos no período${per?' ('+esc(per)+')':''}, separados em SEQ e SPV, pela condição negociada no Ploomes (base desde jul/2026), lida pelo texto: <b>sinal</b> = parte paga na emissão ou envio do pedido; <b>antecipação</b> = parte paga antes do faturamento por marcos (desenho técnico, APE, embarque, N dias do pedido); o resto é pago no faturamento ou depois. Embaixo, como as ordens de venda foram registradas no Omie.`,'res-condpag');
+  let h=sec('Condições de pagamento: como fechamos os pedidos',`Pedidos ganhos no período${per?' ('+esc(per)+')':''}, separados em SEQ e SPV, pela condição negociada no Ploomes, lida pelo texto. <b>Cobertura:</b> o Ploomes só tem os pedidos ganhos ${esc(desde)} (${esc(cobTxt(''))}); os anteriores ficam fora dos gráficos de condição e sinal, e o Omie não serve para completá-los, porque não registra o sinal de forma confiável. Definições: <b>sinal</b> = parte paga na emissão ou envio do pedido; <b>antecipação</b> = parte paga antes do faturamento por marcos (desenho técnico, APE, embarque, N dias do pedido); o resto é pago no faturamento ou depois. Embaixo, como as ordens de venda foram registradas no Omie.`,'res-condpag');
   /* painel por divisão */
   h+=`<div class="cp-divs">${DV.map(d=>{ const r=R[d], o=O[d];
-    return `<div class="cp-div cp-${d.toLowerCase()}"><h4>${NOME[d]}</h4><div class="cp-kpis">
+    return `<div class="cp-div cp-${d.toLowerCase()}"><h4>${NOME[d]}</h4><p class="cp-cob">${esc(cobTxt(d))} · OVs: Omie, ano inteiro</p><div class="cp-kpis">
       <div><small>Fechados com sinal</small><b>${r.n?pc(r.cs.length/r.n):'—'}</b><span>${fmtN(r.cs.length)} de ${fmtN(r.n)} pedidos · ${r.vG?pc(r.vS/r.vG):'—'} do valor</span></div>
       <div><small>Sinal médio</small><b>${pc(r.sinalMed)}</b><span>nos pedidos com sinal, ponderado pelo valor</span></div>
       <div><small>Pago antes do faturamento</small><b>${pc(r.antesMed)}</b><span>sinal + marcos, do valor ganho (${fmtCompacto(r.vG)})</span></div>
@@ -8000,7 +8009,7 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
   DV.forEach(d=>R[d].porTipo.forEach((x,i)=>regLista(`cp-${d}-${i}`,`${d} · pedidos ganhos — ${x.k}`,x.g.slice().sort((a,b)=>b.v-a.v).map(z=>[fmtData(z.n.dtVenda),esc(String(z.n.cli).slice(0,40)),esc(nomeCurto(z.n.resp)||''),esc(z.txt.slice(0,110)),z.sinal?pc(z.sinal):'—',fmtBRL(z.v)]),
     [{t:'Data'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Condição',f:1},{t:'Sinal',n:1},{t:'Valor',n:1}])));
   h+=graf2('tipo',d=>{ const r=R[d], tp=r.porTipo.filter(x=>x.n||x.nAb);
-    return blocoGraf({id:'cp-tipo-'+d.toLowerCase(),tit:`${d}: com que condição fechamos`,perg:'Sinal, à vista, prazo único ou parcelado?',per,unid:'pedidos ganhos',fonte:'Ploomes',
+    return blocoGraf({id:'cp-tipo-'+d.toLowerCase(),tit:`${d}: com que condição fechamos`,perg:'Sinal, à vista, prazo único ou parcelado?',per,unid:'pedidos ganhos',flags:cobFl(d),fonte:'Ploomes',
       corpo:tp.length?svgBarrasH(tp.map(x=>({rot:x.k,val:x.n,extra:fmtCompacto(x.v),cor:x.k==='Com sinal no pedido'?cssVar('--lar'):corD(d),k:x.n?`cp-${d}-${r.porTipo.indexOf(x)}`:null})),{W,lw:200,rw:110,fmt:fmtN,aria:d+' por condição'}):'<p class="pl-vazio">Sem pedidos ganhos no período.</p>',
       tabela:{cols:['Condição','Ganhos','Valor ganho','Perdidos','Conversão','Abertos','Valor aberto'],linhas:tp.map(x=>[x.k,x.n,fmtBRL(x.v),x.nPer,pc(x.win),x.nAb,fmtBRL(x.vAb)])},
       nota:'laranja = com sinal · clique para ver os pedidos; a tabela traz perdidos, conversão e pipeline aberto'}); });
@@ -8011,7 +8020,7 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
     return [{rot:d,sub:'em nº de pedidos',vals:fx.map(x=>x.n),k:ks,dir:`${fmtN(r.n)} pedidos · ${fmtN(r.cs.length)} com sinal`,tit:j=>`${fmtN(fx[j].n)} pedidos`},
             {rot:'',sub:'em valor',vals:fx.map(x=>x.v),k:ks,dir:`${fmtCompacto(r.vG)} · ${r.vG?pc(r.vS/r.vG):'—'} com sinal`,tit:j=>fmtBRL(fx[j].v)}]; });
   const frS=DV.map(d=>{ const r=R[d]; return r.n?`${d}: ${fmtN(r.cs.length)} de ${fmtN(r.n)} pedidos tiveram sinal (${r.vG?pc(r.vS/r.vG):'—'} do valor)${r.sinalMed!=null?`, sinal médio de ${pc(r.sinalMed)}`:''}`:`${d}: sem pedidos ganhos`; }).join('; ');
-  h+=blocoGraf({id:'cp-sinal',tit:'Sinal: quanto o cliente paga já no pedido',perg:`Cada barra soma 100% dos pedidos ganhos da divisão; a cor diz o tamanho do sinal. ${frS}.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
+  h+=blocoGraf({id:'cp-sinal',flags:DV.some(d=>cobFl(d).length)?[`Ploomes ${desde}: `+DV.map(d=>{ const c=cob(d); return `${d} ${fmtN(c.g)} de ${fmtN(c.p)}`; }).join(' · ')+' pedidos']:[],tit:'Sinal: quanto o cliente paga já no pedido',perg:`Cada barra soma 100% dos pedidos ganhos da divisão; a cor diz o tamanho do sinal. ${frS}.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
     leg:FX.map((k,j)=>[FXC[j],k]),
     corpo:svgPilha100(linS.map(l=>Object.assign(l,{vals:l.vals.map(v=>v||0)})),FX.map((k,j)=>({rot:k,cor:FXC[j],txt:FXT[j]})),{W:760,lw:130,rw:200,aria:'tamanho do sinal por divisão'}),
     tabela:{cols:['Sinal',...DV.flatMap(d=>[d+': pedidos',d+': valor'])],linhas:FX.map((k,j)=>[k,...DV.flatMap(d=>{ const x=R[d].faixas[j]; return [x.n,fmtBRL(x.v)]; })])},
@@ -8036,7 +8045,7 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
     return p.join(' · ')||t.slice(0,42)+'…'; };
   cTop.forEach((x,i)=>regLista('cp-c-'+i,`Pedidos ganhos — ${x.k}`,x.a.slice().sort((a,b)=>b.v-a.v).map(z=>[fmtData(z.n.dtVenda),z.div||'—',esc(String(z.n.cli).slice(0,40)),esc(nomeCurto(z.n.resp)||''),fmtBRL(z.v)]),
     [{t:'Data'},{t:'Divisão'},{t:'Cliente',f:1},{t:'Vendedor'},{t:'Valor',n:1}]));
-  h+=blocoGraf({id:'cp-conds',tit:'Condições mais usadas nos pedidos ganhos',perg:`As ${fmtN(cTop.length)} condições mais frequentes, em nº de pedidos, separadas em SEQ e SPV.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
+  h+=blocoGraf({id:'cp-conds',flags:cobFl(''),tit:'Condições mais usadas nos pedidos ganhos',perg:`As ${fmtN(cTop.length)} condições mais frequentes, em nº de pedidos, separadas em SEQ e SPV.`,per,unid:'pedidos ganhos',fonte:'Ploomes (condição de pagamento do negócio)',
     leg:DV.map(d=>[corD(d),d]),
     corpo:cTop.length?svgPilhaH(cTop.map((x,i)=>({rot:cRot(x.k)||x.k,tit:x.k,vals:DV.map(d=>nd(x.a,d)),k:'cp-c-'+i,dir:`${fmtN(x.n)} · ${fmtCompacto(x.v)}${x.sinal?' · sinal '+pc(x.sinal):''}`})),DV.map(d=>({cor:corD(d)})),{W:900,lw:300,rw:190,max:46,aria:'condições mais usadas'}):'<p class="pl-vazio">Sem pedidos ganhos no período.</p>',
     tabela:{cols:['Condição','Tipo',...DV,'Valor','Sinal'],linhas:conds.slice(0,30).map(x=>[x.k,x.tipo,...DV.map(d=>nd(x.a,d)),fmtBRL(x.v),x.sinal?pc(x.sinal):'—'])},
@@ -8045,7 +8054,7 @@ function secCondPag(){ const Q=condPagDados(); if(!Q.gan.length&&!Q.ov.length)re
   h+=`<div class="card"><h4>Por vendedor</h4>${tab([{t:'Vendedor'},...DV.flatMap(d=>[{t:d+': ganhos',n:1},{t:d+': com sinal',n:1},{t:d+': antes do fat.',n:1}]),{t:'Prazo médio',n:1}],
       vend.map(x=>[esc(nomeCurto(x.k)||x.k),...DV.flatMap(d=>{ const r=x.R[d]; return r.n?[`${fmtN(r.n)} · ${fmtCompacto(r.vG)}`,`${fmtN(r.cs.length)} (${pc(r.cs.length/r.n)})`,pc(r.antesMed)]:['—','—','—']; }),
         (()=>{ const z=Q.gan.filter(g=>(g.n.resp||'(sem vendedor)')===x.k&&g.prazo!=null); return z.length?fmtN(Math.round(somar(z,g=>g.prazo)/z.length))+' d':'—'; })()]),360)}
-    <div class="nota">Antes do faturamento = sinal + marcos, ponderado pelo valor. Prazo médio = dias depois do faturamento, média das condições a prazo.${Q.semCond?` ${fmtN(Q.semCond)} ganhos sem condição preenchida no Ploomes.`:''}</div></div>`;
+    <div class="nota">${esc(cobTxt(''))}. Antes do faturamento = sinal + marcos, ponderado pelo valor. Prazo médio = dias depois do faturamento, média das condições a prazo.${Q.semCond?` ${fmtN(Q.semCond)} ganhos sem condição preenchida no Ploomes.`:''}</div></div>`;
   return h; }
 /* ---------- Resultados e metas em abas ----------
    A tela é montada inteira (as mesmas seções de antes, com os mesmos data-sid) e
