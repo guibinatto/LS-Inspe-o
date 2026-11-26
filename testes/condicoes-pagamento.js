@@ -39,6 +39,7 @@ const { chromium } = require('playwright'), path = require('path');
     t(['res-bullet', 'res-mes', 'res-ind', 'res-seq', 'res-spv', 'res-condpag'].every(k => so.includes(k)), 'seções principais presentes nas abas');
     REL_GERANDO = true; const tudo = VISTA.resultados(); REL_GERANDO = false;
     t(so.every(k => tudo.includes(`data-sid="${k}"`)) && !/res-abas/.test(tudo), 'relatório recebe todas as seções, sem as abas');
+    t(REL_MODELOS.find(m => m.k === 'rG').telas.resultados.includes('res-condpag'), 'consolidado anual traz as condições de pagamento');
     irPara('resultados', 'res-seq'); t(RES.aba === 'seq', 'link para uma seção abre a aba certa');
     t(polDe('Em negociação').p === (CFG.probs && CFG.probs['Em negociação'] != null ? num(CFG.probs['Em negociação']) : .2), 'ponderado: em negociação = 20%');
     return ok;
