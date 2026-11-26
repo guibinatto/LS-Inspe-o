@@ -1,7 +1,8 @@
 /* Importa no painel as planilhas geradas por ploomes_coletar.py, pelo mesmo
    importador da tela "Dados e configurações", e grava o painel com a data de
    referência = hoje. Também importa API-Omie_*.xlsx (itens de venda do Omie pela API), se estiver na
-   pasta. As demais bases (Controle de Pedidos, carteira, notas) ficam como estavam.
+   pasta. Também importa API-SharePoint_*.xlsx (Controle de Pedidos lido da Lista do SharePoint), se estiver na
+   pasta. As demais bases (carteira, notas) ficam como estavam.
    Uso: node ferramentas/ploomes_importar.js <Painel.html> <pasta da coleta> [saída.html] */
 const { chromium } = require('playwright'); const fs = require('fs'), path = require('path');
 (async () => {
@@ -11,6 +12,8 @@ const { chromium } = require('playwright'); const fs = require('fs'), path = req
   if (arqs.length < 6) { console.error('coleta incompleta:', arqs); process.exit(1); }
   /* itens de venda do Omie pela API (ferramentas/omie_para_planilha.py), quando a coleta do Omie rodou */
   arqs.push(...lista(/^API-Omie_.*\.xlsx$/));
+  /* Controle de Pedidos lido da Lista do SharePoint (ferramentas/sharepoint_coletar.py), quando houver credenciais */
+  arqs.push(...lista(/^API-SharePoint_.*\.xlsx$/));
   const b = await chromium.launch(), p = await b.newPage(), erros = [];
   p.on('pageerror', e => erros.push(e.message));
   await p.goto('file://' + path.resolve(src)); await p.waitForFunction(() => typeof F !== 'undefined' && F.todas, null, { timeout: 60000 });

@@ -373,3 +373,20 @@ tarde, com o conector do Microsoft 365) lê o e-mail mais recente da Catia, grav
 - `ferramentas/importar_arquivos.js <painel> <saída> --financeiro AAAA-MM-DD arquivos`: importa pelo
   importador do painel; se o painel já tem planilhas dessa data, "SEM NOVIDADE" (código 3).
 As notas fiscais se juntam mês a mês (colunas vazias no fim do arquivo não impedem mais a junção).
+
+## Controle de Pedidos pela Lista do SharePoint (Microsoft Graph)
+
+`ferramentas/sharepoint_coletar.py` lê a Lista "Controle de Projetos e Pedidos" (site Comercial) pela API do
+Microsoft Graph, só leitura, e grava `API-SharePoint_Controle_de_Projetos_e_Pedidos.xlsx` com os nomes de coluna da
+tela, no mesmo formato da exportação manual. Detalhes:
+- Pessoa com vários nomes sai como `["Nome 1","Nome 2"]`, como na exportação.
+- Datas vêm do Graph em UTC e são gravadas como a data de Brasília.
+- Abaixo de 50 linhas, ou faltando OV, Cliente, Valor, Divisão ou Vendedor, o coletor para e não grava.
+
+`atualizar.sh` roda o coletor junto com o Ploomes e o Omie quando existe `MS_CLIENT_ID`. Se ele falhar, o painel
+mantém o último Controle importado. `ploomes_importar.js` importa o arquivo pelo importador normal.
+
+Acesso: um aplicativo registrado no Microsoft Entra com permissão de aplicativo `Sites.Selected` (leitura só no site
+Comercial) ou `Sites.Read.All`, com consentimento do administrador. Variáveis de ambiente: `MS_TENANT_ID`,
+`MS_CLIENT_ID` e `MS_CLIENT_SECRET` (segredo). Hosts liberados na rede: `login.microsoftonline.com` e `graph.microsoft.com`.
+A única chamada que não é GET é o POST do token.

@@ -4,7 +4,9 @@
 #   bash ferramentas/atualizar.sh <painel-publicado-salvo.html> [rapida|completa]
 # rapida   (padrão): anexos do Omie incrementais e testes rápidos (~1 min)
 # completa : todos os anexos e todos os testes, inclusive o que clica em todas as telas
-# Coleta do Ploomes e do Omie rodam ao mesmo tempo. O Omie é opcional: se falhar, segue sem ele.
+# Coleta do Ploomes, do Omie e do Controle de Pedidos (Lista do SharePoint) rodam ao mesmo tempo.
+# Omie e Controle de Pedidos são opcionais: se falharem (ou faltarem as credenciais), segue sem eles
+# e o painel mantém a última versão dessas bases.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PUB="$1"; MODO="${2:-rapida}"; export LANG=C.UTF-8
@@ -17,10 +19,13 @@ passo "coletando Ploomes e Omie ao mesmo tempo (modo $MODO)"
 ( python3 -I ferramentas/ploomes_coletar.py /tmp/coleta > /tmp/ploomes.log 2>&1; echo $? > /tmp/ploomes.rc ) &
 ( python3 -I ferramentas/omie_coletar.py coletar /tmp/omie "${ANT[@]}" > /tmp/omie.log 2>&1 \
   && python3 -I ferramentas/omie_para_planilha.py /tmp/omie /tmp/coleta/API-Omie_Itens.xlsx >> /tmp/omie.log 2>&1; echo $? > /tmp/omie.rc ) &
+if [ -n "${MS_CLIENT_ID:-}" ]; then ( python3 -I ferramentas/sharepoint_coletar.py /tmp/coleta > /tmp/sharepoint.log 2>&1; echo $? > /tmp/sharepoint.rc ) &
+else echo "sem credenciais do Microsoft (MS_CLIENT_ID)" > /tmp/sharepoint.log; echo 9 > /tmp/sharepoint.rc; fi
 wait
 passo "coleta terminada"
 if [ "$(cat /tmp/ploomes.rc)" != 0 ]; then echo "FALHA: coleta do Ploomes"; tail -5 /tmp/ploomes.log; exit 1; fi
 OMIE=sim; if [ "$(cat /tmp/omie.rc)" != 0 ]; then OMIE="não ($(grep -m1 -E 'Error|FALHA|Faltam' /tmp/omie.log | cut -c1-160))"; rm -f /tmp/coleta/API-Omie_*.xlsx; fi
+CTRL="$(grep -m1 '^Controle de Pedidos' /tmp/sharepoint.log)"; if [ "$(cat /tmp/sharepoint.rc)" != 0 ]; then CTRL="não ($(tail -1 /tmp/sharepoint.log | cut -c1-160))"; rm -f /tmp/coleta/API-SharePoint_*.xlsx; fi
 node ferramentas/ploomes_importar.js /tmp/painel.html /tmp/coleta > /tmp/importar.log 2>&1 || { echo "FALHA: importação"; tail -5 /tmp/importar.log; exit 1; }
 passo "importado: $(grep -m1 '^referência' /tmp/importar.log)"
 TESTES=(fumaca inconsistencias-v3 futuro condicoes-pagamento produtos); [ "$MODO" = completa ] && TESTES+=(apresentacao clica-tudo)
@@ -29,5 +34,5 @@ for t in "${TESTES[@]}"; do
   if [ $rc != 0 ] || echo "$out" | grep -qE '^✗|ERROS \([1-9]|ERROS JS: [^n]'; then echo "FALHA: teste $t"; echo "$out" | grep -E '✗|ERROS|verificações' | head -8; exit 1; fi
 done
 passo "testes ok (${TESTES[*]})"
-node ferramentas/publicaveis.js /tmp/painel.html /tmp/pub >/dev/null && passo "versões publicáveis em /tmp/pub · Omie: $OMIE · $(grep -m1 -o "em [0-9]* s" /tmp/omie.log | tail -1)"
+node ferramentas/publicaveis.js /tmp/painel.html /tmp/pub >/dev/null && passo "versões publicáveis em /tmp/pub · Omie: $OMIE · Controle de Pedidos: $CTRL · $(grep -m1 -o "em [0-9]* s" /tmp/omie.log | tail -1)"
 echo "OK"
