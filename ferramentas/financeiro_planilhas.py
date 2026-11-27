@@ -131,9 +131,12 @@ def comparativo(txt, wb_cls):
         for k, r in enumerate(L[1:]):
             rot = r[0].strip()
             if rot.upper() == 'TOTAL':
+                # "meses concluídos": o TOTAL só soma os meses que já têm o valor do ano corrente (coluna 2)
+                conc = 'CONCLU' in (bloco or '').upper()
+                base = [m for m in meses if len(m) > 2 and m[2].strip()] if conc else meses
                 for j in (1, 2):
                     tv = num(r[j]) if len(r) > j else None
-                    sv = round(sum((num(m[j]) if len(m) > j and m[j].strip() else 0) or 0 for m in meses), 2)
+                    sv = round(sum((num(m[j]) if len(m) > j and m[j].strip() else 0) or 0 for m in base), 2)
                     if isinstance(tv, (int, float)) and not perto(sv, tv, 0.5):
                         raise SystemExit(f'FALHA: {nome} — bloco "{bloco}": soma dos meses {sv} ≠ TOTAL {tv}')
                 ws.append([r[0]] + [num(x) for x in r[1:]]); ws.append([]); meses = []; continue
