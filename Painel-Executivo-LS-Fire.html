@@ -3305,17 +3305,21 @@ function desenhar(id,cfg){
   Chart.defaults.color=c.tx3;
   const pOpt=(cfg.options&&cfg.options.plugins)||{};
   const tipPad={backgroundColor:cssVar('--bg2'),borderColor:c.linha,borderWidth:1,
-    titleColor:cssVar('--txt'),bodyColor:cssVar('--txt2'),padding:9,cornerRadius:7,
+    titleColor:cssVar('--txt'),bodyColor:cssVar('--txt2'),footerColor:cssVar('--txt'),footerMarginTop:5,padding:9,cornerRadius:7,
     callbacks:{label:ct=>{const hz=ct.chart.options.indexAxis==='y', v=hz?ct.parsed.x:(ct.parsed.y!==undefined?ct.parsed.y:ct.parsed);
       const lb=ct.dataset.label&&ct.dataset.label!=='R$'?ct.dataset.label+': ':'';
-      return ' '+lb+fmtTip(ct.dataset)(v);}}};
+      return ' '+lb+fmtTip(ct.dataset)(v);},
+      /* barra dividida (SEQ + SPV…): o total da pilha no rodapé do balão */
+      footer:its=>{ if(!its||its.length<2)return ''; const st=its[0].dataset.stack; if(st==null||its.some(t=>t.dataset.stack!==st))return '';
+        const hz=its[0].chart.options.indexAxis==='y', tot=its.reduce((s,t)=>s+(+(hz?t.parsed.x:t.parsed.y)||0),0);
+        return 'Total: '+fmtTip(its[0].dataset)(tot); }}};
   /* o merge precisa ser feito DEPOIS, senão cfg.options.plugins sobrescreve o padrão
      e volta a legenda de série única em todo gráfico que passa só um tooltip */
   /* no relatório o gráfico vira imagem: sem animação (senão a foto sai no meio
      dela) e com o dobro de pixels, para o PDF sair nítido */
   cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,
     animation:REL_GERANDO?false:{duration:320},devicePixelRatio:REL_GERANDO?2:undefined,
-    interaction:{mode:'index',intersect:false}},cfg.options);
+    interaction:{mode:'pilha',intersect:false}},cfg.options);
   if(cfg.type==='bar'&&cfg.options.indexAxis!=='y'){ const sc=cfg.options.scales=cfg.options.scales||{}, n=(cfg.data.labels||[]).length;
     sc.x=Object.assign({},sc.x); sc.x.ticks=Object.assign({},sc.x.ticks,{maxRotation:0,minRotation:0,autoSkip:n>16});
     if(!sc.x.ticks.callback&&!cfg.semQuebra)sc.x.ticks.callback=function(v){ const r=this.getLabelForValue(v); if(Array.isArray(r))return r; const l=String(r); if(l.length<=10||n>14)return l; const w=l.split(' '), o=[]; let c='';
@@ -3386,12 +3390,13 @@ function desenhar(id,cfg){
         abrirDrill(id,`${ds.label||''}${rot?' · '+rot:''}`.trim()||'Seleção',ds.itens[alvo.index]||[]); return; }
       /* clique fora de um pedaço (acima da pilha, no rótulo do total): a coluna inteira,
          todas as séries juntas, sem repetir registro */
-      const i=els[0].index, vis=new Set(), its=[];
-      ch.data.datasets.forEach((d,di)=>{ if(!d.itens||ch.getDatasetMeta(di).hidden)return;
+      const i=els[0].index, vis=new Set(), its=[], noAlvo=new Set(els.map(e=>e.datasetIndex));
+      ch.data.datasets.forEach((d,di)=>{ if(!d.itens||ch.getDatasetMeta(di).hidden||!noAlvo.has(di))return;
         (d.itens[i]||[]).forEach(x=>{ if(!vis.has(x)){vis.add(x);its.push(x);} }); });
       if(!its.length)return;
-      const varias=ch.data.datasets.filter(d=>d.itens&&(d.itens[i]||[]).length).length>1;
-      abrirDrill(id,varias?`${rot||'Seleção'} · todas as séries`:`${(ch.data.datasets.find(d=>d.itens&&(d.itens[i]||[]).length)||{}).label||''}${rot?' · '+rot:''}`.trim(),its);
+      const dsCom=ch.data.datasets.filter((d,di)=>noAlvo.has(di)&&d.itens&&(d.itens[i]||[]).length), st=dsCom[0]&&dsCom[0].stack;
+      const varias=dsCom.length>1, pil=st!=null&&dsCom.every(d=>d.stack===st)&&new Set(ch.data.datasets.map(d=>d.stack).filter(x=>x!=null)).size>1;
+      abrirDrill(id,varias?`${rot||'Seleção'} · ${pil?st:'todas as séries'}`:`${(dsCom[0]||{}).label||''}${rot?' · '+rot:''}`.trim(),its);
     };
   }
   CHARTS[id]=new Chart(el.getContext('2d'),cfg);
@@ -3610,7 +3615,16 @@ function iniciar(){
    ============================================================ */
 
 /* ---------- helpers do executivo ---------- */
-const CHARTS_EXTRA={};   /* opções calculadas depois de agendar (ex.: deltas do mês a mês) */
+const CHARTS_EXTRA={};
+/* modo "pilha": igual ao "index" (todas as séries da coluna), mas quando a coluna tem pilhas lado a lado
+   (ex.: 2025 e 2026, cada uma dividida em SEQ e SPV) mostra só a pilha mais perto do cursor */
+Chart.Interaction.modes.pilha=function(ch,e,op,fin){
+  const M=Chart.Interaction.modes, idx=M.index(ch,e,{axis:op.axis||'x',intersect:false},fin);
+  const pilhas=new Set(ch.data.datasets.filter((d,i)=>d.stack!=null&&!ch.getDatasetMeta(i).hidden).map(d=>d.stack));
+  if(pilhas.size<2)return idx;
+  const perto=M.nearest(ch,e,{axis:ch.options.indexAxis==='y'?'y':'x',intersect:false},fin);
+  if(!perto.length)return idx; const st=ch.data.datasets[perto[0].datasetIndex].stack;
+  return idx.filter(el=>ch.data.datasets[el.datasetIndex].stack===st); };   /* opções calculadas depois de agendar (ex.: deltas do mês a mês) */
 const DIVS=['SEQ','SPV'];
 const CORDIV={SEQ:()=>cssVar('--seq'),SPV:()=>cssVar('--spv')};
 const CORCAT={'Fabricação própria':'#FF6600','Revenda':'#404040','Locação':'#FF9A52','Serviços':'#C24E00','Serviços Prestados':'#C24E00',
