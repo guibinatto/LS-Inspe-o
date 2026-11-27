@@ -1017,6 +1017,12 @@ body.rel-doc{background:#E6E6E6;margin:0}
 .atu b{color:var(--txt3);font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:10px;margin-right:2px}
 .atu.velho{border-color:var(--ale);color:var(--ale)}
 .atu-m{display:none}
+.topo .acoes button.nuvem{display:inline-flex;align-items:center;gap:5px}
+.topo .acoes button.nuvem[hidden]{display:none!important}
+.topo .acoes button.nuvem.pend{border-color:var(--ale);color:var(--ale);font-weight:700}
+.topo .acoes button.nuvem.ok{color:var(--txt3)}
+.topo .acoes button.nuvem.ok .nv-ic{color:var(--ok)}
+@media(max-width:760px){.topo .acoes button.nuvem .nv-tx{display:none}.topo .acoes button.nuvem{padding-left:10px;padding-right:10px}}
 @media(max-width:760px){.acoes .atu{display:none}.atu-m{display:block;margin-top:2px;color:var(--txt3)}.atu-m.velho{color:var(--ale)}}
 @media print{.atu{display:none}}
 /* Resultados e metas: abas internas com o número de cada parte */
@@ -1283,6 +1289,7 @@ body.apres-on{overflow:hidden}
         <span class="atu" id="atu" tabindex="0" role="note"></span>
         <button id="bt-ploomes" hidden onclick="atualizarPloomes()" title="Atualiza o painel e as apresentações com os dados do Ploomes e do Omie (somente leitura). Leva de 5 a 8 minutos. Automático nos dias úteis às 5h52, 11h52 e 17h52.">↻ Atualizar</button>
         <button onclick="irTela('relatorios')" title="Relatórios prontos" class="dest">Relatórios</button>
+        <button id="bt-nuvem" class="so-art nuvem" hidden onclick="salvarNoClaude(this)" title="Grava neste próprio link as planilhas, metas e registros carregados. Também salva sozinho cerca de 2 minutos depois da última alteração."><span class="nv-ic">☁</span><span class="nv-tx">Salvar no Claude</span></button>
         <button onclick="salvarHTML()" title="Cópia completa, com todas as bases carregadas — para arquivar" class="prim">↓ Salvar</button>
         <div class="mais"><button onclick="toggleMais(event)" aria-haspopup="true" title="Importação, metas, dados e exportações secundárias">⋯ Mais</button>
           <div class="mais-m" id="mais-m">
@@ -1295,7 +1302,6 @@ body.apres-on{overflow:hidden}
             <button id="bt-rot" onclick="setRotulos()" title="Mostra ou esconde os valores escritos em cima das barras">Rótulos nos gráficos</button>
             <button onclick="baixarCSV()">↓ CSV das tabelas da tela</button>
             <button onclick="salvarHTML(true)" title="Só as bases que as telas usam, sem CNPJ, contato, e-mail, telefone e observações">↓ Cópia para a diretoria</button>
-            <button id="bt-nuvem" class="so-art" onclick="salvarNoClaude(this)" title="Grava as planilhas e metas carregadas neste próprio link">☁ Salvar no Claude</button>
           </div></div>
       </div>
     </header>
@@ -11948,26 +11954,58 @@ async function salvarHTML(diretoria){
     baixar(CAB_LOCAL+h,`Painel-Executivo-LS-Fire-${diretoria?'diretoria-':''}${d}.html`,'text/html;charset=utf-8');
   }catch(e){ console.error(e); aviso('Não consegui gravar o arquivo: '+e.message); }
 }
-/* Salvar no Claude: publica uma nova versão deste mesmo link, com as bases e
-   metas carregadas. Substitui a versão de todo mundo — por isso pede um
-   segundo clique para confirmar. */
-async function salvarNoClaude(bt){
-  if(!bt.dataset.conf){ bt.dataset.conf='1'; const t0=bt.textContent; bt.textContent='Confirmar: gravar no link?';
-    setTimeout(()=>{ delete bt.dataset.conf; bt.textContent=t0; },5000); return; }
-  delete bt.dataset.conf; bt.textContent='☁ Salvar no Claude';
-  let A=null; try{ A=window.claude&&typeof window.claude.use==='function'?await window.claude.use('artifact'):null; }catch(e){}
-  if(!A){ aviso('Salvar no Claude não está disponível aqui. Use ↓ Salvar para ter o arquivo.'); return; }
-  try{ bt.disabled=true; aviso('Gravando no Claude…');
-    await A.publish(CAB_ART+await corpoComDados(BRUTO));
-    aviso('Salvo no Claude. A página vai recarregar com os dados novos.');
-  }catch(e){ bt.disabled=false; const c=(e&&e.code)||'';
-    if(c==='conflict') aviso('Havia uma versão mais nova; a página vai recarregar com ela. Carregue as planilhas de novo se precisar.');
+/* Salvar no Claude: publica uma nova versão deste mesmo link, com as bases, metas e
+   registros carregados. Só quem pode editar o link vê o botão. Há também salvamento
+   automático: depois de uma alteração feita aqui (planilha importada, meta, registro),
+   espera cerca de 2 minutos sem mexer na página e grava sozinho. Ao gravar, toda aba
+   aberta neste link recarrega com a versão nova (é assim que o Claude publica). */
+const NUVEM={A:null,ok:false,base:null,atual:null,ultMud:0,ultUso:0,usou:false,salvando:false,timer:null};
+function nuvemHash(t){ let h=0; for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0; return h; }
+/* assinatura do que é gravado: linhas de cada base, carimbos de importação e a configuração */
+function nuvemSig(){ try{
+  const b=Object.keys(BRUTO).map(k=>k+':'+(((BRUTO[k]||{}).rows)||[]).length).join(',');
+  return nuvemHash(b+'|'+JSON.stringify(((BRUTO._meta||{}).imp)||{})+'|'+JSON.stringify(CFG,(k,v)=>k==='dataRefSalva'?undefined:v));
+}catch(e){ return null; } }
+function nuvemEstado(){ const bt=document.getElementById('bt-nuvem'); if(!bt||!NUVEM.ok)return;
+  const tx=bt.querySelector('.nv-tx'), pend=NUVEM.atual!=null&&NUVEM.base!=null&&NUVEM.atual!==NUVEM.base;
+  bt.classList.toggle('pend',pend&&!NUVEM.salvando); bt.classList.toggle('ok',!pend&&!NUVEM.salvando);
+  if(tx)tx.textContent=NUVEM.salvando?'Salvando…':pend?'Salvar no Claude':'Salvo no Claude';
+  bt.title=NUVEM.salvando?'Gravando neste link…':pend?'Há alterações ainda não gravadas neste link. Clique para salvar agora; se não clicar, salva sozinho cerca de 2 minutos depois da última alteração.':'Tudo o que foi carregado aqui já está gravado neste link.'; }
+async function nuvemIniciar(){
+  try{ NUVEM.A=window.claude&&typeof window.claude.use==='function'?await window.claude.use('artifact'):null; }catch(e){ NUVEM.A=null; }
+  if(!NUVEM.A)return;
+  /* só quem pode editar o link grava; quem só vê não recebe o botão */
+  try{ const U=await window.claude.use('user'); if(U&&typeof U.canEdit==='function'&&!(await U.canEdit()))return; }catch(e){}
+  NUVEM.ok=true; const bt=document.getElementById('bt-nuvem'); if(bt)bt.hidden=false;
+  /* a referência é tirada depois do arranque, para não contar o que a própria abertura arruma */
+  setTimeout(()=>{ NUVEM.base=NUVEM.atual=nuvemSig(); nuvemEstado(); },4000);
+  ['pointerdown','keydown'].forEach(ev=>addEventListener(ev,()=>{ NUVEM.usou=true; NUVEM.ultUso=Date.now(); },true));
+  NUVEM.timer=setInterval(nuvemVigiar,20000);
+  addEventListener('beforeunload',e=>{ if(NUVEM.ok&&!NUVEM.salvando&&nuvemSig()!==NUVEM.base){ e.preventDefault(); e.returnValue=''; } }); }
+function nuvemVigiar(){ if(!NUVEM.ok||NUVEM.salvando||NUVEM.base==null)return;
+  const s=nuvemSig(); if(s==null)return;
+  if(s!==NUVEM.atual){ NUVEM.atual=s; NUVEM.ultMud=Date.now(); }
+  nuvemEstado();
+  /* grava sozinho só se alguém mexeu na página, nada mudou há 2 minutos e ninguém está usando agora */
+  if(s!==NUVEM.base&&NUVEM.usou&&!document.hidden&&Date.now()-NUVEM.ultMud>=120000&&Date.now()-NUVEM.ultUso>=30000)nuvemGravar(true); }
+async function nuvemGravar(auto){
+  if(!NUVEM.A||NUVEM.salvando)return; NUVEM.salvando=true; nuvemEstado();
+  try{ aviso(auto?'Salvando sozinho no Claude as alterações desta página…':'Gravando no Claude…');
+    await NUVEM.A.publish(CAB_ART+await corpoComDados(BRUTO));
+    NUVEM.base=NUVEM.atual=nuvemSig(); aviso('Salvo no Claude. A página vai recarregar com os dados gravados.');
+  }catch(e){ const c=(e&&e.code)||'';
+    if(c==='conflict') aviso('Havia uma versão mais nova deste link (a atualização automática, por exemplo); a página vai recarregar com ela. Se você tinha importado planilhas, importe de novo.');
     else if(['not_writer','not_granted','not_declared','consent_required','capability_disabled','capability_removed'].includes(c)){
-      aviso('Aqui você só tem leitura. Use ↓ Salvar para ter sua cópia.'); bt.remove(); }
+      NUVEM.ok=false; clearInterval(NUVEM.timer); const bt=document.getElementById('bt-nuvem'); if(bt)bt.hidden=true;
+      if(!auto)aviso('Aqui você só tem leitura. Use ↓ Salvar para ter sua cópia.'); }
     else if(c==='too_large') aviso('Ficou grande demais para gravar no Claude. Use ↓ Salvar.');
-    else if(c==='rate_limited') aviso('Muitas gravações seguidas. Tente de novo em instantes.');
-    else { console.error(e); aviso('Não consegui salvar no Claude ('+(c||(e&&e.message)||'erro')+').'); } }
-}
+    else if(c==='rate_limited'){ aviso('Muitas gravações seguidas. Tento de novo em instantes.'); NUVEM.ultMud=Date.now(); }
+    else { console.error(e); aviso('Não consegui salvar no Claude ('+(c||(e&&e.message)||'erro')+'). Tento de novo em 2 minutos.'); NUVEM.ultMud=Date.now(); } }
+  finally{ NUVEM.salvando=false; nuvemEstado(); } }
+async function salvarNoClaude(bt){
+  if(!NUVEM.A){ try{ NUVEM.A=window.claude&&typeof window.claude.use==='function'?await window.claude.use('artifact'):null; }catch(e){} }
+  if(!NUVEM.A){ aviso('Salvar no Claude não está disponível aqui. Use ↓ Salvar para ter o arquivo.'); return; }
+  await nuvemGravar(false); }
 
 /* CSS da página para os arquivos baixados: os <style> e, na versão com
    styles.css separado, as regras da folha externa (servida pelo mesmo endereço) */
@@ -11990,7 +12028,7 @@ function comCarregando(nome){ const f=window[nome]; if(typeof f!=='function'||f.
   g._cc=1; window[nome]=g; }
 ['relcPlanilha','fechamentoPlanilha','pqExcel','xlsVendPrev','gbCSV','baixarLista','contratosExcel','gcExcel','biExcel'].forEach(comCarregando);
 /* ---------- arranque ---------- */
-function arrancar(){ lerSeed().then(iniciar).catch(e=>{ console.error(e);
+function arrancar(){ lerSeed().then(iniciar).then(()=>{ try{ nuvemIniciar(); }catch(e){} }).catch(e=>{ console.error(e);
   document.getElementById('tela').innerHTML=`<div class="nota">Não consegui abrir a base embutida (${esc(e.message)}).
     Use um navegador atualizado (Chrome, Edge, Firefox ou Safari recentes) ou carregue as planilhas em ↑ Planilhas.</div>`;
   try{ iniciar(); }catch(e){ logFalha('iniciar',e); } }); }

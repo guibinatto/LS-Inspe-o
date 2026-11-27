@@ -390,3 +390,20 @@ Acesso: um aplicativo registrado no Microsoft Entra com permissão de aplicativo
 Comercial) ou `Sites.Read.All`, com consentimento do administrador. Variáveis de ambiente: `MS_TENANT_ID`,
 `MS_CLIENT_ID` e `MS_CLIENT_SECRET` (segredo). Hosts liberados na rede: `login.microsoftonline.com` e `graph.microsoft.com`.
 A única chamada que não é GET é o POST do token.
+
+## Salvar no Claude (botão no topo e salvamento automático)
+
+O botão "☁ Salvar no Claude" fica no topo, ao lado de "↓ Salvar", e só aparece para quem pode editar o link
+(`claude.use('user').canEdit()`). Ele mostra "Salvo no Claude" ou, em laranja, "Salvar no Claude" quando há alteração
+não gravada. Um clique grava na hora.
+
+Salvamento automático (`nuvemIniciar` / `nuvemVigiar` / `nuvemGravar`):
+- A cada 20 s o painel compara a assinatura do que é gravado (linhas de cada base, carimbos de importação e `CFG`)
+  com a da última gravação.
+- Grava sozinho quando três condições valem: alguém mexeu na página; nada mudou há 2 minutos; ninguém usou a página
+  nos últimos 30 s.
+- Sem interação de alguém, nunca grava, para não publicar a cada abertura.
+- Ao gravar, o Claude recarrega todas as abas abertas no link.
+- Em conflito com uma versão mais nova (a atualização automática, por exemplo), a página recarrega com ela e avisa
+  para importar de novo.
+- Teste: `testes/salvar-nuvem.js`, com o Claude simulado.
