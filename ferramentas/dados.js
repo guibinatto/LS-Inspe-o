@@ -15,20 +15,26 @@
        grava uma base importada ({cols, rows}), ex.: omieAnexos para a coleta incremental de anexos */
 const fs = require('fs'), crypto = require('crypto');
 const RX = id => new RegExp(`(<script id="${id}"[^>]*>)([\\s\\S]*?)(</script>)`);
-const ABRE_DADOS = '<script id="seed-dados" type="application/json" data-z="gz">';
+/* dados em JSON puro: o compartilhamento do Claude recusa blocos binários (gzip em base64) na página.
+   Painéis antigos (data-z="gz") são lidos e convertidos na extração. */
+const ABRE_DADOS = '<script id="seed-dados" type="application/json">';
+const zlib = require('zlib');
+const puro = (txt, z) => z ? zlib.gunzipSync(Buffer.from(txt, 'base64')).toString('utf8').replace(/</g, '\\u003c') : txt;
+/* dados.json antigo guardava o gzip em base64; o novo guarda o JSON (começa com "{") */
+const textoDados = s => { const t = (s || '').trim(); return !t || t.startsWith('{') ? t : puro(t, true); };
 function bloco(html, id) { const m = html.match(RX(id)); if (!m) throw new Error(`bloco ${id} não encontrado`); return m; }
 function trocar(html, id, abre, corpo) { const m = bloco(html, id); return html.replace(RX(id), () => abre + corpo + '</script>'); }
 const hash = s => crypto.createHash('sha256').update(s || '').digest('hex').slice(0, 16);
 const [cmd, a, b, c] = process.argv.slice(2);
 if (cmd === 'extrair') {
   const h = fs.readFileSync(a, 'utf8'), d = bloco(h, 'seed-dados'), cf = bloco(h, 'seed-config');
-  const z = /data-z="gz"/.test(d[1]);
-  if (!z && d[2].trim().length) throw new Error('seed-dados sem compactação: formato inesperado');
-  fs.writeFileSync(b, JSON.stringify({ formato: 1, extraidoEm: new Date().toISOString(), dados: d[2].trim(), config: cf[2].trim() }));
-  console.log('extraído', b, 'dados', d[2].trim().length, 'config', cf[2].trim().length, 'hash', hash(d[2].trim()), hash(cf[2].trim()));
+  const z = /data-z="gz"/.test(d[1]), dd = puro(d[2].trim(), z);
+  if (dd && !dd.startsWith('{')) throw new Error('seed-dados em formato inesperado');
+  fs.writeFileSync(b, JSON.stringify({ formato: 2, extraidoEm: new Date().toISOString(), dados: dd, config: cf[2].trim() }));
+  console.log('extraído', b, 'dados', dd.length, 'config', cf[2].trim().length, 'hash', hash(dd), hash(cf[2].trim()));
 } else if (cmd === 'injetar') {
   const h = fs.readFileSync(a, 'utf8'), j = JSON.parse(fs.readFileSync(b, 'utf8'));
-  let s = j.dados ? trocar(h, 'seed-dados', ABRE_DADOS, j.dados) : h;
+  let s = j.dados ? trocar(h, 'seed-dados', ABRE_DADOS, textoDados(j.dados)) : h;
   s = trocar(s, 'seed-config', '<script id="seed-config" type="application/json">', j.config || '{}');
   fs.writeFileSync(c, s); console.log('montado', c, s.length);
 } else if (cmd === 'limpar') {
@@ -41,6 +47,6 @@ if (cmd === 'extrair') {
   console.log(JSON.stringify({ dados: { tam: (j.dados || '').length, hash: hash(j.dados) }, config: { tam: (j.config || '').length, hash: hash(j.config) } }));
 } else if (cmd === 'base') {
   const j = JSON.parse(fs.readFileSync(a, 'utf8'));
-  const bruto = j.dados ? JSON.parse(require('zlib').gunzipSync(Buffer.from(j.dados, 'base64')).toString('utf8')) : {};
+  const bruto = j.dados ? JSON.parse(textoDados(j.dados)) : {};
   const B = bruto[b] || { cols: [], rows: [] }; fs.writeFileSync(c, JSON.stringify(B)); console.log('base', b, (B.rows || []).length, 'linhas ->', c);
 } else { console.error('uso: extrair | injetar | limpar | resumo | base (ver cabeçalho)'); process.exit(2); }
