@@ -1017,6 +1017,8 @@ body.rel-doc{background:#E6E6E6;margin:0}
 .atu b{color:var(--txt3);font-weight:700;letter-spacing:.04em;text-transform:uppercase;font-size:10px;margin-right:2px}
 .atu.velho{border-color:var(--ale);color:var(--ale)}
 .atu-m{display:none}
+.ep-l{display:grid;grid-template-columns:70px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}.ep-l span{overflow-wrap:anywhere}
+#m-email-pronto a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .topo .acoes button.nuvem{display:inline-flex;align-items:center;gap:5px}
 .topo .acoes button.nuvem[hidden]{display:none!important}
 .topo .acoes button.nuvem.pend{border-color:var(--ale);color:var(--ale);font-weight:700}
@@ -4604,19 +4606,50 @@ function corpoEmailTxt(g,nLin){
    mailto só leva texto simples; se o link passar do limite, a lista encolhe e
    avisa quantos ficaram de fora. A versão com tabela formatada e Excel anexado
    é o .eml (emlVendPrev). */
+/* E-mail pronto: dentro do Claude a página roda num quadro protegido que bloqueia o mailto (o
+   programa de e-mail não abre e nada acontece). Por isso o e-mail aparece numa janela com:
+   "Abrir no Outlook" (Outlook na web, link https comum — abre numa aba nova com tudo preenchido),
+   "Abrir no programa de e-mail" (mailto, funciona fora do Claude) e botões de copiar. */
+function linkOutlook(para,assunto,corpo){ return 'https://outlook.office.com/mail/deeplink/compose?to='+encodeURIComponent(para.join(';'))
+  +'&subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(corpo); }
+function linkMailto(para,assunto,corpo){ return `mailto:${para.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`; }
+const EMAIL_PRONTO={};
+function emailPronto({para,assunto,corpo,titulo,aoAbrir}){
+  /* o link do Outlook tem limite de tamanho: se passar, o corpo vai pelo botão Copiar */
+  const lo=linkOutlook(para,assunto,corpo), longo=lo.length>7000, lo2=longo?linkOutlook(para,assunto,'(cole aqui o texto copiado do painel)'):lo;
+  EMAIL_PRONTO.para=para.join('; '); EMAIL_PRONTO.assunto=assunto; EMAIL_PRONTO.corpo=corpo; EMAIL_PRONTO.aoAbrir=aoAbrir||null;
+  let m=document.getElementById('m-email-pronto');
+  if(!m){ m=document.createElement('div'); m.className='modal'; m.id='m-email-pronto'; document.body.appendChild(m); }
+  m.innerHTML=`<div class="cx-modal" style="max-width:820px"><header><h3>✉ ${esc(titulo||'E-mail pronto')}</h3><button onclick="fecharModal('m-email-pronto')">✕</button></header>
+    <div class="conteudo" style="display:grid;gap:10px">
+      <div class="ep-l"><b>Para</b><span>${esc(EMAIL_PRONTO.para)}</span><button class="mini" onclick="epCopiar('para',this)">Copiar</button></div>
+      <div class="ep-l"><b>Assunto</b><span>${esc(assunto)}</span><button class="mini" onclick="epCopiar('assunto',this)">Copiar</button></div>
+      <textarea class="campo" readonly rows="12" style="width:100%;font:12px/1.45 ui-monospace,Consolas,monospace">${esc(corpo)}</textarea>
+      ${longo?'<div class="nota">O texto é grande demais para ir dentro do link do Outlook: clique em <b>Copiar texto</b> e cole no corpo do e-mail que abrir.</div>':''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn sec" onclick="epCopiar('corpo',this)">Copiar texto</button>
+        <a class="btn sec" href="${esc(linkMailto(para,assunto,longo?'':corpo))}" target="_blank" rel="noopener" onclick="epAbriu()">Abrir no programa de e-mail</a>
+        <a class="btn" href="${esc(lo2)}" target="_blank" rel="noopener" onclick="epAbriu()">Abrir no Outlook</a>
+      </div>
+      <p class="nota" style="margin:0">"Abrir no Outlook" abre o Outlook na web numa aba nova, já com destinatário, assunto e texto. Dentro do Claude o botão "programa de e-mail" pode não funcionar.</p>
+    </div></div>`;
+  abrirModal('m-email-pronto'); }
+function epAbriu(){ const f=EMAIL_PRONTO.aoAbrir; EMAIL_PRONTO.aoAbrir=null; if(f)try{f();}catch(e){} }
+function epCopiar(k,bt){ const t=EMAIL_PRONTO[k]||'';
+  const ok=()=>{ const t0=bt.textContent; bt.textContent='Copiado'; setTimeout(()=>bt.textContent=t0,1500); };
+  try{ navigator.clipboard.writeText(t).then(ok,()=>epSelecionar(bt)); }catch(e){ epSelecionar(bt); } }
+function epSelecionar(bt){ const ta=bt.closest('.conteudo').querySelector('textarea'); if(ta){ ta.focus(); ta.select(); } aviso('Selecionei o texto: use Ctrl+C para copiar.'); }
 const MAX_MAILTO=30000;
 function enviarVendPrev(i){
   const g=PREV_GR[i]; if(!g)return;
   const para=emailVend(g.nome);
   if(!para){ aviso(`Cadastre o e-mail de ${g.nome} no resumo por vendedor.`);
     const el=document.getElementById('pv-mail-'+i); if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();} return; }
-  const url=c=>`mailto:${encodeURIComponent(para)}?subject=${encodeURIComponent(assuntoVendPrev(g))}&body=${encodeURIComponent(c)}`;
-  let n=g.itens.length, u=url(corpoEmailTxt(g,n));
-  while(u.length>MAX_MAILTO&&n>0){ n=Math.max(0,n-10); u=url(corpoEmailTxt(g,n)); }
-  const a=document.createElement('a'); a.href=u; a.target='_top'; a.rel='noopener'; document.body.appendChild(a);
-  try{a.click();}catch(e){} a.remove();
-  marcarEnvio('conf:'+g.nome);
-  aviso(`E-mail para ${para} aberto com o diagnóstico e a lista dos negócios a ajustar.`); }
+  /* o link do Outlook na web tem limite de tamanho: a lista encolhe até caber ("... e mais N") */
+  let n=g.itens.length, c=corpoEmailTxt(g,n);
+  while(linkOutlook([para],assuntoVendPrev(g),c).length>7000&&n>0){ n=Math.max(0,n-5); c=corpoEmailTxt(g,n); }
+  emailPronto({para:[para],assunto:assuntoVendPrev(g),corpo:c,titulo:`Confirmação de ${g.nome.split(' ')[0]}`,
+    aoAbrir:()=>{ marcarEnvio('conf:'+g.nome); aviso(`E-mail para ${para} preparado no Outlook. Confira e clique em Enviar.`); }}); }
 const assuntoVendPrev=g=>`LS Fire · ${rotSemana()} · Previsão: ajustes no Ploomes e confirmação das oportunidades — ${g.nome.split(' ')[0]}`;
 function emlVendPrev(i){
   const g=PREV_GR[i]; if(!g)return;
@@ -4757,10 +4790,8 @@ function mlAbrir(){
   const ruins=para.filter(x=>!RX_MAIL.test(x)); if(ruins.length){aviso('E-mail inválido: '+ruins.join(', '));return;}
   if(!para.length){aviso('Informe ao menos um destinatário.');return;}
   const ass=document.getElementById('ml-assunto').value, corpo=document.getElementById('ml-corpo').value;
-  const a=document.createElement('a'); a.href=`mailto:${para.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(ass)}&body=${encodeURIComponent(corpo)}`;
-  a.target='_top'; a.rel='noopener'; document.body.appendChild(a); try{a.click();}catch(e){} a.remove();
-  marcarEnvio(MAIL_TELA); fecharModal('m-mail'); marcarSexta();
-  aviso(`E-mail aberto para ${para.join(', ')}.`); }
+  fecharModal('m-mail'); const tela=MAIL_TELA;
+  emailPronto({para,assunto:ass,corpo,titulo:'E-mail pronto',aoAbrir:()=>{ marcarEnvio(tela); marcarSexta(); aviso(`E-mail para ${para.join(', ')} preparado no Outlook. Confira e clique em Enviar.`); }}); }
 function htmlEnvios(){
   const env=enviosSemana(), d=k=>env[k]?`<b style="color:var(--ok)">✓ ${fmtData(new Date(env[k]))}</b>`:'<span style="color:var(--ale)">pendente</span>';
   const vs=PREV_GR.length?PREV_GR:gruposVendPrev(F.ab), nc=vs.filter(g=>env['conf:'+g.nome]).length;

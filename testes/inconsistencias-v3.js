@@ -30,7 +30,9 @@ const { chromium } = require('playwright'), path = require('path');
     irTela('desempenho'); t(/Pedidos \(responsável\)/i.test(document.getElementById('tela').innerText), 'tabela de vendedores: pedidos como responsável');
     /* 4. divisão do negócio ganho = do pedido oficial */
     const br = (M.negocios || []).find(n => String(n.id) === '607100246');
-    t(!br || (br.div === 'SEQ' && br.divPloomes === 'SPV'), 'Braskem 607100246: SEQ pelo Controle, SPV sinalizado no Ploomes');
+    /* a divisão do Braskem segue a dos pedidos 500221/500222 no Controle, seja qual for (o Controle já trouxe SEQ e SPV) */
+    const brPed = (M.pedidos || []).filter(p => ['500221', '500222'].includes(String(p.ov || '').replace(/\D/g, ''))).map(p => p.div);
+    t(!br || !brPed.length || (brPed.every(d => d === br.div) && (!br.divPloomes || br.divPloomes !== br.div)), `Braskem 607100246: divisão do Controle (${brPed.join('/') || '—'}) = ${br && br.div}${br && br.divPloomes ? ', Ploomes ' + br.divPloomes + ' sinalizado' : ''}`);
     t(DIV_CONFLITO.every(d => d.ped.every(p => p.div === d.n.div)), 'negócios em conflito seguem a divisão do Controle');
     /* 5. mesma definição de clientes no cadastro */
     const f = F.emp.filter(e => e.resp === 'Fábio Dalagnolo').length; irTela('desempenho');
