@@ -4609,7 +4609,7 @@ function corpoEmailTxt(g,nLin){
 /* E-mail pronto: dentro do Claude a página roda num quadro protegido que bloqueia o mailto (o
    programa de e-mail não abre e nada acontece). Por isso o e-mail aparece numa janela com:
    "Abrir no Outlook" (Outlook na web, link https comum — abre numa aba nova com tudo preenchido),
-   "Abrir no programa de e-mail" (mailto, funciona fora do Claude) e botões de copiar. */
+   "Abrir no programa de e-mail" (mailto, só no arquivo baixado: dentro do Claude o quadro bloqueia e o botão some) e copiar. */
 function linkOutlook(para,assunto,corpo){ return 'https://outlook.office.com/mail/deeplink/compose?to='+encodeURIComponent(para.join(';'))
   +'&subject='+encodeURIComponent(assunto)+'&body='+encodeURIComponent(corpo); }
 function linkMailto(para,assunto,corpo){ return `mailto:${para.map(encodeURIComponent).join(',')}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`; }
@@ -4628,10 +4628,10 @@ function emailPronto({para,assunto,corpo,titulo,aoAbrir}){
       ${longo?'<div class="nota">O texto é grande demais para ir dentro do link do Outlook: clique em <b>Copiar texto</b> e cole no corpo do e-mail que abrir.</div>':''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
         <button class="btn sec" onclick="epCopiar('corpo',this)">Copiar texto</button>
-        <a class="btn sec" href="${esc(linkMailto(para,assunto,longo?'':corpo))}" target="_blank" rel="noopener" onclick="epAbriu()">Abrir no programa de e-mail</a>
+        ${document.documentElement.classList.contains('artefato')?'':`<a class="btn sec" href="${esc(linkMailto(para,assunto,longo?'':corpo))}" target="_blank" rel="noopener" onclick="epAbriu()">Abrir no programa de e-mail</a>`}
         <a class="btn" href="${esc(lo2)}" target="_blank" rel="noopener" onclick="epAbriu()">Abrir no Outlook</a>
       </div>
-      <p class="nota" style="margin:0">"Abrir no Outlook" abre o Outlook na web numa aba nova, já com destinatário, assunto e texto. Dentro do Claude o botão "programa de e-mail" pode não funcionar.</p>
+      <p class="nota" style="margin:0">"Abrir no Outlook" abre o Outlook na web numa aba nova, já com destinatário, assunto e texto. Se preferir o Outlook instalado no computador, use os botões Copiar e cole numa mensagem nova.</p>
     </div></div>`;
   abrirModal('m-email-pronto'); }
 function epAbriu(){ const f=EMAIL_PRONTO.aoAbrir; EMAIL_PRONTO.aoAbrir=null; if(f)try{f();}catch(e){} }
