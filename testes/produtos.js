@@ -77,6 +77,15 @@ const { chromium } = require('playwright'), path = require('path');
     const secs = [...document.querySelectorAll('#tela [data-sid]')].map(x => x.dataset.sid);
     t(['prd-kpi', 'prd-fam', 'prd-abc', 'prd-mb', 'prd-mot', 'prd-cot'].every(s => secs.includes(s)), 'seis seções com ID estável: ' + secs.filter(s => /^prd/.test(s)).join(','));
     t(comb === 15, '15 combinações de base × agrupamento');
+    /* curva ABC em quantidade: só equipamentos vendáveis (sem insumos), em unidades */
+    PRD.abcPor = 'un'; render(); const abcTxt = (document.querySelector('#tela .card.abc') || {}).textContent || '';
+    const eq = prdItens().filter(x => FAM_VENDA_ITEM[prdFamItem(x)]), uEq = somar(eq, x => x.qNum || 0);
+    t(!uEq || (/\d un\./.test(abcTxt) && /equipamentos vendáveis/.test(abcTxt)), `ABC em quantidade: ${uEq} unidades de equipamentos, eixo em un.`);
+    t(eq.every(x => FAM_VENDA_ITEM[prdFamItem(x)]), 'ABC em quantidade não traz insumos');
+    PRD.abcPor = 'valor'; render();
+    /* cartões por família de venda (CMB, SKD, CON, PAN…), não famílias de insumo */
+    const cart = document.getElementById('tela').textContent;
+    t(/Equipamentos vendidos em quantidade/.test(cart) && /Valor por família de venda/.test(cart), 'cartões de equipamentos (un.) e valor por família de venda');
     return ok;
   });
   r.forEach(([c, m]) => console.log((c ? '✓ ' : '✗ ') + m));

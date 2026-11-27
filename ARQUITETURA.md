@@ -420,3 +420,10 @@ CSV como texto.
 - **4:** suspeito, ou seja, o arquivo é bem menor ou muito diferente do atual. Nada é gravado e a tarefa avisa.
 
 Só a tarefa publica.
+
+## Produtos e mix — famílias de venda, ABC em quantidade e saída em relatórios
+
+- **Famílias de venda** (`FAM_VENDA_CURTO`, `FAM_VENDA_ITEM`, `prdFamVenda`): os cartões da tela Produtos mostram o que a LS Fire vende (CMB, SKD, CON, PAN, PAR, KUB…), não as famílias de cadastro dos insumos. Valor: família do pedido no Controle (pela OV do item); quantidade: só itens cuja família do ERP é equipamento vendável.
+- **Curva ABC em quantidade** (`PRD.abcPor='un'`): mesma curva, pesada pelas unidades, só com equipamentos vendáveis; rótulo "CÓDIGO · produto".
+- **Relatórios**: rG (Consolidado anual) leva KPIs, famílias, ABC, motobombas e cotado × vendido; rE (Fechamento mensal) e rF (Revisão trimestral) levam famílias e cotado × vendido. Capítulo próprio "Produtos e mix" (`REL_CAPS`/`REL_SEC_CAP`). O bloco `prd-fam` é só o título — os relatórios usam `q:prd-fam`, para o título não ficar sozinho no pé da página.
+- **Apresentação "Como estamos"**: capítulo `mix` (famílias por valor, equipamentos em unidades e três números), nos modelos Anual, Trimestral, Mensal e Personalizada.
