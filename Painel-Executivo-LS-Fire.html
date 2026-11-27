@@ -5379,7 +5379,7 @@ function vendasCorpo(){
     Corrija o valor na base de origem e recarregue.</div>`;
   { const a=anoRef(), antA=vendasDoAno(a-1), Va=vendasDoAno(a);
     if(antA.length&&Va.length){ const ult=a===HOJE.getFullYear()?HOJE.getMonth():11;
-      /* mês em curso: a barra cinza mostra o mês inteiro do ano anterior (referência),
+      /* mês em curso: a barra do ano anterior mostra o mês inteiro (referência),
          mas a variação compara com o mesmo período — até o mesmo dia. Sem isso, abril
          de 2027 até o dia 10 contra abril de 2026 inteiro dava "▼97%". */
       const emCurso=a===HOJE.getFullYear();
@@ -5388,13 +5388,15 @@ function vendasCorpo(){
           bp:parc?somar(antA.filter(v=>v.dt.getMonth()===m&&v.dt.getDate()<=HOJE.getDate()),v=>v.valor):null,parc}; });
       /* barras lado a lado (ano anterior cinza, ano atual laranja) + faixa de variação:
          os halteres quebravam a linha no celular e o valor ficava longe do ponto */
-      h+=sec(`Mês a mês${EST.ano?'':': '+a} contra ${a-1}`,`O mesmo mês nos dois anos, lado a lado. Embaixo, quanto ${a} ficou acima (verde) ou abaixo (vermelho) de ${a-1}.`,'res-yoy');
-      agendar('v-yoy',{type:'bar',data:{labels:hm.map(m=>m.k),datasets:[
-          {label:String(a-1),data:hm.map(m=>m.b),backgroundColor:alfa(COR().neu,.55),borderRadius:3,maxBarThickness:30,
-            itens:KMESN.slice(0,ult+1).map((_,m)=>antA.filter(v=>v.dt.getMonth()===m))},
-          {label:String(a),data:hm.map(m=>m.a),backgroundColor:hm.map((m,i)=>a===HOJE.getFullYear()&&i===ult?parcialCor(COR().lar):COR().lar),borderRadius:3,maxBarThickness:30,
-            itens:KMESN.slice(0,ult+1).map((_,m)=>Va.filter(v=>v.dt.getMonth()===m))}]},
-        options:{layout:{padding:{bottom:46}},scales:{x:{grid:{display:false}},y:{grid:{color:COR().linha},ticks:{callback:v=>fmtCompacto(v)}}},
+      h+=sec(`Mês a mês${EST.ano?'':': '+a} contra ${a-1}`,`O mesmo mês nos dois anos, lado a lado: à esquerda ${a-1} (cores claras), à direita ${a} (cores cheias), cada barra dividida em SEQ e SPV, com o total do mês em cima. Embaixo, quanto ${a} ficou acima (verde) ou abaixo (vermelho) de ${a-1}.`,'res-yoy');
+      /* cada ano é uma pilha SEQ + SPV: o ano anterior na cor da divisão mais clara, o atual na cor cheia;
+         o total do mês fica na ponta da pilha (pluginRot) e a variação embaixo continua sobre o total */
+      const doMes=(L,m,d)=>L.filter(v=>v.dt.getMonth()===m&&(v.div||'SEQ')===d);
+      const dsAno=(L,ano,atual)=>DIVS.map(d=>({label:`${ano} ${d}`,stack:String(ano),borderRadius:2,maxBarThickness:30,semRotSeg:!atual,
+          data:hm.map((_,m)=>somar(doMes(L,m,d),v=>v.valor)),itens:hm.map((_,m)=>doMes(L,m,d)),
+          backgroundColor:hm.map((_,i)=>{ const c=CORDIV[d](); return !atual?alfa(c,.42):(emCurso&&i===ult?parcialCor(c):c); })}));
+      agendar('v-yoy',{type:'bar',data:{labels:hm.map(m=>m.k),datasets:[...dsAno(antA,a-1,false),...dsAno(Va,a,true)]},
+        options:{layout:{padding:{bottom:46}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:COR().linha},ticks:{callback:v=>fmtCompacto(v)}}},
           plugins:{legend:{display:true,labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:'rect'}},deltas:null}}});
       /* variação por mês: até 3x em %, acima disso em "vezes" (+765% se lê mal; ×8,7 não);
          mês do ano anterior com menos de 10% da média mensal é "base baixa" */
@@ -5410,7 +5412,7 @@ function vendasCorpo(){
       h+=`<div class="card">${ant?`<div class="yoy-res ${tA>=ant.t?'up':'dn'}"><span>No acumulado do ano</span>
           <b>${fmtCompacto(tA)}</b><small>contra ${fmtCompacto(ant.t)} em ${ant.rot}</small>
           <em>${tA>=ant.t?'▲':'▼'} ${fmtPct(Math.abs(tA/ant.t-1),0)} · ${tA>=ant.t?'+':'−'}${fmtCompacto(Math.abs(tA-ant.t))}</em></div>`:''}
-        ${graf('v-yoy','alt')}<p class="yoy-nota">Embaixo de cada mês: a variação (▲ acima / ▼ abaixo de ${a-1}; “×” = quantas vezes maior) e a diferença em ${eY.rot}.${emCurso?` O mês em curso (*) é comparado com o mesmo período de ${a-1}, até ${fmtData(HOJE).slice(0,5)}; a barra cinza mostra o mês inteiro, como referência.`:''} “Base baixa” = em ${a-1} o mês quase não teve venda, e a comparação exagera.</p></div>`; } }
+        ${graf('v-yoy','alt')}<p class="yoy-nota">Embaixo de cada mês: a variação (▲ acima / ▼ abaixo de ${a-1}; “×” = quantas vezes maior) e a diferença em ${eY.rot}.${emCurso?` O mês em curso (*) é comparado com o mesmo período de ${a-1}, até ${fmtData(HOJE).slice(0,5)}; a barra de ${a-1} mostra o mês inteiro, como referência.`:''} “Base baixa” = em ${a-1} o mês quase não teve venda, e a comparação exagera.</p></div>`; } }
   const vend=grupos(V,v=>v.resp||'(sem responsável)',v=>v.valor,12);
   h+=parQV('v-vend','Por vendedor','Quem vendeu quanto, em R$ e em número de pedidos — pedidos em que é o vendedor responsável (apoio/orçamentista não conta aqui).',vend.map(x=>Object.assign(x,{k:nomeCurto(x.k)})),{rotQ:'pedidos',stackDiv:true});
   /* categoria FISCAL do ERP: parte confirmada (carimbo do ERP), inferida (composição
@@ -11465,7 +11467,7 @@ const pluginRot={id:'rot',afterDatasetsDraw(ch,_a,op){
          o total da pilha vai na ponta (abaixo). Antes o texto ia no topo de cada
          segmento, e o do SEQ encostava no do SPV em cima — viravam um borrão. */
       if(ds.stack){
-        if(!multi(ds.stack))return;   /* pilha de uma série só: a ponta já traz o total */
+        if(ds.semRotSeg||!multi(ds.stack))return;   /* semRotSeg: só o total da pilha, sem número em cada parte */   /* pilha de uma série só: a ponta já traz o total */
         if(horiz&&nCat>8)return;      /* barra deitada com muita categoria: só o total */
         /* só esta série tem valor nesta coluna: o total na ponta já é o mesmo número */
         if(ch.data.datasets.filter((d,j)=>d.stack===ds.stack&&!ch.getDatasetMeta(j).hidden&&+d.data[i]).length<2)return;
