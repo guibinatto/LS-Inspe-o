@@ -407,3 +407,16 @@ Salvamento automático (`nuvemIniciar` / `nuvemVigiar` / `nuvemGravar`):
 - Em conflito com uma versão mais nova (a atualização automática, por exemplo), a página recarrega com ela e avisa
   para importar de novo.
 - Teste: `testes/salvar-nuvem.js`, com o Claude simulado.
+
+## Controle de Pedidos pela pasta do SharePoint (tarefa agendada)
+
+Enquanto não há acesso pela API do Graph, uma tarefa agendada desta conversa olha nos dias úteis, às 7h13 e 15h13,
+a pasta Comercial/LS FIRE/INDICADORES/Para atualizar apresentação. Ela usa o conector do Microsoft 365, que entrega o
+CSV como texto.
+
+`ferramentas/controle_comparar.js` compara o CSV com o Controle que o painel já tem e devolve um destes códigos:
+- **0:** importou.
+- **3:** sem novidade.
+- **4:** suspeito, ou seja, o arquivo é bem menor ou muito diferente do atual. Nada é gravado e a tarefa avisa.
+
+Só a tarefa publica.
